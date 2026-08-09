@@ -1,4 +1,4 @@
-import { Language, TodoFilter } from '../types/todo';
+import { Language, TodoFilter, TodoPriority } from '../types/todo';
 
 export interface Translation {
   appName: string;
@@ -148,6 +148,8 @@ export interface Translation {
   taskMenu: {
     addSubtask: string;
     rename: string;
+    priority: string;
+    priorityOptions: Record<TodoPriority, string>;
     subtaskPlaceholder: string;
     createSubtask: string;
     moveToTrash: string;
@@ -329,6 +331,13 @@ export const translations: Record<Language, Translation> = {
     taskMenu: {
       addSubtask: '添加子任务',
       rename: '重命名',
+      priority: '优先级',
+      priorityOptions: {
+        none: '无优先级',
+        high: '高优先级',
+        medium: '中优先级',
+        low: '低优先级',
+      },
       subtaskPlaceholder: '输入子任务名称…',
       createSubtask: '创建',
       moveToTrash: '移至垃圾桶',
@@ -513,6 +522,13 @@ export const translations: Record<Language, Translation> = {
     taskMenu: {
       addSubtask: 'Add subtask',
       rename: 'Rename',
+      priority: 'Priority',
+      priorityOptions: {
+        none: 'No priority',
+        high: 'High priority',
+        medium: 'Medium priority',
+        low: 'Low priority',
+      },
       subtaskPlaceholder: 'Subtask name…',
       createSubtask: 'Create',
       moveToTrash: 'Move to trash',

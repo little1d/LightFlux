@@ -8,9 +8,11 @@ import {
 import { inputAccentProps } from '../../config/input';
 import { useTodos } from '../../context/TodoContext';
 import { translations } from '../../i18n/translations';
+import { TodoPriority } from '../../types/todo';
 import ActionButton from '../ui/ActionButton';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface from '../ui/MenuSurface';
+import TaskPrioritySelector from './TaskPrioritySelector';
 import { TaskMenuPosition } from './useTaskContextMenu';
 
 const MENU_WIDTH = 220;
@@ -70,10 +72,15 @@ const TaskActionMenu = ({
     onClose();
   };
 
+  const setPriority = (priority: TodoPriority) => {
+    updateTodo(todo.id, { priority });
+    onClose();
+  };
+
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={mode ? 110 : 145}
+      estimatedHeight={mode ? 110 : 195}
       onClose={onClose}
       position={position}
       width={MENU_WIDTH}
@@ -123,6 +130,12 @@ const TaskActionMenu = ({
           <MenuItem
             label={labels.taskMenu.rename}
             onPress={() => beginEdit('rename')}
+          />
+          <TaskPrioritySelector
+            label={labels.taskMenu.priority}
+            labels={labels.taskMenu.priorityOptions}
+            onChange={setPriority}
+            value={todo.priority}
           />
           <MenuItem
             label={labels.taskMenu.addSubtask}

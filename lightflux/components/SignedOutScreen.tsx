@@ -1,0 +1,42 @@
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
+import React from 'react';
+import { Pressable, SafeAreaView, Text, View } from 'react-native';
+
+import { useTodos } from '../context/TodoContext';
+import { translations } from '../i18n/translations';
+
+const SignedOutScreen = ({ onContinue }: { onContinue: () => void }) => {
+  const { language } = useTodos();
+  const labels = translations[language];
+
+  return (
+    <View className="flex-1 bg-[#F3F2F7]">
+      <ExpoStatusBar style="dark" />
+      <SafeAreaView className="flex-1 items-center justify-center px-6">
+        <View className="w-full max-w-[430px] items-center rounded-[28px] border border-[#E3E2E9] bg-white px-8 py-10">
+          <View className="mb-5 h-[72px] w-[72px] items-center justify-center rounded-[25px] bg-[#ECE9FF]">
+            <View className="absolute top-[16px] h-[18px] w-[18px] rounded-[9px] bg-primary" />
+            <View className="absolute bottom-[14px] h-[23px] w-[38px] rounded-t-[19px] bg-primary" />
+          </View>
+          <Text className="text-center text-[24px] font-extrabold text-[#2E2F41]">
+            {labels.signedOut.title}
+          </Text>
+          <Text className="mt-2 text-center text-[13px] leading-5 text-[#858797]">
+            {labels.signedOut.description}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            className="mt-7 min-h-12 w-full items-center justify-center rounded-[15px] bg-primary px-5"
+            onPress={onContinue}
+          >
+            <Text className="text-[14px] font-extrabold text-white">
+              {labels.signedOut.continue}
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+};
+
+export default SignedOutScreen;

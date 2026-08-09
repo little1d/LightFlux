@@ -10,7 +10,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Pressable,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -23,6 +22,7 @@ import { useTodos } from '../../context/TodoContext';
 import { editorHtml } from '../../editor-web/build/editorHtml';
 import { translations } from '../../i18n/translations';
 import { RichTextDocument } from '../../types/todo';
+import IconButton from '../ui/IconButton';
 import { CodeBlockBridge } from './CodeBlockBridge';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
@@ -108,49 +108,46 @@ const TaskEditorScreen = ({
   return (
     <View className="flex-1 bg-canvas">
       <SafeAreaView className="flex-1">
-        <View className="min-h-[48px] flex-row items-center border-b border-[#E6E5EC] bg-white px-4">
-          <Pressable
-            accessibilityRole="button"
-            className="min-h-10 justify-center pr-5"
-            onPress={(event) => {
-              event.stopPropagation();
-              void closeEditor();
-            }}
-          >
-            <Text className="text-sm font-bold text-[#696B7D]">
-              ‹ {labels.editor.close}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View className="bg-white px-5 pb-3 pt-4">
-          {readOnly ? (
-            <Text className="border-b border-[#DDDBE7] pb-3 text-[25px] font-extrabold text-[#252638]">
-              {todo.title}
-            </Text>
-          ) : (
-            <TextInput
-              {...inputAccentProps}
-              accessibilityLabel={labels.editor.titlePlaceholder}
-              className="min-h-[52px] border-b border-[#DDDBE7] py-2 text-[25px] font-extrabold text-[#252638]"
-              maxLength={160}
-              onChangeText={(value) => {
-                setTitle(value);
-                setTitleError('');
-                if (value.trim()) {
-                  updateTodo(todo.id, { title: value });
-                }
+        <View className="flex-row items-start bg-white px-5 pb-3 pt-4">
+          <View className="flex-1">
+            {readOnly ? (
+              <Text className="border-b border-[#DDDBE7] pb-3 text-[25px] font-extrabold text-[#252638]">
+                {todo.title}
+              </Text>
+            ) : (
+              <TextInput
+                {...inputAccentProps}
+                accessibilityLabel={labels.editor.titlePlaceholder}
+                className="min-h-[48px] border-b border-[#DDDBE7] py-1 text-[25px] font-extrabold text-[#252638]"
+                maxLength={160}
+                onChangeText={(value) => {
+                  setTitle(value);
+                  setTitleError('');
+                  if (value.trim()) {
+                    updateTodo(todo.id, { title: value });
+                  }
+                }}
+                placeholder={labels.editor.titlePlaceholder}
+                placeholderTextColor="#A5A6B1"
+                value={title}
+              />
+            )}
+            {titleError ? (
+              <Text className="mt-2 text-xs font-semibold text-[#D45C6A]">
+                {titleError}
+              </Text>
+            ) : null}
+          </View>
+          <View className="ml-3 mt-1.5">
+            <IconButton
+              icon="close"
+              label={labels.editor.close}
+              onPress={(event) => {
+                event.stopPropagation();
+                void closeEditor();
               }}
-              placeholder={labels.editor.titlePlaceholder}
-              placeholderTextColor="#A5A6B1"
-              value={title}
             />
-          )}
-          {titleError ? (
-            <Text className="mt-2 text-xs font-semibold text-[#D45C6A]">
-              {titleError}
-            </Text>
-          ) : null}
+          </View>
         </View>
 
         <View className="mx-4 mb-3 flex-1 overflow-hidden rounded-[18px] border border-[#E2E1E9] bg-white">

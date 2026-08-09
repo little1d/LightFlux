@@ -15,7 +15,7 @@ interface DraggableSubtaskProps {
   parentId: string;
 }
 
-const ROW_HEIGHT = 38;
+const ROW_HEIGHT = 42;
 
 const DraggableSubtask = ({
   children,
@@ -71,6 +71,7 @@ const DraggableSubtask = ({
 
 const styles = StyleSheet.create({
   container: {
+    marginBottom: 2,
     position: 'relative',
     zIndex: 0,
   },
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     left: 0,
     position: 'absolute',
-    top: 5,
+    top: 6,
     width: 22,
     zIndex: 2,
   },

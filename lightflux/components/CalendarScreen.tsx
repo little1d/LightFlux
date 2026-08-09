@@ -9,13 +9,12 @@ import {
   Text,
   TextInput,
   View,
-  useWindowDimensions,
 } from 'react-native';
 
 import { inputAccentProps } from '../config/input';
 import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
-import { Todo } from '../types/todo';
+import { Language, Todo } from '../types/todo';
 import {
   addMonths,
   fromDateKey,
@@ -29,6 +28,113 @@ import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
+import ActionButton from './ui/ActionButton';
+import IconButton from './ui/IconButton';
+
+interface CalendarDayProps {
+  currentMonth: number;
+  date: Date;
+  groupColors: Map<string, string>;
+  language: Language;
+  onSelect: (date: Date) => void;
+  selected: boolean;
+  showTaskTitles: boolean;
+  taskCountLabel: (count: number) => string;
+  tasks: Todo[];
+  today: boolean;
+}
+
+const CalendarDay = ({
+  currentMonth,
+  date,
+  groupColors,
+  language,
+  onSelect,
+  selected,
+  showTaskTitles,
+  taskCountLabel,
+  tasks,
+  today,
+}: CalendarDayProps) => {
+  const [hovered, setHovered] = useState(false);
+  const inCurrentMonth = date.getMonth() === currentMonth;
+
+  return (
+    <Pressable
+      accessibilityLabel={`${date.toLocaleDateString(
+        language === 'zh' ? 'zh-CN' : 'en-US',
+      )}, ${taskCountLabel(tasks.length)}`}
+      accessibilityRole="button"
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      onPress={() => onSelect(date)}
+      style={({ pressed }) => [
+        styles.dayCell,
+        { minHeight: showTaskTitles ? 84 : 62 },
+        selected && styles.daySelected,
+        hovered && !selected && styles.dayHovered,
+        hovered && selected && styles.daySelectedHovered,
+        pressed && styles.dayPressed,
+      ]}
+    >
+      <View style={styles.dayHeader}>
+        <View style={[styles.dayNumber, today && styles.todayNumber]}>
+          <Text
+            style={[
+              styles.dayNumberText,
+              !inCurrentMonth && styles.dayNumberMuted,
+              today && styles.todayNumberText,
+            ]}
+          >
+            {date.getDate()}
+          </Text>
+        </View>
+        {tasks.length > 0 ? (
+          <Text style={styles.dayTaskCount}>{tasks.length}</Text>
+        ) : null}
+      </View>
+
+      {showTaskTitles ? (
+        <>
+          {tasks.slice(0, 2).map((todo) => (
+            <View key={todo.id} style={styles.dayTaskPill}>
+              <View
+                style={[
+                  styles.dayTaskDot,
+                  {
+                    backgroundColor:
+                      groupColors.get(todo.groupId ?? '') ?? '#8B7EFF',
+                  },
+                ]}
+              />
+              <Text numberOfLines={1} style={styles.dayTaskTitle}>
+                {todo.title}
+              </Text>
+            </View>
+          ))}
+          {tasks.length > 2 ? (
+            <Text style={styles.moreTasks}>+{tasks.length - 2}</Text>
+          ) : null}
+        </>
+      ) : tasks.length > 0 ? (
+        <View style={styles.compactDots}>
+          {tasks.slice(0, 3).map((todo) => (
+            <View
+              key={todo.id}
+              style={[
+                styles.compactDot,
+                {
+                  backgroundColor:
+                    groupColors.get(todo.groupId ?? '') ?? '#8B7EFF',
+                },
+              ]}
+            />
+          ))}
+        </View>
+      ) : null}
+    </Pressable>
+  );
+};
 
 const CalendarTask = ({
   todo,
@@ -55,6 +161,7 @@ const CalendarTask = ({
   markActive: string;
   markComplete: string;
 }) => {
+  const [hovered, setHovered] = useState(false);
   const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
     todo.id,
     onOpenMenu,
@@ -62,61 +169,68 @@ const CalendarTask = ({
 
   return (
     <View
-      className={`${todo.parentId ? 'ml-6 min-h-[36px]' : 'min-h-[42px]'} flex-row items-center border-b px-2 ${
-        selected
-          ? 'border-[#D6D2EF] bg-[#EEECFF]'
-          : 'border-[#DDDCE7] bg-transparent'
-      }`}
+      className={`${todo.parentId ? 'ml-5 min-h-[38px]' : 'min-h-[44px]'} mb-1 flex-row items-center overflow-hidden rounded-[11px] px-2`}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       ref={targetRef}
+      style={[
+        styles.taskRow,
+        selected && styles.taskRowSelected,
+        hovered && !selected && styles.taskRowHovered,
+      ]}
     >
-    <TaskSelectionMarker visible={selected} />
-    {todo.parentId ? (
-      <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
-    ) : null}
-    <Pressable
-      accessibilityLabel={todo.completed ? markActive : markComplete}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: todo.completed }}
-      className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
-        todo.completed
-          ? 'border-primary bg-primary'
-          : 'border-[#C5C2D4]'
-      }`}
-      onPress={() => onToggle(todo.id)}
-    >
-      {todo.completed ? (
-        <Text className="text-sm font-black leading-[17px] text-white">✓</Text>
+      <TaskSelectionMarker visible={selected} />
+      {todo.parentId ? (
+        <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
       ) : null}
-    </Pressable>
-    <Pressable
-      accessibilityLabel={`${editLabel}: ${todo.title}`}
-      accessibilityRole="button"
-      className="ml-2.5 flex-1 py-1.5"
-      delayLongPress={350}
-      onLongPress={openFromLongPress}
-      onPress={() => onEdit(todo.id)}
-    >
-      <Text
-        className={`text-[13px] font-semibold ${
-          todo.completed ? 'text-[#9A9BAA] line-through' : 'text-[#343548]'
+      <Pressable
+        accessibilityLabel={todo.completed ? markActive : markComplete}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: todo.completed }}
+        className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
+          todo.completed
+            ? 'border-primary bg-primary'
+            : 'border-[#C5C2D4]'
         }`}
+        onPress={() => onToggle(todo.id)}
       >
-        {todo.title}
-      </Text>
-    </Pressable>
-    <TaskIndicators childCount={childCount} todo={todo} />
-    <View
-      className="ml-2 h-2 w-2 rounded"
-      style={{ backgroundColor: color }}
-    />
-    <Pressable
-      accessibilityLabel={moreActionsLabel}
-      accessibilityRole="button"
-      className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
-      onPress={openFromButton}
-    >
-      <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
-    </Pressable>
+        {todo.completed ? (
+          <Text className="text-sm font-black leading-[17px] text-white">
+            ✓
+          </Text>
+        ) : null}
+      </Pressable>
+      <Pressable
+        accessibilityLabel={`${editLabel}: ${todo.title}`}
+        accessibilityRole="button"
+        className="ml-2.5 flex-1 py-2"
+        delayLongPress={350}
+        onLongPress={openFromLongPress}
+        onPress={() => onEdit(todo.id)}
+        style={({ pressed }) => pressed && styles.taskTitlePressed}
+      >
+        <Text
+          className={`text-[13px] font-semibold ${
+            todo.completed ? 'text-[#9A9BAA] line-through' : 'text-[#343548]'
+          }`}
+          numberOfLines={1}
+        >
+          {todo.title}
+        </Text>
+      </Pressable>
+      <TaskIndicators childCount={childCount} todo={todo} />
+      <View
+        className="ml-2 h-2 w-2 rounded"
+        style={{ backgroundColor: color }}
+      />
+      <Pressable
+        accessibilityLabel={moreActionsLabel}
+        accessibilityRole="button"
+        className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
+        onPress={openFromButton}
+      >
+        <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
+      </Pressable>
     </View>
   );
 };
@@ -138,15 +252,17 @@ const CalendarScreen = ({
     toggleTodo,
   } = useTodos();
   const labels = translations[language];
-  const { width } = useWindowDimensions();
-  const isWide = width >= 620;
   const today = useMemo(todayKey, []);
+  const [contentWidth, setContentWidth] = useState(0);
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState(today);
   const [draft, setDraft] = useState('');
 
+  const sideBySide = contentWidth >= 880;
+  const calendarWidth = sideBySide ? contentWidth - 350 : contentWidth;
+  const showTaskTitles = calendarWidth >= 610;
   const days = useMemo(() => monthGrid(visibleMonth), [visibleMonth]);
   const tasksByDate = useMemo(() => {
     const result = new Map<string, Todo[]>();
@@ -162,6 +278,11 @@ const CalendarScreen = ({
     [groups],
   );
   const selectedTodos = tasksByDate.get(selectedDate) ?? [];
+  const currentMonthKey = `${visibleMonth.getFullYear()}-${visibleMonth.getMonth()}`;
+  const now = fromDateKey(today);
+  const todayMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+  const isAtToday =
+    selectedDate === today && currentMonthKey === todayMonthKey;
 
   const changeMonth = (amount: number) => {
     const nextMonth = addMonths(visibleMonth, amount);
@@ -169,8 +290,17 @@ const CalendarScreen = ({
     setSelectedDate(toDateKey(nextMonth));
   };
 
+  const selectDate = (date: Date) => {
+    setSelectedDate(toDateKey(date));
+    if (
+      date.getFullYear() !== visibleMonth.getFullYear() ||
+      date.getMonth() !== visibleMonth.getMonth()
+    ) {
+      setVisibleMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+    }
+  };
+
   const goToday = () => {
-    const now = new Date();
     setVisibleMonth(new Date(now.getFullYear(), now.getMonth(), 1));
     setSelectedDate(today);
   };
@@ -199,227 +329,173 @@ const CalendarScreen = ({
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View className="flex-row items-center justify-between pb-5 pt-4">
-            <View>
-              <Text className="text-[24px] font-extrabold text-ink">
-                {labels.calendar.title}
-              </Text>
-              <Text className="mt-1 text-xs text-[#858797]">
-                {labels.calendar.tasksForDate(todos.length)}
-              </Text>
-            </View>
+          <View className="pb-5 pt-4">
+            <Text className="text-[24px] font-extrabold text-ink">
+              {labels.calendar.title}
+            </Text>
           </View>
 
           <View
-            className="overflow-hidden rounded-[24px] border border-[#E7E6EE] bg-white"
-            style={styles.calendarShadow}
+            onLayout={(event) => {
+              const nextWidth = Math.round(event.nativeEvent.layout.width);
+              if (nextWidth !== contentWidth) {
+                setContentWidth(nextWidth);
+              }
+            }}
+            style={sideBySide ? styles.workspaceWide : styles.workspaceStack}
           >
-            <View className="flex-row items-center justify-between border-b border-[#ECEBF1] px-4 py-3.5">
-              <Text className="text-[18px] font-extrabold text-[#303145]">
-                {labels.calendar.monthTitle(
-                  visibleMonth.getFullYear(),
-                  visibleMonth.getMonth() + 1,
-                )}
-              </Text>
-              <View className="flex-row items-center">
-                <Pressable
-                  accessibilityLabel={labels.calendar.previousMonth}
-                  accessibilityRole="button"
-                  className="h-9 w-9 items-center justify-center rounded-xl bg-[#F2F1F7]"
-                  onPress={() => changeMonth(-1)}
-                >
-                  <Text className="text-xl text-[#56576A]">‹</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  className="mx-2 h-9 items-center justify-center rounded-xl bg-[#EEECFF] px-3"
-                  onPress={goToday}
-                >
-                  <Text className="text-xs font-extrabold text-primary">
-                    {labels.calendar.today}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  accessibilityLabel={labels.calendar.nextMonth}
-                  accessibilityRole="button"
-                  className="h-9 w-9 items-center justify-center rounded-xl bg-[#F2F1F7]"
-                  onPress={() => changeMonth(1)}
-                >
-                  <Text className="text-xl text-[#56576A]">›</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            <View className="flex-row border-b border-[#ECEBF1] bg-[#FAFAFC]">
-              {labels.calendar.weekdays.map((weekday) => (
-                <View
-                  className="items-center py-2.5"
-                  key={weekday}
-                  style={styles.weekColumn}
-                >
-                  <Text className="text-[10px] font-bold text-[#9597A5]">
-                    {weekday}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            <View className="flex-row flex-wrap">
-              {days.map((date) => {
-                const dateKey = toDateKey(date);
-                const dateTodos = tasksByDate.get(dateKey) ?? [];
-                const isCurrentMonth =
-                  date.getMonth() === visibleMonth.getMonth();
-                const isSelected = dateKey === selectedDate;
-                const isToday = dateKey === today;
-
-                return (
-                  <Pressable
-                    accessibilityLabel={`${date.toLocaleDateString(
-                      language === 'zh' ? 'zh-CN' : 'en-US',
-                    )}, ${labels.calendar.tasksForDate(dateTodos.length)}`}
-                    accessibilityRole="button"
-                    className={`border-b border-r border-[#EFEEF3] p-1.5 ${
-                      isSelected ? 'bg-[#F0EEFF]' : 'bg-white'
-                    }`}
-                    key={dateKey}
-                    onPress={() => setSelectedDate(dateKey)}
-                    style={[
-                      styles.dayCell,
-                      { minHeight: isWide ? 92 : 64 },
-                    ]}
-                  >
-                    <View
-                      className={`h-6 min-w-6 self-start items-center justify-center rounded-xl ${
-                        isToday ? 'bg-primary' : ''
-                      }`}
-                    >
-                      <Text
-                        className={`text-[11px] font-bold ${
-                          isToday
-                            ? 'text-white'
-                            : isCurrentMonth
-                              ? 'text-[#454659]'
-                              : 'text-[#C1C2CA]'
-                        }`}
-                      >
-                        {date.getDate()}
-                      </Text>
+            <View
+              className="overflow-hidden rounded-[22px] border border-[#E5E4EC] bg-white"
+              nativeID="calendar-month-panel"
+              style={[
+                styles.calendarCard,
+                sideBySide && styles.calendarColumn,
+                styles.calendarShadow,
+              ]}
+            >
+              <View className="flex-row items-center justify-between border-b border-[#ECEBF1] px-4 py-3.5">
+                <Text className="text-[18px] font-extrabold text-[#303145]">
+                  {labels.calendar.monthTitle(
+                    visibleMonth.getFullYear(),
+                    visibleMonth.getMonth() + 1,
+                  )}
+                </Text>
+                <View className="flex-row items-center">
+                  {!isAtToday ? (
+                    <View className="mr-2">
+                      <ActionButton
+                        label={labels.calendar.today}
+                        onPress={goToday}
+                        size="small"
+                        variant="ghost"
+                      />
                     </View>
+                  ) : null}
+                  <IconButton
+                    icon="chevron-back"
+                    label={labels.calendar.previousMonth}
+                    onPress={() => changeMonth(-1)}
+                    size="small"
+                  />
+                  <View className="w-1.5" />
+                  <IconButton
+                    icon="chevron-forward"
+                    label={labels.calendar.nextMonth}
+                    onPress={() => changeMonth(1)}
+                    size="small"
+                  />
+                </View>
+              </View>
 
-                    {isWide
-                      ? dateTodos.slice(0, 2).map((todo) => (
-                          <View
-                            className="mt-1 rounded px-1.5 py-0.5"
-                            key={todo.id}
-                            style={{
-                              backgroundColor:
-                                groupColors.get(todo.groupId ?? '') ??
-                                '#E6E3FF',
-                            }}
-                          >
-                            <Text
-                              className="text-[9px] font-semibold text-[#45445A]"
-                              numberOfLines={1}
-                            >
-                              {todo.title}
-                            </Text>
-                          </View>
-                        ))
-                      : dateTodos.length > 0 && (
-                          <View className="mt-1 flex-row flex-wrap">
-                            {dateTodos.slice(0, 3).map((todo) => (
-                              <View
-                                className="mb-0.5 mr-0.5 h-1.5 w-1.5 rounded-[3px]"
-                                key={todo.id}
-                                style={{
-                                  backgroundColor:
-                                    groupColors.get(todo.groupId ?? '') ??
-                                    '#7E72ED',
-                                }}
-                              />
-                            ))}
-                          </View>
-                        )}
-                    {dateTodos.length > 2 && isWide ? (
-                      <Text className="mt-0.5 text-[8px] text-[#999BA8]">
-                        +{dateTodos.length - 2}
-                      </Text>
-                    ) : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
+              <View className="flex-row border-b border-[#ECEBF1] bg-[#FAFAFC]">
+                {labels.calendar.weekdays.map((weekday) => (
+                  <View
+                    className="items-center py-2.5"
+                    key={weekday}
+                    style={styles.weekColumn}
+                  >
+                    <Text className="text-[10px] font-bold text-[#9597A5]">
+                      {weekday}
+                    </Text>
+                  </View>
+                ))}
+              </View>
 
-          <View className="mt-5 rounded-[22px] bg-[#ECEAF6] p-4">
-            <View className="mb-3 flex-row items-end justify-between">
-              <View>
-                <Text className="text-[16px] font-extrabold text-[#343548]">
-                  {selectedDateLabel}
-                </Text>
-                <Text className="mt-1 text-[11px] text-[#848697]">
-                  {labels.calendar.tasksForDate(selectedTodos.length)}
-                </Text>
+              <View className="flex-row flex-wrap">
+                {days.map((date) => {
+                  const dateKey = toDateKey(date);
+                  return (
+                    <CalendarDay
+                      currentMonth={visibleMonth.getMonth()}
+                      date={date}
+                      groupColors={groupColors}
+                      key={dateKey}
+                      language={language}
+                      onSelect={selectDate}
+                      selected={dateKey === selectedDate}
+                      showTaskTitles={showTaskTitles}
+                      taskCountLabel={labels.calendar.tasksForDate}
+                      tasks={tasksByDate.get(dateKey) ?? []}
+                      today={dateKey === today}
+                    />
+                  );
+                })}
               </View>
             </View>
 
             <View
-              className="mb-3 flex-row rounded-[16px] border border-transparent bg-white p-1.5 pl-4"
-              nativeID="calendar-task-composer"
+              className="rounded-[22px] border border-[#E5E4EC] bg-white p-4"
+              nativeID="calendar-agenda-panel"
+              style={[
+                styles.agendaCard,
+                sideBySide ? styles.agendaSide : styles.agendaStack,
+                styles.calendarShadow,
+              ]}
             >
-              <TextInput
-                {...inputAccentProps}
-                accessibilityLabel={labels.calendar.inputPlaceholder}
-                className="h-11 flex-1 text-[14px] text-[#303145]"
-                onChangeText={setDraft}
-                onSubmitEditing={submitTask}
-                placeholder={labels.calendar.inputPlaceholder}
-                placeholderTextColor="#9A9BA8"
-                returnKeyType="done"
-                value={draft}
-              />
-              <Pressable
-                accessibilityLabel={labels.addTask}
-                accessibilityRole="button"
-                className={`h-11 items-center justify-center rounded-[13px] px-4 ${
-                  draft.trim() ? 'bg-primary' : 'bg-[#C9C6DD]'
-                }`}
-                disabled={!draft.trim()}
-                onPress={submitTask}
-              >
-                <Text className="text-xs font-extrabold text-white">＋</Text>
-              </Pressable>
-            </View>
-
-            {selectedTodos.length === 0 ? (
-              <View className="items-center py-6">
-                <Text className="text-[13px] text-[#8D8E9D]">
-                  {labels.calendar.empty}
+              <View className="mb-4">
+                <Text className="text-[16px] font-extrabold text-[#343548]">
+                  {selectedDateLabel}
+                </Text>
+                <Text className="mt-1 text-[11px] font-semibold text-[#898A99]">
+                  {labels.calendar.tasksForDate(selectedTodos.length)}
                 </Text>
               </View>
-            ) : (
-              selectedTodos.map((todo) => (
-                <CalendarTask
-                  childCount={
-                    todos.filter((item) => item.parentId === todo.id).length
-                  }
-                  color={
-                    groupColors.get(todo.groupId ?? '') ?? '#8B7EFF'
-                  }
-                  editLabel={labels.editor.title}
-                  moreActionsLabel={labels.taskMenu.moreActions}
-                  key={todo.id}
-                  markActive={labels.markActive}
-                  markComplete={labels.markComplete}
-                  onEdit={onEditTask}
-                  onOpenMenu={onOpenTaskMenu}
-                  onToggle={toggleTodo}
-                  selected={selectedTaskId === todo.id}
-                  todo={todo}
+
+              <View
+                className="mb-4 flex-row items-center rounded-[13px] border border-[#E5E3ED] bg-[#F8F7FA] p-1.5 pl-3"
+                nativeID="calendar-task-composer"
+              >
+                <TextInput
+                  {...inputAccentProps}
+                  accessibilityLabel={labels.calendar.inputPlaceholder}
+                  className="h-9 flex-1 text-[13px] text-[#303145]"
+                  onChangeText={setDraft}
+                  onSubmitEditing={submitTask}
+                  placeholder={labels.calendar.inputPlaceholder}
+                  placeholderTextColor="#9A9BA8"
+                  returnKeyType="done"
+                  value={draft}
                 />
-              ))
-            )}
+                <ActionButton
+                  disabled={!draft.trim()}
+                  label={labels.addTask}
+                  onPress={submitTask}
+                  size="small"
+                />
+              </View>
+
+              {selectedTodos.length === 0 ? (
+                <View className="items-center py-9">
+                  <View className="mb-3 h-8 w-8 items-center justify-center rounded-[11px] bg-[#F0EEFF]">
+                    <Text className="text-[16px] font-bold text-primary">＋</Text>
+                  </View>
+                  <Text className="text-[12px] text-[#8D8E9D]">
+                    {labels.calendar.empty}
+                  </Text>
+                </View>
+              ) : (
+                selectedTodos.map((todo) => (
+                  <CalendarTask
+                    childCount={
+                      todos.filter((item) => item.parentId === todo.id).length
+                    }
+                    color={
+                      groupColors.get(todo.groupId ?? '') ?? '#8B7EFF'
+                    }
+                    editLabel={labels.editor.title}
+                    key={todo.id}
+                    markActive={labels.markActive}
+                    markComplete={labels.markComplete}
+                    moreActionsLabel={labels.taskMenu.moreActions}
+                    onEdit={onEditTask}
+                    onOpenMenu={onOpenTaskMenu}
+                    onToggle={toggleTodo}
+                    selected={selectedTaskId === todo.id}
+                    todo={todo}
+                  />
+                ))
+              )}
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -430,24 +506,146 @@ const CalendarScreen = ({
 const styles = StyleSheet.create({
   scroll: {
     alignSelf: 'center',
-    maxWidth: 820,
+    maxWidth: 1180,
     width: '100%',
   },
   content: {
-    paddingBottom: 26,
+    paddingBottom: 28,
     paddingHorizontal: 20,
+  },
+  workspaceWide: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    width: '100%',
+  },
+  workspaceStack: {
+    width: '100%',
+  },
+  calendarCard: {
+    minWidth: 0,
+  },
+  calendarColumn: {
+    flex: 1,
+  },
+  agendaCard: {
+    alignSelf: 'stretch',
+  },
+  agendaSide: {
+    marginLeft: 16,
+    minHeight: 580,
+    width: 334,
+  },
+  agendaStack: {
+    marginTop: 16,
   },
   calendarShadow: {
     shadowColor: '#4B4963',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 18,
+    shadowOffset: { height: 7, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
   },
   weekColumn: {
     width: `${100 / 7}%`,
   },
   dayCell: {
+    backgroundColor: '#FFFFFF',
+    borderBottomColor: '#EFEEF3',
+    borderBottomWidth: 1,
+    borderRightColor: '#EFEEF3',
+    borderRightWidth: 1,
+    padding: 7,
     width: `${100 / 7}%`,
+  },
+  dayHovered: {
+    backgroundColor: '#F7F6FB',
+  },
+  daySelected: {
+    backgroundColor: '#F0EEFF',
+  },
+  daySelectedHovered: {
+    backgroundColor: '#E8E5FF',
+  },
+  dayPressed: {
+    opacity: 0.72,
+  },
+  dayHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dayNumber: {
+    alignItems: 'center',
+    borderRadius: 11,
+    height: 22,
+    justifyContent: 'center',
+    minWidth: 22,
+  },
+  todayNumber: {
+    backgroundColor: '#6759E8',
+  },
+  dayNumberText: {
+    color: '#454659',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  dayNumberMuted: {
+    color: '#C1C2CA',
+  },
+  todayNumberText: {
+    color: '#FFFFFF',
+  },
+  dayTaskCount: {
+    color: '#A09FAE',
+    fontSize: 9,
+    fontWeight: '700',
+  },
+  dayTaskPill: {
+    alignItems: 'center',
+    backgroundColor: '#F5F4F8',
+    borderRadius: 6,
+    flexDirection: 'row',
+    marginTop: 4,
+    minHeight: 18,
+    paddingHorizontal: 5,
+  },
+  dayTaskDot: {
+    borderRadius: 3,
+    height: 6,
+    marginRight: 5,
+    width: 6,
+  },
+  dayTaskTitle: {
+    color: '#555667',
+    flex: 1,
+    fontSize: 9,
+    fontWeight: '600',
+  },
+  moreTasks: {
+    color: '#999BA8',
+    fontSize: 8,
+    marginTop: 2,
+  },
+  compactDots: {
+    flexDirection: 'row',
+    marginTop: 5,
+  },
+  compactDot: {
+    borderRadius: 3,
+    height: 6,
+    marginRight: 3,
+    width: 6,
+  },
+  taskRow: {
+    backgroundColor: '#FFFFFF',
+  },
+  taskRowHovered: {
+    backgroundColor: '#F5F4F8',
+  },
+  taskRowSelected: {
+    backgroundColor: '#EEECFF',
+  },
+  taskTitlePressed: {
+    opacity: 0.62,
   },
 });
 

@@ -42,7 +42,8 @@ const DraggableSubtask = ({
       }}
       role="listitem"
       style={{
-        borderTop: isTarget ? '2px solid #8B7EFF' : '2px solid transparent',
+        boxShadow: isTarget ? 'inset 0 2px 0 #8B7EFF' : 'none',
+        marginBottom: 2,
         opacity: isDragging ? 0.48 : 1,
         position: 'relative',
       }}

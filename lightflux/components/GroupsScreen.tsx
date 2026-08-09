@@ -253,7 +253,7 @@ const InlineSubtaskTitle = ({
     <TextInput
       {...inputAccentProps}
       accessibilityLabel={`${editLabel}: ${todo.title}`}
-      className={`ml-2.5 h-8 flex-1 border-0 bg-transparent p-0 text-[13px] font-semibold ${
+      className={`ml-2 h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
         todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
       }`}
       maxLength={160}
@@ -309,8 +309,12 @@ const GroupTask = ({
 
   return (
     <View
-      className={`${todo.parentId ? 'ml-6 min-h-[36px]' : 'min-h-[42px]'} flex-row items-center border-b border-[#ECECF1] px-1.5 ${
-        selected ? 'rounded-[12px] bg-[#EEECFF]' : ''
+      className={`${todo.parentId ? 'ml-6 min-h-[40px] px-2' : 'min-h-[42px] px-1.5'} flex-row items-center border-b border-[#ECECF1] ${
+        selected
+          ? todo.parentId
+            ? 'bg-[#F6F4FF]'
+            : 'rounded-[10px] bg-[#EEECFF]'
+          : ''
       }`}
       ref={targetRef}
     >

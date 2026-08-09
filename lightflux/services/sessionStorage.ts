@@ -1,6 +1,12 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
+import {
+  getRemoteSession,
+  isRemoteAuthConfigured,
+  logoutRemoteSession,
+} from './authApi';
+
 const STORAGE_KEY = 'lightflux.session.v1';
 const FILE_URI = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}lightflux-session.json`
@@ -19,6 +25,10 @@ const getWebStorage = (): WebStorage | null => {
 };
 
 export const loadSessionState = async (): Promise<boolean> => {
+  if (isRemoteAuthConfigured) {
+    return getRemoteSession();
+  }
+
   if (Platform.OS === 'web') {
     return getWebStorage()?.getItem(STORAGE_KEY) !== 'signed-out';
   }
@@ -36,6 +46,13 @@ export const loadSessionState = async (): Promise<boolean> => {
 };
 
 export const saveSessionState = async (signedIn: boolean): Promise<void> => {
+  if (isRemoteAuthConfigured) {
+    if (!signedIn) {
+      await logoutRemoteSession();
+    }
+    return;
+  }
+
   const value = signedIn ? 'signed-in' : 'signed-out';
 
   if (Platform.OS === 'web') {

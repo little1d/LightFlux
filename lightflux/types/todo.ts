@@ -30,6 +30,7 @@ export interface Todo {
   scheduledDate: string;
   groupId: string | null;
   parentId: string | null;
+  sortOrder: number;
   trashedAt: number | null;
   content: RichTextDocument;
 }
@@ -39,12 +40,19 @@ export interface TodoGroup {
   name: string;
   color: string;
   createdAt: number;
+  sortOrder: number;
 }
 
 export interface PersistedAppState {
+  schemaVersion: 3;
   language: Language;
   todos: Todo[];
   groups: TodoGroup[];
+}
+
+export interface GroupPlacement {
+  anchorGroupId: string | null;
+  position: 'before' | 'after';
 }
 
 export interface NewTodo {
@@ -58,6 +66,11 @@ export interface NewTodo {
 export type TodoUpdate = Partial<
   Pick<
     Todo,
-    'title' | 'scheduledDate' | 'groupId' | 'parentId' | 'content'
+    | 'title'
+    | 'scheduledDate'
+    | 'groupId'
+    | 'parentId'
+    | 'sortOrder'
+    | 'content'
   >
 >;

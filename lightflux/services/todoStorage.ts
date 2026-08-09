@@ -7,6 +7,11 @@ import {
   emptyRichTextDocument,
   isRichTextDocument,
 } from '../utils/richText';
+import {
+  isRemoteAuthConfigured,
+  loadRemoteAppState,
+  saveRemoteAppState,
+} from './authApi';
 
 const STORAGE_KEY = 'lightflux.app-state.v1';
 const FILE_URI = FileSystem.documentDirectory
@@ -26,7 +31,7 @@ const getWebStorage = (): WebStorage | null => {
   return runtime.localStorage ?? null;
 };
 
-const normalizeTodo = (value: unknown): Todo | null => {
+const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -62,6 +67,8 @@ const normalizeTodo = (value: unknown): Todo | null => {
         : todayKey(),
     groupId: typeof todo.groupId === 'string' ? todo.groupId : null,
     parentId: typeof todo.parentId === 'string' ? todo.parentId : null,
+    sortOrder:
+      typeof todo.sortOrder === 'number' ? todo.sortOrder : fallbackOrder,
     trashedAt:
       typeof todo.trashedAt === 'number' ? todo.trashedAt : null,
     content: isRichTextDocument(todo.content)
@@ -70,18 +77,34 @@ const normalizeTodo = (value: unknown): Todo | null => {
   };
 };
 
-const isGroup = (value: unknown): value is TodoGroup => {
+const normalizeGroup = (
+  value: unknown,
+  fallbackOrder: number,
+): TodoGroup | null => {
   if (!value || typeof value !== 'object') {
-    return false;
+    return null;
   }
 
   const group = value as Partial<TodoGroup>;
-  return (
+  if (
     typeof group.id === 'string' &&
     typeof group.name === 'string' &&
     typeof group.color === 'string' &&
     typeof group.createdAt === 'number'
-  );
+  ) {
+    return {
+      id: group.id,
+      name: group.name,
+      color: group.color,
+      createdAt: group.createdAt,
+      sortOrder:
+        typeof group.sortOrder === 'number'
+          ? group.sortOrder
+          : fallbackOrder,
+    };
+  }
+
+  return null;
 };
 
 const parseState = (rawState: string): PersistedAppState | null => {
@@ -92,14 +115,17 @@ const parseState = (rawState: string): PersistedAppState | null => {
     }
 
     const todos = parsed.todos
-      .map(normalizeTodo)
+      .map((todo, index) => normalizeTodo(todo, index))
       .filter((todo): todo is Todo => todo !== null);
 
     return {
+      schemaVersion: 3,
       language: parsed.language === 'en' ? 'en' : 'zh',
       todos,
       groups: Array.isArray(parsed.groups)
-        ? parsed.groups.filter(isGroup)
+        ? parsed.groups
+            .map((group, index) => normalizeGroup(group, index + 1))
+            .filter((group): group is TodoGroup => group !== null)
         : [],
     };
   } catch {
@@ -108,6 +134,11 @@ const parseState = (rawState: string): PersistedAppState | null => {
 };
 
 export const loadAppState = async (): Promise<PersistedAppState | null> => {
+  if (isRemoteAuthConfigured) {
+    const remoteState = await loadRemoteAppState();
+    return remoteState ? parseState(JSON.stringify(remoteState)) : null;
+  }
+
   if (Platform.OS === 'web') {
     const rawState = getWebStorage()?.getItem(STORAGE_KEY);
     return rawState ? parseState(rawState) : null;
@@ -128,6 +159,11 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
 export const saveAppState = async (
   state: PersistedAppState,
 ): Promise<void> => {
+  if (isRemoteAuthConfigured) {
+    await saveRemoteAppState(state);
+    return;
+  }
+
   const serializedState = JSON.stringify(state);
 
   if (Platform.OS === 'web') {

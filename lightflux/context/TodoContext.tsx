@@ -9,6 +9,7 @@ import React, {
 
 import { loadAppState, saveAppState } from '../services/todoStorage';
 import {
+  GroupPlacement,
   Language,
   NewTodo,
   Todo,
@@ -38,9 +39,12 @@ interface TodoContextValue {
   trashTodo: (id: string) => void;
   trashTodos: (ids: string[]) => void;
   restoreTodo: (id: string) => void;
+  reorderSubtask: (id: string, targetIndex: number) => void;
   deleteTodoPermanently: (id: string) => void;
   emptyTrash: () => void;
-  addGroup: (name: string) => string;
+  addGroup: (name: string, placement?: GroupPlacement) => string;
+  renameGroup: (id: string, name: string) => void;
+  deleteGroup: (id: string) => void;
 }
 
 const TodoContext = createContext<TodoContextValue | null>(null);
@@ -65,7 +69,13 @@ const collectTodoFamily = (todos: Todo[], rootIds: string[]): Set<string> => {
   return result;
 };
 
-const orderWithSubtasks = (todos: Todo[]): Todo[] => {
+const byTodoOrder = (a: Todo, b: Todo) =>
+  a.sortOrder - b.sortOrder || b.createdAt - a.createdAt;
+
+const orderWithSubtasks = (
+  todos: Todo[],
+  compare: (a: Todo, b: Todo) => number = byTodoOrder,
+): Todo[] => {
   const ids = new Set(todos.map((todo) => todo.id));
   const children = new Map<string, Todo[]>();
 
@@ -80,11 +90,12 @@ const orderWithSubtasks = (todos: Todo[]): Todo[] => {
   const result: Todo[] = [];
   const append = (todo: Todo) => {
     result.push(todo);
-    children.get(todo.id)?.forEach(append);
+    children.get(todo.id)?.sort(compare).forEach(append);
   };
 
   todos
     .filter((todo) => !todo.parentId || !ids.has(todo.parentId))
+    .sort(compare)
     .forEach(append);
 
   return result;
@@ -127,7 +138,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const timer = setTimeout(() => {
-      saveAppState({ language, todos: allTodos, groups }).catch(
+      saveAppState({ schemaVersion: 3, language, todos: allTodos, groups }).catch(
         (error: unknown) => {
           console.warn('Unable to save local LightFlux data.', error);
         },
@@ -143,22 +154,36 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    setAllTodos((current) => [
-      {
-        id: makeId(),
-        title,
-        completed: false,
-        completedAt: null,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        scheduledDate: todo.scheduledDate,
-        groupId: todo.groupId ?? null,
-        parentId: todo.parentId ?? null,
-        trashedAt: null,
-        content: todo.content ?? emptyRichTextDocument(),
-      },
-      ...current,
-    ]);
+    setAllTodos((current) => {
+      const siblings = current.filter(
+        (item) =>
+          item.trashedAt === null &&
+          item.groupId === (todo.groupId ?? null) &&
+          item.parentId === (todo.parentId ?? null),
+      );
+      const sortOrder =
+        siblings.length > 0
+          ? Math.min(...siblings.map((item) => item.sortOrder)) - 1
+          : 0;
+
+      return [
+        {
+          id: makeId(),
+          title,
+          completed: false,
+          completedAt: null,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          scheduledDate: todo.scheduledDate,
+          groupId: todo.groupId ?? null,
+          parentId: todo.parentId ?? null,
+          sortOrder,
+          trashedAt: null,
+          content: todo.content ?? emptyRichTextDocument(),
+        },
+        ...current,
+      ];
+    });
   }, []);
 
   const toggleTodo = useCallback((id: string) => {
@@ -218,6 +243,52 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, []);
 
+  const reorderSubtask = useCallback((id: string, targetIndex: number) => {
+    setAllTodos((current) => {
+      const dragged = current.find((todo) => todo.id === id);
+      if (!dragged?.parentId || dragged.trashedAt !== null) {
+        return current;
+      }
+
+      const siblings = current
+        .filter(
+          (todo) =>
+            todo.parentId === dragged.parentId && todo.trashedAt === null,
+        )
+        .sort(
+          (a, b) =>
+            a.sortOrder - b.sortOrder || b.createdAt - a.createdAt,
+        );
+      const sourceIndex = siblings.findIndex((todo) => todo.id === id);
+      const boundedTarget = Math.max(
+        0,
+        Math.min(targetIndex, siblings.length - 1),
+      );
+
+      if (sourceIndex < 0 || sourceIndex === boundedTarget) {
+        return current;
+      }
+
+      const reordered = [...siblings];
+      const [moved] = reordered.splice(sourceIndex, 1);
+      reordered.splice(boundedTarget, 0, moved);
+      const orderById = new Map(
+        reordered.map((todo, index) => [todo.id, index]),
+      );
+      const timestamp = Date.now();
+
+      return current.map((todo) =>
+        orderById.has(todo.id)
+          ? {
+              ...todo,
+              sortOrder: orderById.get(todo.id) ?? todo.sortOrder,
+              updatedAt: timestamp,
+            }
+          : todo,
+      );
+    });
+  }, []);
+
   const deleteTodoPermanently = useCallback((id: string) => {
     setAllTodos((current) => {
       const idsToDelete = collectTodoFamily(current, [id]);
@@ -230,21 +301,74 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const addGroup = useCallback(
-    (name: string) => {
+    (name: string, placement?: GroupPlacement) => {
       const id = makeId();
-      setGroups((current) => [
-        ...current,
-        {
+      setGroups((current) => {
+        const newGroup: TodoGroup = {
           id,
           name: name.trim(),
           color: GROUP_COLORS[current.length % GROUP_COLORS.length],
           createdAt: Date.now(),
-        },
-      ]);
+          sortOrder:
+            Math.max(0, ...current.map((group) => group.sortOrder)) + 1,
+        };
+
+        if (!placement) {
+          return [...current, newGroup];
+        }
+
+        const ordered: Array<TodoGroup | null> = [
+          null,
+          ...current,
+        ].sort(
+          (a, b) =>
+            (a?.sortOrder ?? 0) - (b?.sortOrder ?? 0) ||
+            (a?.createdAt ?? 0) - (b?.createdAt ?? 0),
+        );
+        const anchorIndex = ordered.findIndex(
+          (group) => (group?.id ?? null) === placement.anchorGroupId,
+        );
+        const insertIndex =
+          anchorIndex < 0
+            ? ordered.length
+            : anchorIndex + (placement.position === 'after' ? 1 : 0);
+        ordered.splice(insertIndex, 0, newGroup);
+        const ungroupedIndex = ordered.indexOf(null);
+
+        return ordered
+          .filter((group): group is TodoGroup => group !== null)
+          .map((group) => ({
+            ...group,
+            sortOrder: ordered.indexOf(group) - ungroupedIndex,
+          }));
+      });
       return id;
     },
     [],
   );
+
+  const renameGroup = useCallback((id: string, name: string) => {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      return;
+    }
+    setGroups((current) =>
+      current.map((group) =>
+        group.id === id ? { ...group, name: normalizedName } : group,
+      ),
+    );
+  }, []);
+
+  const deleteGroup = useCallback((id: string) => {
+    setGroups((current) => current.filter((group) => group.id !== id));
+    setAllTodos((current) =>
+      current.map((todo) =>
+        todo.groupId === id
+          ? { ...todo, groupId: null, updatedAt: Date.now() }
+          : todo,
+      ),
+    );
+  }, []);
 
   const todos = useMemo(
     () => orderWithSubtasks(allTodos.filter((todo) => todo.trashedAt === null)),
@@ -253,9 +377,9 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const trashedTodos = useMemo(
     () =>
       orderWithSubtasks(
-        allTodos
-          .filter((todo) => todo.trashedAt !== null)
-          .sort((a, b) => (b.trashedAt ?? 0) - (a.trashedAt ?? 0)),
+        allTodos.filter((todo) => todo.trashedAt !== null),
+        (a, b) =>
+          (b.trashedAt ?? 0) - (a.trashedAt ?? 0) || byTodoOrder(a, b),
       ),
     [allTodos],
   );
@@ -274,19 +398,25 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       trashTodo,
       trashTodos,
       restoreTodo,
+      reorderSubtask,
       deleteTodoPermanently,
       emptyTrash,
       addGroup,
+      renameGroup,
+      deleteGroup,
     }),
     [
       addGroup,
       addTodo,
       deleteTodoPermanently,
+      deleteGroup,
       emptyTrash,
       groups,
       isHydrated,
       language,
       restoreTodo,
+      renameGroup,
+      reorderSubtask,
       trashTodo,
       trashTodos,
       todos,

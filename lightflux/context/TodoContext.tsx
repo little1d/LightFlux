@@ -9,8 +9,10 @@ import React, {
 
 import { loadAppState, saveAppState } from '../services/todoStorage';
 import {
+  NAVIGATION_ITEM_IDS,
   GroupPlacement,
   Language,
+  NavigationItemId,
   NewTodo,
   Todo,
   TodoGroup,
@@ -31,6 +33,8 @@ interface TodoContextValue {
   todos: Todo[];
   trashedTodos: Todo[];
   groups: TodoGroup[];
+  navigationOrder: NavigationItemId[];
+  ungroupedName: string | null;
   isHydrated: boolean;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   addTodo: (todo: NewTodo) => void;
@@ -43,7 +47,8 @@ interface TodoContextValue {
   deleteTodoPermanently: (id: string) => void;
   emptyTrash: () => void;
   addGroup: (name: string, placement?: GroupPlacement) => string;
-  renameGroup: (id: string, name: string) => void;
+  reorderNavigationItem: (id: NavigationItemId, targetIndex: number) => void;
+  renameGroup: (id: string | null, name: string) => void;
   deleteGroup: (id: string) => void;
 }
 
@@ -105,6 +110,10 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const [language, setLanguage] = useState<Language>('zh');
   const [allTodos, setAllTodos] = useState<Todo[]>([]);
   const [groups, setGroups] = useState<TodoGroup[]>([]);
+  const [navigationOrder, setNavigationOrder] = useState<NavigationItemId[]>(
+    [...NAVIGATION_ITEM_IDS],
+  );
+  const [ungroupedName, setUngroupedName] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -116,6 +125,8 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
           setLanguage(state.language);
           setAllTodos(state.todos);
           setGroups(state.groups);
+          setNavigationOrder(state.navigationOrder);
+          setUngroupedName(state.ungroupedName);
         }
       })
       .catch((error: unknown) => {
@@ -138,15 +149,27 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const timer = setTimeout(() => {
-      saveAppState({ schemaVersion: 3, language, todos: allTodos, groups }).catch(
-        (error: unknown) => {
-          console.warn('Unable to save local LightFlux data.', error);
-        },
-      );
+      saveAppState({
+        schemaVersion: 5,
+        language,
+        navigationOrder,
+        ungroupedName,
+        todos: allTodos,
+        groups,
+      }).catch((error: unknown) => {
+        console.warn('Unable to save local LightFlux data.', error);
+      });
     }, 180);
 
     return () => clearTimeout(timer);
-  }, [allTodos, groups, isHydrated, language]);
+  }, [
+    allTodos,
+    groups,
+    isHydrated,
+    language,
+    navigationOrder,
+    ungroupedName,
+  ]);
 
   const addTodo = useCallback((todo: NewTodo) => {
     const title = todo.title.trim();
@@ -347,17 +370,44 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     [],
   );
 
-  const renameGroup = useCallback((id: string, name: string) => {
+  const renameGroup = useCallback((id: string | null, name: string) => {
     const normalizedName = name.trim();
     if (!normalizedName) {
       return;
     }
+
+    if (id === null) {
+      setUngroupedName(normalizedName);
+      return;
+    }
+
     setGroups((current) =>
       current.map((group) =>
         group.id === id ? { ...group, name: normalizedName } : group,
       ),
     );
   }, []);
+
+  const reorderNavigationItem = useCallback(
+    (id: NavigationItemId, targetIndex: number) => {
+      setNavigationOrder((current) => {
+        const sourceIndex = current.indexOf(id);
+        const boundedTarget = Math.max(
+          0,
+          Math.min(targetIndex, current.length - 1),
+        );
+        if (sourceIndex < 0 || sourceIndex === boundedTarget) {
+          return current;
+        }
+
+        const reordered = [...current];
+        const [moved] = reordered.splice(sourceIndex, 1);
+        reordered.splice(boundedTarget, 0, moved);
+        return reordered;
+      });
+    },
+    [],
+  );
 
   const deleteGroup = useCallback((id: string) => {
     setGroups((current) => current.filter((group) => group.id !== id));
@@ -390,6 +440,8 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       todos,
       trashedTodos,
       groups,
+      navigationOrder,
+      ungroupedName,
       isHydrated,
       setLanguage,
       addTodo,
@@ -402,6 +454,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       deleteTodoPermanently,
       emptyTrash,
       addGroup,
+      reorderNavigationItem,
       renameGroup,
       deleteGroup,
     }),
@@ -414,14 +467,17 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       groups,
       isHydrated,
       language,
+      navigationOrder,
       restoreTodo,
       renameGroup,
+      reorderNavigationItem,
       reorderSubtask,
       trashTodo,
       trashTodos,
       todos,
       trashedTodos,
       toggleTodo,
+      ungroupedName,
       updateTodo,
     ],
   );

@@ -24,6 +24,7 @@ import {
   toDateKey,
 } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
+import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -63,11 +64,12 @@ const CalendarTask = ({
     <View
       className={`${todo.parentId ? 'ml-6 min-h-[36px]' : 'min-h-[42px]'} flex-row items-center border-b px-2 ${
         selected
-          ? 'border-[#D6D2EF] bg-[#EAE7FA]'
+          ? 'border-[#D6D2EF] bg-[#EEECFF]'
           : 'border-[#DDDCE7] bg-transparent'
       }`}
       ref={targetRef}
     >
+    <TaskSelectionMarker visible={selected} />
     {todo.parentId ? (
       <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
     ) : null}

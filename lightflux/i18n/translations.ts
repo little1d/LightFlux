@@ -144,6 +144,7 @@ export interface Translation {
   };
   taskMenu: {
     addSubtask: string;
+    rename: string;
     subtaskPlaceholder: string;
     createSubtask: string;
     moveToTrash: string;
@@ -321,6 +322,7 @@ export const translations: Record<Language, Translation> = {
     },
     taskMenu: {
       addSubtask: '添加子任务',
+      rename: '重命名',
       subtaskPlaceholder: '输入子任务名称…',
       createSubtask: '创建',
       moveToTrash: '移至垃圾桶',
@@ -501,6 +503,7 @@ export const translations: Record<Language, Translation> = {
     },
     taskMenu: {
       addSubtask: 'Add subtask',
+      rename: 'Rename',
       subtaskPlaceholder: 'Subtask name…',
       createSubtask: 'Create',
       moveToTrash: 'Move to trash',

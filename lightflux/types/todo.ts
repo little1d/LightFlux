@@ -2,6 +2,17 @@ export type Language = 'zh' | 'en';
 
 export type TodoFilter = 'all' | 'active' | 'completed';
 
+export const NAVIGATION_ITEM_IDS = [
+  'search',
+  'today',
+  'completed',
+  'calendar',
+  'groups',
+  'trash',
+] as const;
+
+export type NavigationItemId = (typeof NAVIGATION_ITEM_IDS)[number];
+
 export interface RichTextMark {
   type: string;
   attrs?: Record<string, unknown>;
@@ -44,8 +55,10 @@ export interface TodoGroup {
 }
 
 export interface PersistedAppState {
-  schemaVersion: 3;
+  schemaVersion: 5;
   language: Language;
+  navigationOrder: NavigationItemId[];
+  ungroupedName: string | null;
   todos: Todo[];
   groups: TodoGroup[];
 }

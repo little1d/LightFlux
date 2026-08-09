@@ -65,7 +65,7 @@ const GroupActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={mode ? 150 : groupId ? 190 : 100}
+      estimatedHeight={mode ? 150 : groupId ? 190 : 145}
       onClose={onClose}
       position={position}
       width={MENU_WIDTH}
@@ -114,6 +114,10 @@ const GroupActionMenu = ({
       ) : (
         <>
           <MenuItem
+            label={labels.groups.renameGroup}
+            onPress={() => beginEdit('rename')}
+          />
+          <MenuItem
             label={labels.groups.addGroupAbove}
             onPress={() => beginEdit('before')}
           />
@@ -122,17 +126,11 @@ const GroupActionMenu = ({
             onPress={() => beginEdit('after')}
           />
           {groupId ? (
-            <>
-              <MenuItem
-                label={labels.groups.renameGroup}
-                onPress={() => beginEdit('rename')}
-              />
-              <MenuItem
-                danger
-                label={labels.groups.deleteGroup}
-                onPress={onDelete}
-              />
-            </>
+            <MenuItem
+              danger
+              label={labels.groups.deleteGroup}
+              onPress={onDelete}
+            />
           ) : null}
         </>
       )}

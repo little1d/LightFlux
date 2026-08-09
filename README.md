@@ -40,7 +40,7 @@ npm run typecheck
 
 ## 数据持久化
 
-任务数据使用 `schemaVersion: 3` 的 JSON 结构。Web 写入
+任务数据使用 `schemaVersion: 5` 的 JSON 结构。Web 写入
 `localStorage`，iOS/Android 写入应用文档目录。每个任务包含稳定 ID、
 父任务 ID、分组 ID、完成/删除时间、富文本 JSON 和持久化排序字段
 `sortOrder`；任务分组也包含独立顺序字段。状态管理目前使用 React Context，存储通过独立 service

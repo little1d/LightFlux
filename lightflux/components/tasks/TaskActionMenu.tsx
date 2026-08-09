@@ -14,6 +14,7 @@ import MenuSurface from '../ui/MenuSurface';
 import { TaskMenuPosition } from './useTaskContextMenu';
 
 const MENU_WIDTH = 220;
+type EditMode = 'subtask' | 'rename' | null;
 
 interface TaskActionMenuProps {
   todoId: string;
@@ -28,28 +29,37 @@ const TaskActionMenu = ({
   onClose,
   onTrash,
 }: TaskActionMenuProps) => {
-  const { language, todos, addTodo, trashTodo } = useTodos();
+  const { language, todos, addTodo, trashTodo, updateTodo } = useTodos();
   const labels = translations[language];
   const todo = todos.find((item) => item.id === todoId);
-  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [mode, setMode] = useState<EditMode>(null);
   const [draft, setDraft] = useState('');
 
   if (!todo) {
     return null;
   }
 
-  const submitSubtask = () => {
+  const beginEdit = (nextMode: Exclude<EditMode, null>) => {
+    setMode(nextMode);
+    setDraft(nextMode === 'rename' ? todo.title : '');
+  };
+
+  const submit = () => {
     const title = draft.trim();
-    if (!title) {
+    if (!title || !mode) {
       return;
     }
 
-    addTodo({
-      title,
-      scheduledDate: todo.scheduledDate,
-      groupId: todo.groupId,
-      parentId: todo.id,
-    });
+    if (mode === 'rename') {
+      updateTodo(todo.id, { title });
+    } else {
+      addTodo({
+        title,
+        scheduledDate: todo.scheduledDate,
+        groupId: todo.groupId,
+        parentId: todo.id,
+      });
+    }
     Keyboard.dismiss();
     onClose();
   };
@@ -63,40 +73,62 @@ const TaskActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={isAddingSubtask ? 110 : 100}
+      estimatedHeight={mode ? 110 : 145}
       onClose={onClose}
       position={position}
       width={MENU_WIDTH}
     >
-      {isAddingSubtask ? (
+      {mode ? (
         <View
           className="m-2 flex-row rounded-[9px] border border-[#D8D4F0] bg-[#F7F6FA] p-1 pl-2.5"
-          nativeID="context-subtask-composer"
+          nativeID={
+            mode === 'rename'
+              ? 'context-task-name-composer'
+              : 'context-subtask-composer'
+          }
         >
           <TextInput
             {...inputAccentProps}
-            accessibilityLabel={labels.taskMenu.subtaskPlaceholder}
+            accessibilityLabel={
+              mode === 'rename'
+                ? labels.editor.titlePlaceholder
+                : labels.taskMenu.subtaskPlaceholder
+            }
             autoFocus
             className="h-8 flex-1 text-[12px] text-[#303145]"
             onChangeText={setDraft}
-            onSubmitEditing={submitSubtask}
-            placeholder={labels.taskMenu.subtaskPlaceholder}
+            onSubmitEditing={submit}
+            placeholder={
+              mode === 'rename'
+                ? labels.editor.titlePlaceholder
+                : labels.taskMenu.subtaskPlaceholder
+            }
             placeholderTextColor="#9A9BA8"
             returnKeyType="done"
             value={draft}
           />
           <ActionButton
             disabled={!draft.trim()}
-            label={labels.taskMenu.createSubtask}
-            onPress={submitSubtask}
+            label={
+              mode === 'rename'
+                ? labels.groups.confirmRename
+                : labels.taskMenu.createSubtask
+            }
+            onPress={submit}
             size="small"
           />
         </View>
       ) : (
-        <MenuItem
-          label={labels.taskMenu.addSubtask}
-          onPress={() => setIsAddingSubtask(true)}
-        />
+        <>
+          <MenuItem
+            label={labels.taskMenu.rename}
+            onPress={() => beginEdit('rename')}
+          />
+          <MenuItem
+            label={labels.taskMenu.addSubtask}
+            onPress={() => beginEdit('subtask')}
+          />
+        </>
       )}
 
       <MenuItem

@@ -21,6 +21,7 @@ import { Todo, TodoFilter } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
 import { todayKey } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
+import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -56,13 +57,14 @@ const TodoRow = ({
     <View
       className={`${todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} flex-row items-center border-b px-2 ${
         selected
-          ? 'border-[#D6D2EF] bg-[#ECEAF5]'
+          ? 'border-[#D6D2EF] bg-[#EEECFF]'
           : todo.completed
             ? 'border-[#ECEBF1] bg-[#FAFAFC]'
             : 'border-[#ECEBF1] bg-transparent'
       }`}
       ref={targetRef}
     >
+    <TaskSelectionMarker visible={selected} />
     {todo.parentId ? (
       <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
     ) : null}

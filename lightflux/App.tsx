@@ -28,6 +28,7 @@ import AccountMenu, {
 } from './components/account/AccountMenu';
 import TaskEditorScreen from './components/editor/TaskEditorScreen';
 import ResizableDivider from './components/layout/ResizableDivider';
+import DraggableNavigationItem from './components/navigation/DraggableNavigationItem';
 import TaskActionMenu from './components/tasks/TaskActionMenu';
 import {
   OpenTaskMenu,
@@ -40,17 +41,11 @@ import {
   loadSessionState,
   saveSessionState,
 } from './services/sessionStorage';
+import { NavigationItemId } from './types/todo';
 import { requestConfirmation } from './utils/confirm';
 
-type AppView =
-  | 'search'
-  | 'today'
-  | 'completed'
-  | 'calendar'
-  | 'groups'
-  | 'trash'
-  | 'settings';
-type NavigationView = Exclude<AppView, 'settings'>;
+type AppView = NavigationItemId | 'settings';
+type NavigationView = NavigationItemId;
 type SelectedTask = {
   id: string;
   readOnly: boolean;
@@ -62,17 +57,17 @@ const DIVIDER_WIDTH = 8;
 const MIN_LIST_WIDTH = 360;
 const MIN_DETAILS_WIDTH = 360;
 
-const NAV_ITEMS: Array<{
-  id: NavigationView;
-  icon: ComponentProps<typeof Ionicons>['name'];
-}> = [
-  { id: 'search', icon: 'search-outline' },
-  { id: 'today', icon: 'sunny-outline' },
-  { id: 'completed', icon: 'checkmark-done-outline' },
-  { id: 'calendar', icon: 'calendar-outline' },
-  { id: 'groups', icon: 'albums-outline' },
-  { id: 'trash', icon: 'trash-outline' },
-];
+const NAV_ICONS: Record<
+  NavigationView,
+  ComponentProps<typeof Ionicons>['name']
+> = {
+  search: 'search-outline',
+  today: 'sunny-outline',
+  completed: 'checkmark-done-outline',
+  calendar: 'calendar-outline',
+  groups: 'albums-outline',
+  trash: 'trash-outline',
+};
 
 const AppContent = () => {
   const [activeView, setActiveView] = useState<AppView>('groups');
@@ -84,7 +79,13 @@ const AppContent = () => {
     todoId: string;
     position?: TaskMenuPosition;
   } | null>(null);
-  const { language, todos, trashedTodos } = useTodos();
+  const {
+    language,
+    navigationOrder,
+    reorderNavigationItem,
+    todos,
+    trashedTodos,
+  } = useTodos();
   const { width } = useWindowDimensions();
   const labels = translations[language];
   const usesDesktopLayout = width >= 900;
@@ -101,6 +102,10 @@ const AppContent = () => {
       listPaneWidth ?? Math.round(availableDesktopWidth * 0.46),
     ),
   );
+  const navigationItems = navigationOrder.map((id) => ({
+    id,
+    icon: NAV_ICONS[id],
+  }));
 
   const openTaskMenu = useCallback<OpenTaskMenu>((todoId, position) => {
     setTaskMenu({ todoId, position });
@@ -279,32 +284,39 @@ const AppContent = () => {
             >
               <AccountAvatar active={activeView === 'settings'} />
             </Pressable>
-            {NAV_ITEMS.map((item) => {
+            {navigationItems.map((item, index) => {
               const isActive = item.id === activeView;
               return (
-                <Pressable
-                  accessibilityLabel={labels.navigation[item.id]}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isActive }}
-                  className={`mb-3 h-12 w-12 items-center justify-center rounded-[15px] ${
-                    isActive ? 'bg-[#E8E5FF]' : 'bg-transparent'
-                  }`}
+                <DraggableNavigationItem
+                  id={item.id}
+                  index={index}
                   key={item.id}
-                  onPress={() => changeView(item.id)}
+                  label={labels.navigation[item.id]}
+                  onMove={reorderNavigationItem}
                 >
-                  <Ionicons
-                    color={isActive ? '#6759E8' : '#92939F'}
-                    name={item.icon}
-                    size={22}
-                  />
-                  {item.id === 'trash' && trashedTodos.length > 0 ? (
-                    <View className="absolute right-0 top-0 min-w-[17px] items-center rounded-[9px] bg-[#D85B6B] px-1 py-0.5">
-                      <Text className="text-[8px] font-extrabold text-white">
-                        {trashedTodos.length}
-                      </Text>
-                    </View>
-                  ) : null}
-                </Pressable>
+                  <Pressable
+                    accessibilityLabel={labels.navigation[item.id]}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    className={`mb-3 h-12 w-12 items-center justify-center rounded-[15px] ${
+                      isActive ? 'bg-[#E8E5FF]' : 'bg-transparent'
+                    }`}
+                    onPress={() => changeView(item.id)}
+                  >
+                    <Ionicons
+                      color={isActive ? '#6759E8' : '#92939F'}
+                      name={item.icon}
+                      size={22}
+                    />
+                    {item.id === 'trash' && trashedTodos.length > 0 ? (
+                      <View className="absolute right-0 top-0 min-w-[17px] items-center rounded-[9px] bg-[#D85B6B] px-1 py-0.5">
+                        <Text className="text-[8px] font-extrabold text-white">
+                          {trashedTodos.length}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                </DraggableNavigationItem>
               );
             })}
           </View>
@@ -322,33 +334,33 @@ const AppContent = () => {
 
         {!usesDesktopLayout ? (
           <SafeAreaView className="border-t border-[#E4E3EA] bg-white">
-          <View className="h-[66px] flex-row items-center justify-around px-6">
-            {NAV_ITEMS.map((item) => {
-              const isActive = item.id === activeView;
-              return (
-                <Pressable
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isActive }}
-                  className="flex-1 items-center justify-center py-2"
-                  key={item.id}
-                  onPress={() => changeView(item.id)}
-                >
-                  <Ionicons
-                    color={isActive ? '#6759E8' : '#A3A3AF'}
-                    name={item.icon}
-                    size={21}
-                  />
-                  <Text
-                    className={`mt-1 text-[10px] font-bold ${
-                      isActive ? 'text-primary' : 'text-[#9596A3]'
-                    }`}
+            <View className="h-[66px] flex-row items-center justify-around px-6">
+              {navigationItems.map((item) => {
+                const isActive = item.id === activeView;
+                return (
+                  <Pressable
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    className="flex-1 items-center justify-center py-2"
+                    key={item.id}
+                    onPress={() => changeView(item.id)}
                   >
-                    {labels.navigation[item.id]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+                    <Ionicons
+                      color={isActive ? '#6759E8' : '#A3A3AF'}
+                      name={item.icon}
+                      size={21}
+                    />
+                    <Text
+                      className={`mt-1 text-[10px] font-bold ${
+                        isActive ? 'text-primary' : 'text-[#9596A3]'
+                      }`}
+                    >
+                      {labels.navigation[item.id]}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </SafeAreaView>
         ) : null}
       </View>

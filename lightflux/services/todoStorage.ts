@@ -1,7 +1,13 @@
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 
-import { PersistedAppState, Todo, TodoGroup } from '../types/todo';
+import {
+  NAVIGATION_ITEM_IDS,
+  NavigationItemId,
+  PersistedAppState,
+  Todo,
+  TodoGroup,
+} from '../types/todo';
 import { todayKey } from '../utils/date';
 import {
   emptyRichTextDocument,
@@ -29,6 +35,21 @@ const getWebStorage = (): WebStorage | null => {
   };
 
   return runtime.localStorage ?? null;
+};
+
+const normalizeNavigationOrder = (value: unknown): NavigationItemId[] => {
+  const saved = Array.isArray(value)
+    ? value.filter(
+        (item): item is NavigationItemId =>
+          typeof item === 'string' &&
+          NAVIGATION_ITEM_IDS.includes(item as NavigationItemId),
+      )
+    : [];
+  const unique = [...new Set(saved)];
+  return [
+    ...unique,
+    ...NAVIGATION_ITEM_IDS.filter((item) => !unique.includes(item)),
+  ];
 };
 
 const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
@@ -119,8 +140,14 @@ const parseState = (rawState: string): PersistedAppState | null => {
       .filter((todo): todo is Todo => todo !== null);
 
     return {
-      schemaVersion: 3,
+      schemaVersion: 5,
       language: parsed.language === 'en' ? 'en' : 'zh',
+      navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
+      ungroupedName:
+        typeof parsed.ungroupedName === 'string' &&
+        parsed.ungroupedName.trim().length > 0
+          ? parsed.ungroupedName.trim()
+          : null,
       todos,
       groups: Array.isArray(parsed.groups)
         ? parsed.groups

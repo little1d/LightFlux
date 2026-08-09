@@ -33,6 +33,7 @@ import {
   useGroupContextMenu,
 } from './groups/useGroupContextMenu';
 import TaskIndicators from './tasks/TaskIndicators';
+import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import DraggableSubtask from './tasks/DraggableSubtask';
 import ActionButton from './ui/ActionButton';
 import {
@@ -100,9 +101,9 @@ const CollapsibleGroupBody = ({
 
   return (
     <Animated.View
-      pointerEvents={expanded ? 'auto' : 'none'}
       style={{
         opacity: transition,
+        pointerEvents: expanded ? 'auto' : 'none',
         transform: [
           {
             translateY: transition.interpolate({
@@ -309,10 +310,11 @@ const GroupTask = ({
   return (
     <View
       className={`${todo.parentId ? 'ml-6 min-h-[36px]' : 'min-h-[42px]'} flex-row items-center border-b border-[#ECECF1] px-1.5 ${
-        selected ? 'rounded-[12px] bg-[#ECEAF5]' : ''
+        selected ? 'rounded-[12px] bg-[#EEECFF]' : ''
       }`}
       ref={targetRef}
     >
+      <TaskSelectionMarker visible={selected} />
       {todo.parentId ? (
         <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
       ) : null}
@@ -382,6 +384,7 @@ const GroupsScreen = ({
     language,
     todos,
     groups,
+    ungroupedName,
     addGroup,
     deleteGroup,
     addTodo,
@@ -407,7 +410,7 @@ const GroupsScreen = ({
       [
         {
           id: UNGROUPED_ID,
-          name: labels.groups.ungrouped,
+          name: ungroupedName ?? labels.groups.ungrouped,
           color: '#9A97AD',
           sortOrder: 0,
           todos: todos.filter((todo) => todo.groupId === null),
@@ -421,7 +424,7 @@ const GroupsScreen = ({
           a.sortOrder - b.sortOrder ||
           a.name.localeCompare(b.name, language === 'zh' ? 'zh-CN' : 'en-US'),
       ),
-    [groups, labels.groups.ungrouped, language, todos],
+    [groups, labels.groups.ungrouped, language, todos, ungroupedName],
   );
   const openGroupMenu = useCallback<OpenGroupMenu>(
     (sectionId, position) => {
@@ -700,9 +703,12 @@ const GroupsScreen = ({
           onClose={() => setGroupMenu(null)}
           onDelete={deleteActiveGroup}
           onRename={(name) => {
-            if (activeMenuSection.id !== UNGROUPED_ID) {
-              renameGroup(activeMenuSection.id, name);
-            }
+            renameGroup(
+              activeMenuSection.id === UNGROUPED_ID
+                ? null
+                : activeMenuSection.id,
+              name,
+            );
           }}
           position={groupMenu.position}
         />

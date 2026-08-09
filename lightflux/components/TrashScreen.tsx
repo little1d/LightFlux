@@ -13,6 +13,7 @@ import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
 import { requestConfirmation } from '../utils/confirm';
 import { fromDateKey } from '../utils/date';
+import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 
 const TrashScreen = ({
   onPreviewTask,
@@ -101,6 +102,7 @@ const TrashScreen = ({
                 }`}
                 key={todo.id}
               >
+                <TaskSelectionMarker visible={selectedTaskId === todo.id} />
                 {todo.parentId ? (
                   <View className="mr-2 h-5 w-5 items-center justify-center">
                     <Text className="text-[13px] text-[#9492A1]">↳</Text>

@@ -6,30 +6,40 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
+    "editor:build": "vite --config ./editor-web/vite.config.ts build && npm run editor:postbuild",
+    "editor:postbuild": "node ./node_modules/@10play/tentap-editor/scripts/buildEditor.js ./editor-web/build/index.html ./editor-web/build/editorHtml.js",
     "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit",
     "web": "expo start --web"
   },
   "dependencies": {
-    "@react-navigation/native": "^6.1.17",
-    "@react-navigation/stack": "^6.3.29",
+    "@10play/tentap-editor": "^1.0.1",
+    "@expo/metro-runtime": "~3.2.3",
+    "@tiptap/core": "^3.29.2",
+    "@tiptap/extension-code-block": "^3.29.2",
+    "@tiptap/extension-image": "^3.29.2",
+    "@tiptap/pm": "^3.29.2",
+    "@tiptap/react": "^3.29.2",
+    "@tiptap/starter-kit": "^3.29.2",
     "expo": "~51.0.14",
+    "expo-file-system": "~17.0.1",
     "expo-status-bar": "~1.12.1",
-    "firebase": "^10.12.2",
     "nativewind": "^2.0.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-native": "0.74.2",
-    "react-native-gesture-handler": "~2.16.1",
-    "react-native-reanimated": "~3.10.1",
-    "react-native-safe-area-context": "4.10.1",
-    "react-native-screens": "3.31.1",
+    "react-native": "0.74.5",
     "react-native-web": "~0.19.10",
+    "react-native-webview": "13.8.6",
     "tailwindcss": "3.3.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@types/react": "~18.2.45",
-    "typescript": "~5.3.3"
+    "@types/react-dom": "^18.2.25",
+    "@vitejs/plugin-react": "^4.7.0",
+    "typescript": "~5.3.3",
+    "vite": "^5.4.21",
+    "vite-plugin-singlefile": "^2.3.0"
   },
   "private": true
 }

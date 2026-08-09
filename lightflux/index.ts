@@ -1,5 +1,7 @@
 import { registerRootComponent } from 'expo';
 
+import './config/focusStyles';
+import './config/nativewind';
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

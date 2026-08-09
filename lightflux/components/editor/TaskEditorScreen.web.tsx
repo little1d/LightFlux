@@ -1,7 +1,10 @@
 import Image from '@tiptap/extension-image';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, {
+  useEffect,
+  useState,
+} from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -16,7 +19,6 @@ import { inputAccentProps } from '../../config/input';
 import { useTodos } from '../../context/TodoContext';
 import { translations } from '../../i18n/translations';
 import { RichTextDocument } from '../../types/todo';
-import { fromDateKey } from '../../utils/date';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const EDITOR_CSS = `
@@ -84,13 +86,13 @@ const TaskEditorScreen = ({
   todoId,
   onClose,
   embedded = false,
+  focusTitle = false,
   readOnly = false,
 }: TaskEditorScreenProps) => {
   const {
     language,
     todos,
     trashedTodos,
-    groups,
     updateTodo,
   } = useTodos();
   const labels = translations[language];
@@ -111,6 +113,14 @@ const TaskEditorScreen = ({
       ],
       content: todo?.content,
       editable: !readOnly,
+      onUpdate: ({ editor: currentEditor }) => {
+        if (readOnly) {
+          return;
+        }
+        updateTodo(todoId, {
+          content: currentEditor.getJSON() as RichTextDocument,
+        });
+      },
       editorProps: {
         attributes: {
           'aria-label': labels.editor.bodyPlaceholder,
@@ -132,16 +142,16 @@ const TaskEditorScreen = ({
     return () => style.remove();
   }, []);
 
-  const groupName = useMemo(
-    () => groups.find((group) => group.id === todo?.groupId)?.name,
-    [groups, todo?.groupId],
-  );
-
   if (!todo) {
     return null;
   }
 
-  const save = () => {
+  const closeEditor = () => {
+    if (readOnly) {
+      onClose();
+      return;
+    }
+
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
       setTitleError(labels.editor.emptyTitle);
@@ -158,39 +168,19 @@ const TaskEditorScreen = ({
   return (
     <View className={`flex-1 ${embedded ? 'bg-white' : 'bg-canvas'}`}>
       <SafeAreaView className="flex-1">
-        <View className="flex-row items-center justify-between border-b border-[#E6E5EC] bg-white px-5 py-3">
+        <View className="min-h-[48px] flex-row items-center border-b border-[#E6E5EC] bg-white px-5">
           <Pressable
             accessibilityRole="button"
-            className="min-h-10 justify-center pr-4"
-            onPress={onClose}
+            className="min-h-10 justify-center pr-5"
+            onPress={(event) => {
+              event.stopPropagation();
+              closeEditor();
+            }}
           >
             <Text className="text-sm font-bold text-[#696B7D]">
               {embedded ? '×' : `‹ ${labels.editor.close}`}
             </Text>
           </Pressable>
-          <View className="items-center">
-            <Text className="text-[16px] font-extrabold text-ink">
-              {readOnly ? labels.editor.previewTitle : labels.editor.title}
-            </Text>
-            <Text className="mt-0.5 text-[10px] text-[#9293A0]">
-              {readOnly
-                ? labels.editor.readOnlyHint
-                : labels.editor.richContentHint}
-            </Text>
-          </View>
-          {readOnly ? (
-            <View className="min-h-10 w-10" />
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              className="min-h-10 justify-center rounded-[13px] bg-primary px-4"
-              onPress={save}
-            >
-              <Text className="text-sm font-extrabold text-white">
-                {labels.editor.save}
-              </Text>
-            </Pressable>
-          )}
         </View>
 
         <ScrollView
@@ -198,7 +188,7 @@ const TaskEditorScreen = ({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="mb-4">
+          <View className="mb-3">
             {readOnly ? (
               <Text className="border-b border-[#DDDBE7] px-1 pb-3 text-[28px] font-extrabold text-[#252638]">
                 {todo.title}
@@ -207,15 +197,20 @@ const TaskEditorScreen = ({
               <TextInput
                 {...inputAccentProps}
                 accessibilityLabel={labels.editor.titlePlaceholder}
+                autoFocus={focusTitle}
                 className="min-h-[58px] border-b border-[#DDDBE7] px-1 py-2 text-[28px] font-extrabold text-[#252638]"
                 maxLength={160}
                 nativeID="task-title-input"
                 onChangeText={(value) => {
                   setTitle(value);
                   setTitleError('');
+                  if (value.trim()) {
+                    updateTodo(todo.id, { title: value });
+                  }
                 }}
                 placeholder={labels.editor.titlePlaceholder}
                 placeholderTextColor="#A5A6B1"
+                selectTextOnFocus={focusTitle}
                 value={title}
               />
             )}
@@ -224,13 +219,6 @@ const TaskEditorScreen = ({
                 {titleError}
               </Text>
             ) : null}
-            <Text className="mt-2 text-[11px] text-[#9293A0]">
-              {fromDateKey(todo.scheduledDate).toLocaleDateString(
-                language === 'zh' ? 'zh-CN' : 'en-US',
-                { dateStyle: 'long' },
-              )}
-              {groupName ? ` · ${groupName}` : ''}
-            </Text>
           </View>
 
           <View
@@ -242,10 +230,6 @@ const TaskEditorScreen = ({
           >
             {editor ? <EditorContent editor={editor} /> : null}
           </View>
-
-          <Text className="py-4 text-center text-[10px] text-[#9B9CA8]">
-            {labels.editor.savedLocally}
-          </Text>
         </ScrollView>
       </SafeAreaView>
     </View>

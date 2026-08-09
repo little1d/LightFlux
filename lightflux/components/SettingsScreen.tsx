@@ -1,5 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Pressable,
   SafeAreaView,
@@ -12,6 +13,10 @@ import {
 import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
 import { Language } from '../types/todo';
+import MenuItem from './ui/MenuItem';
+import MenuSurface, {
+  MenuSurfacePosition,
+} from './ui/MenuSurface';
 
 interface ShortcutRowProps {
   description: string;
@@ -29,47 +34,19 @@ const ShortcutRow = ({ description, keys }: ShortcutRowProps) => (
   </View>
 );
 
-const LanguageOption = ({
-  id,
-  label,
-  selected,
-  onSelect,
-}: {
-  id: Language;
-  label: string;
-  selected: boolean;
-  onSelect: (language: Language) => void;
-}) => (
-  <Pressable
-    accessibilityRole="radio"
-    accessibilityState={{ checked: selected }}
-    className={`flex-1 flex-row items-center rounded-[12px] border px-4 py-3 ${
-      selected
-        ? 'border-[#BBB4F2] bg-[#EEECFF]'
-        : 'border-[#E4E3E9] bg-white'
-    }`}
-    onPress={() => onSelect(id)}
-  >
-    <View
-      className={`mr-3 h-5 w-5 items-center justify-center rounded-[10px] border ${
-        selected ? 'border-primary' : 'border-[#BBBCC7]'
-      }`}
-    >
-      {selected ? <View className="h-2.5 w-2.5 rounded-[5px] bg-primary" /> : null}
-    </View>
-    <Text
-      className={`text-[13px] font-bold ${
-        selected ? 'text-primary' : 'text-[#4D4E5E]'
-      }`}
-    >
-      {label}
-    </Text>
-  </Pressable>
-);
-
 const SettingsScreen = () => {
   const { language, setLanguage } = useTodos();
   const labels = translations[language];
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const [languageMenuPosition, setLanguageMenuPosition] =
+    useState<MenuSurfacePosition>();
+  const languageButtonRef = useRef<View>(null);
+  const languageOptions: Array<{ id: Language; label: string }> = [
+    { id: 'zh', label: labels.settings.chinese },
+    { id: 'en', label: labels.settings.english },
+  ];
+  const selectedLanguage =
+    languageOptions.find((option) => option.id === language)?.label ?? '';
 
   const shortcuts = [
     [labels.settings.shortcutSearch, labels.settings.keySearch],
@@ -81,6 +58,18 @@ const SettingsScreen = () => {
     [labels.settings.shortcutQuote, labels.settings.keyQuote],
     [labels.settings.shortcutCode, labels.settings.keyCode],
   ];
+
+  const toggleLanguageMenu = () => {
+    if (languageMenuOpen) {
+      setLanguageMenuOpen(false);
+      return;
+    }
+
+    languageButtonRef.current?.measureInWindow((x, y, width, height) => {
+      setLanguageMenuPosition({ x: x + width - 190, y: y + height + 8 });
+      setLanguageMenuOpen(true);
+    });
+  };
 
   return (
     <View className="flex-1 bg-canvas">
@@ -95,45 +84,41 @@ const SettingsScreen = () => {
             <Text className="text-[28px] font-extrabold text-ink">
               {labels.settings.title}
             </Text>
-            <Text className="mt-1.5 text-[13px] text-[#858797]">
-              {labels.settings.subtitle}
-            </Text>
           </View>
 
-          <View className="mb-6">
-            <Text className="mb-2 text-[18px] font-extrabold text-[#2E2F41]">
-              {labels.settings.languageTitle}
-            </Text>
-            <Text className="mb-3 text-[12px] text-[#888A98]">
-              {labels.settings.languageDescription}
-            </Text>
+          <View className="mb-7">
             <View
-              className="rounded-[18px] border border-[#E6E5EB] bg-[#F8F8FA] p-3"
+              className="min-h-[74px] flex-row items-center justify-between rounded-[18px] border border-[#E6E5EB] bg-[#F8F8FA] px-5"
               style={styles.cardShadow}
             >
-              <View className="flex-row gap-3">
-                <LanguageOption
-                  id="zh"
-                  label={labels.settings.chinese}
-                  onSelect={setLanguage}
-                  selected={language === 'zh'}
-                />
-                <LanguageOption
-                  id="en"
-                  label={labels.settings.english}
-                  onSelect={setLanguage}
-                  selected={language === 'en'}
-                />
+              <View className="mr-5 flex-1">
+                <Text className="text-[16px] font-extrabold text-[#2E2F41]">
+                  {labels.settings.languageTitle}
+                </Text>
               </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: languageMenuOpen }}
+                className="min-h-10 flex-row items-center rounded-[12px] bg-[#EFEFF2] px-3.5"
+                onPress={toggleLanguageMenu}
+                ref={languageButtonRef}
+              >
+                <Text className="text-[13px] font-bold text-[#626370]">
+                  {selectedLanguage}
+                </Text>
+                <Ionicons
+                  color="#858692"
+                  name={languageMenuOpen ? 'chevron-up' : 'chevron-down'}
+                  size={15}
+                  style={styles.languageChevron}
+                />
+              </Pressable>
             </View>
           </View>
 
           <View>
             <Text className="mb-2 text-[18px] font-extrabold text-[#2E2F41]">
               {labels.settings.shortcutsTitle}
-            </Text>
-            <Text className="mb-3 text-[12px] text-[#888A98]">
-              {labels.settings.shortcutsDescription}
             </Text>
             <View
               className="overflow-hidden rounded-[18px] border border-[#E6E5EB] bg-[#F8F8FA]"
@@ -150,6 +135,40 @@ const SettingsScreen = () => {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      {languageMenuOpen ? (
+        <MenuSurface
+          closeLabel={labels.cancel}
+          estimatedHeight={100}
+          onClose={() => setLanguageMenuOpen(false)}
+          position={languageMenuPosition}
+          width={190}
+        >
+          {languageOptions.map((option) => {
+            const selected = option.id === language;
+            return (
+              <MenuItem
+                key={option.id}
+                label={option.label}
+                onPress={() => {
+                  setLanguage(option.id);
+                  setLanguageMenuOpen(false);
+                }}
+                selected={selected}
+                trailing={
+                  selected ? (
+                    <Ionicons
+                      color="#6759E8"
+                      name="checkmark"
+                      size={18}
+                    />
+                  ) : null
+                }
+              />
+            );
+          })}
+        </MenuSurface>
+      ) : null}
     </View>
   );
 };
@@ -169,6 +188,9 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.05,
     shadowRadius: 12,
+  },
+  languageChevron: {
+    marginLeft: 8,
   },
 });
 

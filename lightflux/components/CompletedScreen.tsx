@@ -194,9 +194,6 @@ const CompletedScreen = ({
               <Text className="text-[24px] font-extrabold text-ink">
                 {labels.completed.title}
               </Text>
-              <Text className="mt-1 text-xs text-[#858797]">
-                {labels.completed.subtitle}
-              </Text>
             </View>
           }
           renderItem={({ item }) => (

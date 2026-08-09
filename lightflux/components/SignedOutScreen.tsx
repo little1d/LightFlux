@@ -1,13 +1,28 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React from 'react';
+import React, { useState } from 'react';
 import { Pressable, SafeAreaView, Text, View } from 'react-native';
 
 import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import {
+  beginWechatLogin,
+  isRemoteAuthConfigured,
+} from '../services/authApi';
 
 const SignedOutScreen = ({ onContinue }: { onContinue: () => void }) => {
   const { language } = useTodos();
   const labels = translations[language];
+  const [loginError, setLoginError] = useState('');
+
+  const loginWithWechat = async () => {
+    setLoginError('');
+    try {
+      await beginWechatLogin();
+    } catch {
+      setLoginError(labels.signedOut.wechatError);
+    }
+  };
 
   return (
     <View className="flex-1 bg-[#F3F2F7]">
@@ -24,15 +39,33 @@ const SignedOutScreen = ({ onContinue }: { onContinue: () => void }) => {
           <Text className="mt-2 text-center text-[13px] leading-5 text-[#858797]">
             {labels.signedOut.description}
           </Text>
-          <Pressable
-            accessibilityRole="button"
-            className="mt-7 min-h-12 w-full items-center justify-center rounded-[15px] bg-primary px-5"
-            onPress={onContinue}
-          >
-            <Text className="text-[14px] font-extrabold text-white">
-              {labels.signedOut.continue}
+          {isRemoteAuthConfigured ? (
+            <Pressable
+              accessibilityRole="button"
+              className="mt-7 min-h-12 w-full flex-row items-center justify-center rounded-[15px] bg-[#07C160] px-5"
+              onPress={() => void loginWithWechat()}
+            >
+              <Ionicons color="white" name="logo-wechat" size={21} />
+              <Text className="ml-2 text-[14px] font-extrabold text-white">
+                {labels.signedOut.wechat}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              className="mt-7 min-h-12 w-full items-center justify-center rounded-[15px] bg-primary px-5"
+              onPress={onContinue}
+            >
+              <Text className="text-[14px] font-extrabold text-white">
+                {labels.signedOut.continue}
+              </Text>
+            </Pressable>
+          )}
+          {loginError ? (
+            <Text className="mt-3 text-center text-[11px] leading-4 text-[#C84F60]">
+              {loginError}
             </Text>
-          </Pressable>
+          ) : null}
         </View>
       </SafeAreaView>
     </View>

@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
 import {
@@ -22,19 +23,6 @@ import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
-
-const SearchGlyph = ({ color = '#777987' }: { color?: string }) => (
-  <View className="h-6 w-6">
-    <View
-      className="absolute left-0.5 top-0.5 h-[15px] w-[15px] rounded-[8px] border-2"
-      style={{ borderColor: color }}
-    />
-    <View
-      className="absolute h-0.5 w-2 rotate-45 rounded"
-      style={{ backgroundColor: color, bottom: 4, right: 1 }}
-    />
-  </View>
-);
 
 const HighlightedText = ({
   query,
@@ -233,9 +221,6 @@ const SearchScreen = ({
           <Text className="text-[24px] font-extrabold text-ink">
             {labels.search.title}
           </Text>
-          <Text className="mt-1 text-xs text-[#858797]">
-            {labels.search.subtitle}
-          </Text>
         </View>
       </View>
 
@@ -244,7 +229,7 @@ const SearchScreen = ({
         nativeID="task-search-input"
         style={styles.searchShadow}
       >
-        <SearchGlyph />
+        <Ionicons color="#777987" name="search-outline" size={21} />
         <TextInput
           {...inputAccentProps}
           accessibilityLabel={labels.search.placeholder}
@@ -288,7 +273,7 @@ const SearchScreen = ({
           ListEmptyComponent={
             <View className="min-h-[360px] items-center justify-center px-8">
               <View className="mb-4 h-14 w-14 items-center justify-center rounded-[20px] bg-[#ECE9FF]">
-                <SearchGlyph color="#7468DC" />
+                <Ionicons color="#7468DC" name="search-outline" size={25} />
               </View>
               <Text className="text-[17px] font-extrabold text-[#393A4D]">
                 {normalizedQuery

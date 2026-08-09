@@ -64,9 +64,6 @@ const TrashScreen = ({
               <Text className="text-[24px] font-extrabold text-ink">
                 {labels.trash.title}
               </Text>
-              <Text className="mt-1 text-xs text-[#858797]">
-                {labels.trash.subtitle}
-              </Text>
             </View>
             <View className="flex-row items-center">
               {trashedTodos.length > 0 ? (
@@ -90,9 +87,6 @@ const TrashScreen = ({
               </View>
               <Text className="text-[17px] font-extrabold text-[#393A4D]">
                 {labels.trash.emptyTitle}
-              </Text>
-              <Text className="mt-2 text-center text-[13px] leading-5 text-[#8A8C9A]">
-                {labels.trash.emptyDescription}
               </Text>
             </View>
           ) : (

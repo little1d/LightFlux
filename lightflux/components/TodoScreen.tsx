@@ -366,14 +366,6 @@ const TodoScreen = ({
                 </Text>
               </View>
             }
-            ListFooterComponent={
-              <View className="flex-row items-center justify-center pt-[23px]">
-                <View className="mr-[7px] h-1.5 w-1.5 rounded-[3px] bg-[#78BCA6]" />
-                <Text className="text-[11px] text-[#9A9CAA]">
-                  {labels.localOnly}
-                </Text>
-              </View>
-            }
             ListHeaderComponent={listHeader}
             renderItem={({ item }) => (
               <TodoRow

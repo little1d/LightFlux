@@ -13,7 +13,6 @@ export interface Translation {
   };
   search: {
     title: string;
-    subtitle: string;
     placeholder: string;
     clear: string;
     resultCount: (count: number) => string;
@@ -24,7 +23,6 @@ export interface Translation {
   };
   completed: {
     title: string;
-    subtitle: string;
     count: (count: number) => string;
     today: string;
     yesterday: string;
@@ -33,7 +31,6 @@ export interface Translation {
   };
   account: {
     localAccount: string;
-    localData: string;
     settings: string;
     signOut: string;
     signOutTitle: string;
@@ -41,13 +38,10 @@ export interface Translation {
   };
   settings: {
     title: string;
-    subtitle: string;
     languageTitle: string;
-    languageDescription: string;
     chinese: string;
     english: string;
     shortcutsTitle: string;
-    shortcutsDescription: string;
     shortcutSearch: string;
     shortcutClose: string;
     shortcutBold: string;
@@ -69,12 +63,13 @@ export interface Translation {
     title: string;
     description: string;
     continue: string;
+    wechat: string;
+    wechatError: string;
   };
   overview: string;
   remaining: string;
   taskUnit: string;
   progress: (completed: number, total: number) => string;
-  localOnly: string;
   inputPlaceholder: string;
   addTask: string;
   filters: Record<TodoFilter, string>;
@@ -105,11 +100,21 @@ export interface Translation {
   };
   groups: {
     title: string;
-    tagline: string;
     ungrouped: string;
     addGroup: string;
     groupPlaceholder: string;
     taskPlaceholder: string;
+    addTaskTitle: string;
+    cancelTask: string;
+    reorderSubtask: string;
+    addGroupAbove: string;
+    addGroupBelow: string;
+    renameGroup: string;
+    deleteGroup: string;
+    confirmAdd: string;
+    confirmRename: string;
+    deleteGroupTitle: string;
+    deleteGroupMessage: string;
     count: (count: number) => string;
     expand: string;
     collapse: string;
@@ -118,7 +123,6 @@ export interface Translation {
     title: string;
     titlePlaceholder: string;
     bodyPlaceholder: string;
-    save: string;
     close: string;
     bold: string;
     italic: string;
@@ -135,11 +139,8 @@ export interface Translation {
     insertImage: string;
     invalidImageUrl: string;
     emptyTitle: string;
-    richContentHint: string;
     previewTitle: string;
-    readOnlyHint: string;
     resizePane: string;
-    savedLocally: string;
   };
   taskMenu: {
     addSubtask: string;
@@ -150,9 +151,7 @@ export interface Translation {
   };
   trash: {
     title: string;
-    subtitle: string;
     emptyTitle: string;
-    emptyDescription: string;
     restore: string;
     deleteForever: string;
     deleteForeverTitle: string;
@@ -178,7 +177,6 @@ export const translations: Record<Language, Translation> = {
     },
     search: {
       title: '搜索任务',
-      subtitle: '查找任务标题、详情内容和分组',
       placeholder: '输入关键词…',
       clear: '清除搜索',
       resultCount: (count) => `${count} 项结果`,
@@ -189,7 +187,6 @@ export const translations: Record<Language, Translation> = {
     },
     completed: {
       title: '已完成',
-      subtitle: '回顾已经完成的任务',
       count: (count) => `${count} 项`,
       today: '今天',
       yesterday: '昨天',
@@ -198,7 +195,6 @@ export const translations: Record<Language, Translation> = {
     },
     account: {
       localAccount: '本地账户',
-      localData: '数据保存在此设备',
       settings: '设置',
       signOut: '退出登录',
       signOutTitle: '退出当前会话？',
@@ -206,13 +202,10 @@ export const translations: Record<Language, Translation> = {
     },
     settings: {
       title: '设置',
-      subtitle: '调整语言并查看键盘快捷键',
       languageTitle: '语言',
-      languageDescription: '更改应用界面使用的语言',
       chinese: '简体中文',
       english: 'English',
       shortcutsTitle: '键盘快捷键',
-      shortcutsDescription: '桌面端可使用以下快捷键提高操作效率',
       shortcutSearch: '搜索任务',
       shortcutClose: '关闭详情或菜单',
       shortcutBold: '粗体',
@@ -234,13 +227,14 @@ export const translations: Record<Language, Translation> = {
       title: '已退出登录',
       description: '本地任务仍安全保存在此设备上。',
       continue: '重新进入 LightFlux',
+      wechat: '微信登录 / 注册',
+      wechatError: '暂时无法启动微信登录，请检查认证服务配置。',
     },
     overview: '今日概览',
     remaining: '待完成',
     taskUnit: '项任务',
     progress: (completed, total) =>
       total === 0 ? '添加第一项任务，开始今天' : `已完成 ${completed} / ${total}`,
-    localOnly: '任务数据仅保存在当前设备',
     inputPlaceholder: '写下要完成的事情…',
     addTask: '添加任务',
     filters: {
@@ -283,11 +277,21 @@ export const translations: Record<Language, Translation> = {
     },
     groups: {
       title: '任务分组',
-      tagline: '按项目和想法整理任务',
       ungrouped: '未分组',
       addGroup: '新建分组',
       groupPlaceholder: '分组名称',
       taskPlaceholder: '添加任务到此分组…',
+      addTaskTitle: '添加主任务',
+      cancelTask: '取消',
+      reorderSubtask: '拖拽排序子任务',
+      addGroupAbove: '在上方添加分组',
+      addGroupBelow: '在下方添加分组',
+      renameGroup: '重命名',
+      deleteGroup: '删除分组',
+      confirmAdd: '添加',
+      confirmRename: '保存',
+      deleteGroupTitle: '删除这个分组？',
+      deleteGroupMessage: '分组内的任务会移至“未分组”，任务不会被删除。',
       count: (count) => `${count} 项`,
       expand: '展开分组',
       collapse: '收起分组',
@@ -296,7 +300,6 @@ export const translations: Record<Language, Translation> = {
       title: '任务详情',
       titlePlaceholder: '任务标题',
       bodyPlaceholder: '记录说明、代码或图片…',
-      save: '保存',
       close: '返回',
       bold: '粗体',
       italic: '斜体',
@@ -313,11 +316,8 @@ export const translations: Record<Language, Translation> = {
       insertImage: '插入图片',
       invalidImageUrl: '请输入有效的 http 或 https 图片地址。',
       emptyTitle: '任务标题不能为空。',
-      richContentHint: '支持富文本、图片和代码块',
       previewTitle: '任务预览',
-      readOnlyHint: '只读预览，恢复后可继续编辑',
       resizePane: '调整任务列表与详情宽度',
-      savedLocally: '内容仅保存在当前设备',
     },
     taskMenu: {
       addSubtask: '添加子任务',
@@ -328,9 +328,7 @@ export const translations: Record<Language, Translation> = {
     },
     trash: {
       title: '垃圾桶',
-      subtitle: '删除的任务可以在这里恢复',
       emptyTitle: '垃圾桶是空的',
-      emptyDescription: '移除的任务会暂时保留在这里。',
       restore: '恢复',
       deleteForever: '永久删除',
       deleteForeverTitle: '永久删除任务？',
@@ -354,7 +352,6 @@ export const translations: Record<Language, Translation> = {
     },
     search: {
       title: 'Search tasks',
-      subtitle: 'Find task titles, details, and groups',
       placeholder: 'Type a keyword…',
       clear: 'Clear search',
       resultCount: (count) => `${count} ${count === 1 ? 'result' : 'results'}`,
@@ -365,7 +362,6 @@ export const translations: Record<Language, Translation> = {
     },
     completed: {
       title: 'Completed',
-      subtitle: 'Review the tasks you have finished',
       count: (count) => `${count} ${count === 1 ? 'task' : 'tasks'}`,
       today: 'Today',
       yesterday: 'Yesterday',
@@ -374,7 +370,6 @@ export const translations: Record<Language, Translation> = {
     },
     account: {
       localAccount: 'Local account',
-      localData: 'Data is stored on this device',
       settings: 'Settings',
       signOut: 'Sign out',
       signOutTitle: 'Sign out of this session?',
@@ -382,13 +377,10 @@ export const translations: Record<Language, Translation> = {
     },
     settings: {
       title: 'Settings',
-      subtitle: 'Choose a language and review keyboard shortcuts',
       languageTitle: 'Language',
-      languageDescription: 'Change the language used by the app',
       chinese: '简体中文',
       english: 'English',
       shortcutsTitle: 'Keyboard shortcuts',
-      shortcutsDescription: 'Use these shortcuts in the desktop app',
       shortcutSearch: 'Search tasks',
       shortcutClose: 'Close details or menus',
       shortcutBold: 'Bold',
@@ -410,13 +402,14 @@ export const translations: Record<Language, Translation> = {
       title: 'You are signed out',
       description: 'Your local tasks are still safely stored on this device.',
       continue: 'Return to LightFlux',
+      wechat: 'Continue with WeChat',
+      wechatError: 'Unable to start WeChat login. Check the auth service configuration.',
     },
     overview: 'TODAY AT A GLANCE',
     remaining: 'Remaining',
     taskUnit: 'tasks',
     progress: (completed, total) =>
       total === 0 ? 'Add your first task to get started' : `${completed} of ${total} completed`,
-    localOnly: 'Tasks are stored on this device',
     inputPlaceholder: 'What needs to be done?',
     addTask: 'Add task',
     filters: {
@@ -463,11 +456,22 @@ export const translations: Record<Language, Translation> = {
     },
     groups: {
       title: 'Task groups',
-      tagline: 'Organize work by project and idea',
       ungrouped: 'Ungrouped',
       addGroup: 'New group',
       groupPlaceholder: 'Group name',
       taskPlaceholder: 'Add a task to this group…',
+      addTaskTitle: 'Add main task',
+      cancelTask: 'Cancel',
+      reorderSubtask: 'Drag to reorder subtask',
+      addGroupAbove: 'Add group above',
+      addGroupBelow: 'Add group below',
+      renameGroup: 'Rename',
+      deleteGroup: 'Delete group',
+      confirmAdd: 'Add',
+      confirmRename: 'Save',
+      deleteGroupTitle: 'Delete this group?',
+      deleteGroupMessage:
+        'Tasks in this group will move to Ungrouped and will not be deleted.',
       count: (count) => `${count} ${count === 1 ? 'task' : 'tasks'}`,
       expand: 'Expand group',
       collapse: 'Collapse group',
@@ -476,7 +480,6 @@ export const translations: Record<Language, Translation> = {
       title: 'Task details',
       titlePlaceholder: 'Task title',
       bodyPlaceholder: 'Add notes, code, or images…',
-      save: 'Save',
       close: 'Back',
       bold: 'Bold',
       italic: 'Italic',
@@ -493,11 +496,8 @@ export const translations: Record<Language, Translation> = {
       insertImage: 'Insert image',
       invalidImageUrl: 'Enter a valid http or https image URL.',
       emptyTitle: 'A task title is required.',
-      richContentHint: 'Rich text, images, and code blocks',
       previewTitle: 'Task preview',
-      readOnlyHint: 'Read-only preview. Restore the task to edit it.',
       resizePane: 'Resize task list and details',
-      savedLocally: 'Content is stored on this device',
     },
     taskMenu: {
       addSubtask: 'Add subtask',
@@ -508,9 +508,7 @@ export const translations: Record<Language, Translation> = {
     },
     trash: {
       title: 'Trash',
-      subtitle: 'Deleted tasks can be restored here',
       emptyTitle: 'Trash is empty',
-      emptyDescription: 'Removed tasks will be kept here temporarily.',
       restore: 'Restore',
       deleteForever: 'Delete forever',
       deleteForeverTitle: 'Delete task forever?',

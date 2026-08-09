@@ -1,4 +1,6 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import React, {
+  ComponentProps,
   useCallback,
   useEffect,
   useState,
@@ -33,6 +35,7 @@ import {
 } from './components/tasks/useTaskContextMenu';
 import { TodoProvider, useTodos } from './context/TodoContext';
 import { translations } from './i18n/translations';
+import { isRemoteAuthConfigured } from './services/authApi';
 import {
   loadSessionState,
   saveSessionState,
@@ -49,8 +52,10 @@ type AppView =
   | 'settings';
 type NavigationView = Exclude<AppView, 'settings'>;
 type SelectedTask = {
+  focusTitle: boolean;
   id: string;
   readOnly: boolean;
+  requestId: number;
 };
 
 const DESKTOP_NAV_WIDTH = 78;
@@ -58,55 +63,20 @@ const DIVIDER_WIDTH = 8;
 const MIN_LIST_WIDTH = 360;
 const MIN_DETAILS_WIDTH = 360;
 
-const NAV_ITEMS: Array<{ id: NavigationView; icon?: string }> = [
-  { id: 'search' },
-  { id: 'today', icon: '✓' },
-  { id: 'completed' },
-  { id: 'calendar', icon: '▦' },
-  { id: 'groups', icon: '≡' },
-  { id: 'trash', icon: '⌫' },
+const NAV_ITEMS: Array<{
+  id: NavigationView;
+  icon: ComponentProps<typeof Ionicons>['name'];
+}> = [
+  { id: 'search', icon: 'search-outline' },
+  { id: 'today', icon: 'sunny-outline' },
+  { id: 'completed', icon: 'checkmark-done-outline' },
+  { id: 'calendar', icon: 'calendar-outline' },
+  { id: 'groups', icon: 'albums-outline' },
+  { id: 'trash', icon: 'trash-outline' },
 ];
 
-const SearchNavigationIcon = ({ active }: { active: boolean }) => {
-  const color = active ? '#6759E8' : '#92939F';
-
-  return (
-    <View className="h-6 w-6">
-      <View
-        className="absolute left-0.5 top-0.5 h-[15px] w-[15px] rounded-[8px] border-2"
-        style={{ borderColor: color }}
-      />
-      <View
-        className="absolute h-0.5 w-2 rotate-45 rounded"
-        style={{ backgroundColor: color, bottom: 4, right: 1 }}
-      />
-    </View>
-  );
-};
-
-const CompletedNavigationIcon = ({ active }: { active: boolean }) => {
-  const color = active ? '#6759E8' : '#92939F';
-
-  return (
-    <View className="h-6 w-6">
-      <View
-        className="absolute left-0.5 top-1 h-4 w-[18px] rounded-[5px] border-2"
-        style={{ borderColor: color }}
-      />
-      <View
-        className="absolute h-0.5 w-2 -rotate-45 rounded"
-        style={{ backgroundColor: color, left: 7, top: 12 }}
-      />
-      <View
-        className="absolute h-0.5 w-1 rotate-45 rounded"
-        style={{ backgroundColor: color, left: 5, top: 13 }}
-      />
-    </View>
-  );
-};
-
 const AppContent = () => {
-  const [activeView, setActiveView] = useState<AppView>('today');
+  const [activeView, setActiveView] = useState<AppView>('groups');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
@@ -136,11 +106,25 @@ const AppContent = () => {
   const openTaskMenu = useCallback<OpenTaskMenu>((todoId, position) => {
     setTaskMenu({ todoId, position });
   }, []);
-  const openActiveTask = useCallback((id: string) => {
-    setSelectedTask({ id, readOnly: false });
-  }, []);
+  const openActiveTask = useCallback(
+    (id: string) => {
+      const todo = todos.find((item) => item.id === id);
+      setSelectedTask({
+        focusTitle: Boolean(todo?.parentId),
+        id,
+        readOnly: false,
+        requestId: Date.now(),
+      });
+    },
+    [todos],
+  );
   const openTrashedTask = useCallback((id: string) => {
-    setSelectedTask({ id, readOnly: true });
+    setSelectedTask({
+      focusTitle: false,
+      id,
+      readOnly: true,
+      requestId: Date.now(),
+    });
   }, []);
   const closeSelectedTask = useCallback(() => {
     setSelectedTask(null);
@@ -162,7 +146,7 @@ const AppContent = () => {
       })
       .catch(() => {
         if (active) {
-          setSignedIn(true);
+          setSignedIn(!isRemoteAuthConfigured);
         }
       });
 
@@ -223,7 +207,7 @@ const AppContent = () => {
 
   const continueSession = () => {
     setSignedIn(true);
-    setActiveView('today');
+    setActiveView('groups');
     void saveSessionState(true);
   };
 
@@ -238,7 +222,8 @@ const AppContent = () => {
   if (selectedTask && !usesDesktopLayout) {
     return (
       <TaskEditorScreen
-        key={selectedTask.id}
+        focusTitle={selectedTask.focusTitle}
+        key={`${selectedTask.id}-${selectedTask.requestId}`}
         onClose={closeSelectedTask}
         readOnly={selectedTask.readOnly}
         todoId={selectedTask.id}
@@ -296,6 +281,9 @@ const AppContent = () => {
               accessibilityRole="button"
               className="mb-7"
               onPress={() => setAccountMenuOpen((current) => !current)}
+              style={({ pressed }) =>
+                pressed ? styles.avatarPressed : undefined
+              }
             >
               <AccountAvatar active={activeView === 'settings'} />
             </Pressable>
@@ -312,19 +300,11 @@ const AppContent = () => {
                   key={item.id}
                   onPress={() => changeView(item.id)}
                 >
-                  {item.id === 'search' ? (
-                    <SearchNavigationIcon active={isActive} />
-                  ) : item.id === 'completed' ? (
-                    <CompletedNavigationIcon active={isActive} />
-                  ) : (
-                    <Text
-                      className={`text-[21px] font-extrabold ${
-                        isActive ? 'text-primary' : 'text-[#92939F]'
-                      }`}
-                    >
-                      {item.icon}
-                    </Text>
-                  )}
+                  <Ionicons
+                    color={isActive ? '#6759E8' : '#92939F'}
+                    name={item.icon}
+                    size={22}
+                  />
                   {item.id === 'trash' && trashedTodos.length > 0 ? (
                     <View className="absolute right-0 top-0 min-w-[17px] items-center rounded-[9px] bg-[#D85B6B] px-1 py-0.5">
                       <Text className="text-[8px] font-extrabold text-white">
@@ -361,19 +341,11 @@ const AppContent = () => {
                   key={item.id}
                   onPress={() => changeView(item.id)}
                 >
-                  {item.id === 'search' ? (
-                    <SearchNavigationIcon active={isActive} />
-                  ) : item.id === 'completed' ? (
-                    <CompletedNavigationIcon active={isActive} />
-                  ) : (
-                    <Text
-                      className={`text-[20px] font-extrabold ${
-                        isActive ? 'text-primary' : 'text-[#A3A3AF]'
-                      }`}
-                    >
-                      {item.icon}
-                    </Text>
-                  )}
+                  <Ionicons
+                    color={isActive ? '#6759E8' : '#A3A3AF'}
+                    name={item.icon}
+                    size={21}
+                  />
                   <Text
                     className={`mt-1 text-[10px] font-bold ${
                       isActive ? 'text-primary' : 'text-[#9596A3]'
@@ -401,7 +373,8 @@ const AppContent = () => {
           <View className="flex-1 bg-white">
             <TaskEditorScreen
               embedded
-              key={`${selectedTask.id}-${selectedTask.readOnly}`}
+              focusTitle={selectedTask.focusTitle}
+              key={`${selectedTask.id}-${selectedTask.requestId}`}
               onClose={closeSelectedTask}
               readOnly={selectedTask.readOnly}
               todoId={selectedTask.id}
@@ -435,6 +408,10 @@ const AppContent = () => {
 };
 
 const styles = StyleSheet.create({
+  avatarPressed: {
+    opacity: 0.78,
+    transform: [{ scale: 0.94 }],
+  },
   fullPane: {
     flex: 1,
   },

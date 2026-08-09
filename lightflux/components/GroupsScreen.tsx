@@ -1,5 +1,10 @@
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Keyboard,
   Pressable,
@@ -13,16 +18,99 @@ import {
 
 import { inputAccentProps } from '../config/input';
 import { useTodos } from '../context/TodoContext';
-import { translations } from '../i18n/translations';
+import { Translation, translations } from '../i18n/translations';
 import { Todo } from '../types/todo';
+import { requestConfirmation } from '../utils/confirm';
 import { todayKey } from '../utils/date';
+import GroupActionMenu from './groups/GroupActionMenu';
+import {
+  GroupMenuPosition,
+  OpenGroupMenu,
+  useGroupContextMenu,
+} from './groups/useGroupContextMenu';
 import TaskIndicators from './tasks/TaskIndicators';
+import DraggableSubtask from './tasks/DraggableSubtask';
+import ActionButton from './ui/ActionButton';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
 
 const UNGROUPED_ID = '__ungrouped__';
+
+interface GroupSection {
+  id: string;
+  name: string;
+  color: string;
+  sortOrder: number;
+  todos: Todo[];
+}
+
+const GroupHeader = ({
+  isExpanded,
+  labels,
+  onAddTask,
+  onOpenMenu,
+  onToggle,
+  section,
+}: {
+  isExpanded: boolean;
+  labels: Translation;
+  onAddTask: () => void;
+  onOpenMenu: OpenGroupMenu;
+  onToggle: () => void;
+  section: GroupSection;
+}) => {
+  const { targetRef, openFromLongPress } = useGroupContextMenu(
+    section.id,
+    onOpenMenu,
+  );
+  const longPressHandled = useRef(false);
+
+  return (
+    <View className="flex-row items-center px-4 py-4" ref={targetRef}>
+      <Pressable
+        accessibilityLabel={
+          isExpanded ? labels.groups.collapse : labels.groups.expand
+        }
+        accessibilityRole="button"
+        className="flex-1 flex-row items-center"
+        delayLongPress={350}
+        onLongPress={() => {
+          longPressHandled.current = true;
+          openFromLongPress();
+          setTimeout(() => {
+            longPressHandled.current = false;
+          }, 500);
+        }}
+        onPress={() => {
+          if (!longPressHandled.current) {
+            onToggle();
+          }
+        }}
+      >
+        <View
+          className="mr-3 h-3 w-3 rounded-[6px]"
+          style={{ backgroundColor: section.color }}
+        />
+        <Text className="text-[17px] font-extrabold text-[#292A3D]">
+          {isExpanded ? '⌄' : '›'} {section.name}
+        </Text>
+        <Text className="ml-2 text-xs font-semibold text-[#A0A1AC]">
+          {labels.groups.count(section.todos.length)}
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityLabel={`${labels.addTask}: ${section.name}`}
+        accessibilityRole="button"
+        className="h-9 w-9 items-center justify-center rounded-[13px] bg-[#F0EEFF]"
+        onPress={onAddTask}
+      >
+        <Text className="text-xl font-medium text-primary">＋</Text>
+      </Pressable>
+    </View>
+  );
+};
 
 const GroupTask = ({
   todo,
@@ -120,7 +208,10 @@ const GroupsScreen = ({
     todos,
     groups,
     addGroup,
+    deleteGroup,
     addTodo,
+    renameGroup,
+    reorderSubtask,
     toggleTodo,
   } = useTodos();
   const labels = translations[language];
@@ -130,22 +221,41 @@ const GroupsScreen = ({
   const [activeComposer, setActiveComposer] = useState<string | null>(null);
   const [taskDraft, setTaskDraft] = useState('');
   const [groupDraft, setGroupDraft] = useState('');
+  const [groupMenu, setGroupMenu] = useState<{
+    sectionId: string;
+    position?: GroupMenuPosition;
+  } | null>(null);
 
-  const sections = useMemo(
-    () => [
-      {
-        id: UNGROUPED_ID,
-        name: labels.groups.ungrouped,
-        color: '#9A97AD',
-        todos: todos.filter((todo) => todo.groupId === null),
-      },
-      ...groups.map((group) => ({
-        ...group,
-        todos: todos.filter((todo) => todo.groupId === group.id),
-      })),
-    ],
-    [groups, labels.groups.ungrouped, todos],
+  const sections = useMemo<GroupSection[]>(
+    () =>
+      [
+        {
+          id: UNGROUPED_ID,
+          name: labels.groups.ungrouped,
+          color: '#9A97AD',
+          sortOrder: 0,
+          todos: todos.filter((todo) => todo.groupId === null),
+        },
+        ...groups.map((group) => ({
+          ...group,
+          todos: todos.filter((todo) => todo.groupId === group.id),
+        })),
+      ].sort(
+        (a, b) =>
+          a.sortOrder - b.sortOrder ||
+          a.name.localeCompare(b.name, language === 'zh' ? 'zh-CN' : 'en-US'),
+      ),
+    [groups, labels.groups.ungrouped, language, todos],
   );
+  const openGroupMenu = useCallback<OpenGroupMenu>(
+    (sectionId, position) => {
+      setGroupMenu({ sectionId, position });
+    },
+    [],
+  );
+  const activeMenuSection = groupMenu
+    ? sections.find((section) => section.id === groupMenu.sectionId)
+    : undefined;
 
   const toggleGroup = (id: string) => {
     setExpanded((current) => ({ ...current, [id]: !current[id] }));
@@ -167,6 +277,7 @@ const GroupsScreen = ({
       groupId: sectionId === UNGROUPED_ID ? null : sectionId,
     });
     setTaskDraft('');
+    setActiveComposer(null);
     Keyboard.dismiss();
   };
 
@@ -180,6 +291,48 @@ const GroupsScreen = ({
     setGroupDraft('');
     setActiveComposer(id);
     Keyboard.dismiss();
+  };
+
+  const addGroupNear = (
+    name: string,
+    position: 'before' | 'after',
+  ) => {
+    if (!activeMenuSection) {
+      return;
+    }
+    const id = addGroup(name, {
+      anchorGroupId:
+        activeMenuSection.id === UNGROUPED_ID
+          ? null
+          : activeMenuSection.id,
+      position,
+    });
+    setExpanded((current) => ({ ...current, [id]: true }));
+  };
+
+  const deleteActiveGroup = () => {
+    if (!activeMenuSection || activeMenuSection.id === UNGROUPED_ID) {
+      return;
+    }
+    const groupId = activeMenuSection.id;
+    setGroupMenu(null);
+    requestConfirmation({
+      cancelText: labels.cancel,
+      confirmText: labels.groups.deleteGroup,
+      message: labels.groups.deleteGroupMessage,
+      onConfirm: () => {
+        deleteGroup(groupId);
+        setExpanded((current) => {
+          const next = { ...current };
+          delete next[groupId];
+          return next;
+        });
+        if (activeComposer === groupId) {
+          setActiveComposer(null);
+        }
+      },
+      title: labels.groups.deleteGroupTitle,
+    });
   };
 
   return (
@@ -196,9 +349,6 @@ const GroupsScreen = ({
             <View>
               <Text className="text-[24px] font-extrabold text-ink">
                 {labels.groups.title}
-              </Text>
-              <Text className="mt-1 text-xs text-[#858797]">
-                {labels.groups.tagline}
               </Text>
             </View>
           </View>
@@ -243,50 +393,30 @@ const GroupsScreen = ({
                 key={section.id}
                 style={styles.cardShadow}
               >
-                <View className="flex-row items-center px-4 py-4">
-                  <Pressable
-                    accessibilityLabel={
-                      isExpanded
-                        ? labels.groups.collapse
-                        : labels.groups.expand
-                    }
-                    accessibilityRole="button"
-                    className="flex-1 flex-row items-center"
-                    onPress={() => toggleGroup(section.id)}
-                  >
-                    <View
-                      className="mr-3 h-3 w-3 rounded-[6px]"
-                      style={{ backgroundColor: section.color }}
-                    />
-                    <Text className="text-[17px] font-extrabold text-[#292A3D]">
-                      {isExpanded ? '⌄' : '›'} {section.name}
-                    </Text>
-                    <Text className="ml-2 text-xs font-semibold text-[#A0A1AC]">
-                      {labels.groups.count(section.todos.length)}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`${labels.addTask}: ${section.name}`}
-                    accessibilityRole="button"
-                    className="h-9 w-9 items-center justify-center rounded-[13px] bg-[#F0EEFF]"
-                    onPress={() => openComposer(section.id)}
-                  >
-                    <Text className="text-xl font-medium text-primary">＋</Text>
-                  </Pressable>
-                </View>
+                <GroupHeader
+                  isExpanded={isExpanded}
+                  labels={labels}
+                  onAddTask={() => openComposer(section.id)}
+                  onOpenMenu={openGroupMenu}
+                  onToggle={() => toggleGroup(section.id)}
+                  section={section}
+                />
 
                 {isExpanded ? (
                   <View className="border-t border-[#ECEBF1] px-4 pb-2">
                     {activeComposer === section.id ? (
                       <View
-                        className="mt-3 flex-row rounded-[14px] border border-transparent bg-[#F5F4F9] p-1 pl-3"
+                        className="mb-3 mt-3 rounded-[14px] border border-[#E0DDEE] bg-[#F8F7FB] p-3"
                         nativeID={`group-task-composer-${section.id}`}
                       >
+                        <Text className="mb-2 text-[11px] font-bold text-[#777889]">
+                          {labels.groups.addTaskTitle}
+                        </Text>
                         <TextInput
                           {...inputAccentProps}
                           accessibilityLabel={labels.groups.taskPlaceholder}
                           autoFocus
-                          className="h-10 flex-1 text-[13px] text-[#303145]"
+                          className="h-11 rounded-[10px] border border-[#E3E1EA] bg-white px-3 text-[13px] text-[#303145]"
                           onChangeText={setTaskDraft}
                           onSubmitEditing={() => submitTask(section.id)}
                           placeholder={labels.groups.taskPlaceholder}
@@ -294,19 +424,22 @@ const GroupsScreen = ({
                           returnKeyType="done"
                           value={taskDraft}
                         />
-                        <Pressable
-                          accessibilityLabel={labels.addTask}
-                          accessibilityRole="button"
-                          className={`h-10 w-10 items-center justify-center rounded-xl ${
-                            taskDraft.trim()
-                              ? 'bg-primary'
-                              : 'bg-[#C9C6DD]'
-                          }`}
-                          disabled={!taskDraft.trim()}
-                          onPress={() => submitTask(section.id)}
-                        >
-                          <Text className="font-extrabold text-white">＋</Text>
-                        </Pressable>
+                        <View className="mt-2 flex-row justify-end">
+                          <ActionButton
+                            label={labels.groups.cancelTask}
+                            onPress={() => {
+                              setActiveComposer(null);
+                              setTaskDraft('');
+                            }}
+                            variant="ghost"
+                          />
+                          <View className="w-1" />
+                          <ActionButton
+                            disabled={!taskDraft.trim()}
+                            label={labels.addTask}
+                            onPress={() => submitTask(section.id)}
+                          />
+                        </View>
                       </View>
                     ) : null}
 
@@ -322,24 +455,47 @@ const GroupsScreen = ({
                         </Text>
                       </Pressable>
                     ) : (
-                      section.todos.map((todo) => (
-                        <GroupTask
-                          childCount={
-                            todos.filter((item) => item.parentId === todo.id)
-                              .length
-                          }
-                          editLabel={labels.editor.title}
-                          key={todo.id}
-                          language={language}
-                          markActive={labels.markActive}
-                          markComplete={labels.markComplete}
-                          onEdit={onEditTask}
-                          onOpenMenu={onOpenTaskMenu}
-                          onToggle={toggleTodo}
-                          selected={selectedTaskId === todo.id}
-                          todo={todo}
-                        />
-                      ))
+                      section.todos.map((todo) => {
+                        const row = (
+                          <GroupTask
+                            childCount={
+                              todos.filter((item) => item.parentId === todo.id)
+                                .length
+                            }
+                            editLabel={labels.editor.title}
+                            language={language}
+                            markActive={labels.markActive}
+                            markComplete={labels.markComplete}
+                            onEdit={onEditTask}
+                            onOpenMenu={onOpenTaskMenu}
+                            onToggle={toggleTodo}
+                            selected={selectedTaskId === todo.id}
+                            todo={todo}
+                          />
+                        );
+
+                        if (!todo.parentId) {
+                          return <React.Fragment key={todo.id}>{row}</React.Fragment>;
+                        }
+
+                        const siblings = section.todos.filter(
+                          (item) => item.parentId === todo.parentId,
+                        );
+                        return (
+                          <DraggableSubtask
+                            id={todo.id}
+                            index={siblings.findIndex(
+                              (item) => item.id === todo.id,
+                            )}
+                            key={todo.id}
+                            label={`${labels.groups.reorderSubtask}: ${todo.title}`}
+                            onMove={reorderSubtask}
+                            parentId={todo.parentId}
+                          >
+                            {row}
+                          </DraggableSubtask>
+                        );
+                      })
                     )}
                   </View>
                 ) : null}
@@ -348,6 +504,26 @@ const GroupsScreen = ({
           })}
         </ScrollView>
       </SafeAreaView>
+
+      {groupMenu && activeMenuSection ? (
+        <GroupActionMenu
+          groupId={
+            activeMenuSection.id === UNGROUPED_ID
+              ? null
+              : activeMenuSection.id
+          }
+          groupName={activeMenuSection.name}
+          onAdd={addGroupNear}
+          onClose={() => setGroupMenu(null)}
+          onDelete={deleteActiveGroup}
+          onRename={(name) => {
+            if (activeMenuSection.id !== UNGROUPED_ID) {
+              renameGroup(activeMenuSection.id, name);
+            }
+          }}
+          position={groupMenu.position}
+        />
+      ) : null}
     </View>
   );
 };

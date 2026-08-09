@@ -43,7 +43,7 @@ interface TodoContextValue {
   trashTodo: (id: string) => void;
   trashTodos: (ids: string[]) => void;
   restoreTodo: (id: string) => void;
-  reorderSubtask: (id: string, targetIndex: number) => void;
+  reorderTask: (id: string, targetIndex: number) => void;
   deleteTodoPermanently: (id: string) => void;
   emptyTrash: () => void;
   addGroup: (name: string, placement?: GroupPlacement) => string;
@@ -178,33 +178,53 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     setAllTodos((current) => {
-      const siblings = current.filter(
-        (item) =>
-          item.trashedAt === null &&
-          item.groupId === (todo.groupId ?? null) &&
-          item.parentId === (todo.parentId ?? null),
+      const timestamp = Date.now();
+      const newTodo: Todo = {
+        id: makeId(),
+        title,
+        completed: false,
+        completedAt: null,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+        scheduledDate: todo.scheduledDate,
+        groupId: todo.groupId ?? null,
+        parentId: todo.parentId ?? null,
+        sortOrder: 0,
+        trashedAt: null,
+        content: todo.content ?? emptyRichTextDocument(),
+      };
+      const siblings = current
+        .filter(
+          (item) =>
+            item.trashedAt === null &&
+            item.groupId === newTodo.groupId &&
+            item.parentId === newTodo.parentId,
+        )
+        .sort(byTodoOrder);
+      const anchorIndex = todo.insertAfterId
+        ? siblings.findIndex((item) => item.id === todo.insertAfterId)
+        : -1;
+      const insertIndex = anchorIndex >= 0 ? anchorIndex + 1 : 0;
+      const reordered = [...siblings];
+      reordered.splice(insertIndex, 0, newTodo);
+      const orderById = new Map(
+        reordered.map((item, index) => [item.id, index]),
       );
-      const sortOrder =
-        siblings.length > 0
-          ? Math.min(...siblings.map((item) => item.sortOrder)) - 1
-          : 0;
 
       return [
+        ...current.map((item) =>
+          orderById.has(item.id)
+            ? {
+                ...item,
+                sortOrder: orderById.get(item.id) ?? item.sortOrder,
+                updatedAt: timestamp,
+              }
+            : item,
+        ),
         {
-          id: makeId(),
-          title,
-          completed: false,
-          completedAt: null,
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-          scheduledDate: todo.scheduledDate,
-          groupId: todo.groupId ?? null,
-          parentId: todo.parentId ?? null,
-          sortOrder,
-          trashedAt: null,
-          content: todo.content ?? emptyRichTextDocument(),
+          ...newTodo,
+          sortOrder: orderById.get(newTodo.id) ?? 0,
         },
-        ...current,
       ];
     });
   }, []);
@@ -266,22 +286,21 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, []);
 
-  const reorderSubtask = useCallback((id: string, targetIndex: number) => {
+  const reorderTask = useCallback((id: string, targetIndex: number) => {
     setAllTodos((current) => {
       const dragged = current.find((todo) => todo.id === id);
-      if (!dragged?.parentId || dragged.trashedAt !== null) {
+      if (!dragged || dragged.trashedAt !== null) {
         return current;
       }
 
       const siblings = current
         .filter(
           (todo) =>
-            todo.parentId === dragged.parentId && todo.trashedAt === null,
+            todo.parentId === dragged.parentId &&
+            todo.groupId === dragged.groupId &&
+            todo.trashedAt === null,
         )
-        .sort(
-          (a, b) =>
-            a.sortOrder - b.sortOrder || b.createdAt - a.createdAt,
-        );
+        .sort(byTodoOrder);
       const sourceIndex = siblings.findIndex((todo) => todo.id === id);
       const boundedTarget = Math.max(
         0,
@@ -450,7 +469,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       trashTodo,
       trashTodos,
       restoreTodo,
-      reorderSubtask,
+      reorderTask,
       deleteTodoPermanently,
       emptyTrash,
       addGroup,
@@ -471,7 +490,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
       restoreTodo,
       renameGroup,
       reorderNavigationItem,
-      reorderSubtask,
+      reorderTask,
       trashTodo,
       trashTodos,
       todos,

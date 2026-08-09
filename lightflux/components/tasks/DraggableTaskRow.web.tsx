@@ -1,58 +1,71 @@
 import React, { useState } from 'react';
 
-interface DraggableSubtaskProps {
+interface DraggableTaskRowProps {
   children: React.ReactNode;
   id: string;
   index: number;
   label: string;
+  nested: boolean;
   onMove: (id: string, targetIndex: number) => void;
-  parentId: string;
+  scopeId: string;
 }
 
-const DRAG_TYPE = 'text/lightflux-subtask-id';
+const DRAG_TYPE = 'text/lightflux-task-id';
 
-const DraggableSubtask = ({
+const DraggableTaskRow = ({
   children,
   id,
   index,
   label,
+  nested,
   onMove,
-  parentId,
-}: DraggableSubtaskProps) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [isTarget, setIsTarget] = useState(false);
+  scopeId,
+}: DraggableTaskRowProps) => {
+  const [dragging, setDragging] = useState(false);
+  const [targeted, setTargeted] = useState(false);
 
   return (
     <div
       aria-label={label}
-      onDragEnter={() => setIsTarget(true)}
-      onDragLeave={() => setIsTarget(false)}
+      onDragEnter={() => setTargeted(true)}
+      onDragLeave={() => setTargeted(false)}
       onDragOver={(event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
       }}
       onDrop={(event) => {
         event.preventDefault();
-        const payload = event.dataTransfer.getData(DRAG_TYPE).split(':');
-        const [sourceParentId, sourceId] = payload;
-        setIsTarget(false);
-        if (sourceId && sourceParentId === parentId) {
-          onMove(sourceId, index);
+        try {
+          const rawPayload = event.dataTransfer.getData(DRAG_TYPE);
+          if (!rawPayload) {
+            return;
+          }
+          const payload = JSON.parse(rawPayload) as {
+            id?: string;
+            scopeId?: string;
+          };
+          if (payload.id && payload.scopeId === scopeId) {
+            onMove(payload.id, index);
+          }
+        } catch {
+          // Ignore unrelated or malformed drag payloads.
+        } finally {
+          setTargeted(false);
         }
       }}
       role="listitem"
       style={{
-        backgroundColor: isDragging ? '#F0EEFF' : 'transparent',
-        borderRadius: 9,
-        boxShadow: isDragging
+        backgroundColor: dragging ? '#F0EEFF' : 'transparent',
+        borderRadius: nested ? 9 : 12,
+        boxShadow: dragging
           ? '0 9px 22px rgba(58, 49, 120, 0.2)'
-          : isTarget
+          : targeted
             ? 'inset 0 2px 0 #8B7EFF'
             : 'none',
         marginBottom: 2,
-        opacity: isDragging ? 0.68 : 1,
+        opacity: dragging ? 0.68 : 1,
         position: 'relative',
-        transform: isDragging ? 'scale(1.012)' : 'scale(1)',
+        transform: dragging ? 'scale(1.012)' : 'scale(1)',
         transition:
           'background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease',
       }}
@@ -64,10 +77,13 @@ const DraggableSubtask = ({
           event.preventDefault();
           event.stopPropagation();
         }}
-        onDragEnd={() => setIsDragging(false)}
+        onDragEnd={() => setDragging(false)}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move';
-          event.dataTransfer.setData(DRAG_TYPE, `${parentId}:${id}`);
+          event.dataTransfer.setData(
+            DRAG_TYPE,
+            JSON.stringify({ id, scopeId }),
+          );
           const row = event.currentTarget.parentElement;
           if (row) {
             row.style.backgroundColor = '#F0EEFF';
@@ -80,23 +96,23 @@ const DraggableSubtask = ({
               bounds.height / 2,
             );
           }
-          setIsDragging(true);
+          setDragging(true);
         }}
         role="button"
         style={{
           alignItems: 'center',
           color: '#A3A2AD',
-          cursor: isDragging ? 'grabbing' : 'grab',
+          cursor: dragging ? 'grabbing' : 'grab',
           display: 'flex',
           fontSize: 12,
           height: 28,
           justifyContent: 'center',
-          left: 0,
+          left: nested ? 0 : -14,
           position: 'absolute',
           top: '50%',
           transform: 'translateY(-50%)',
           userSelect: 'none',
-          width: 22,
+          width: nested ? 22 : 14,
           zIndex: 2,
         }}
         tabIndex={0}
@@ -108,4 +124,4 @@ const DraggableSubtask = ({
   );
 };
 
-export default DraggableSubtask;
+export default DraggableTaskRow;

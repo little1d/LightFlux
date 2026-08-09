@@ -73,6 +73,7 @@ export interface NewTodo {
   scheduledDate: string;
   groupId?: string | null;
   parentId?: string | null;
+  insertAfterId?: string;
   content?: RichTextDocument;
 }
 

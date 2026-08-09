@@ -6,24 +6,25 @@ import {
   View,
 } from 'react-native';
 
-interface DraggableSubtaskProps {
+interface DraggableTaskRowProps {
   children: React.ReactNode;
   id: string;
   index: number;
   label: string;
+  nested: boolean;
   onMove: (id: string, targetIndex: number) => void;
-  parentId: string;
+  scopeId: string;
 }
 
-const ROW_HEIGHT = 42;
-
-const DraggableSubtask = ({
+const DraggableTaskRow = ({
   children,
   id,
   index,
   label,
+  nested,
   onMove,
-}: DraggableSubtaskProps) => {
+}: DraggableTaskRowProps) => {
+  const rowStep = nested ? 42 : 52;
   const [dragOffset, setDragOffset] = useState(0);
   const latestOffset = useRef(0);
   latestOffset.current = dragOffset;
@@ -37,14 +38,14 @@ const DraggableSubtask = ({
         onPanResponderMove: (_, gesture) => setDragOffset(gesture.dy),
         onPanResponderRelease: () => {
           const targetIndex =
-            index + Math.round(latestOffset.current / ROW_HEIGHT);
+            index + Math.round(latestOffset.current / rowStep);
           setDragOffset(0);
           onMove(id, targetIndex);
         },
         onPanResponderTerminate: () => setDragOffset(0),
         onStartShouldSetPanResponder: () => true,
       }),
-    [id, index, onMove],
+    [id, index, onMove, rowStep],
   );
 
   return (
@@ -54,6 +55,7 @@ const DraggableSubtask = ({
         styles.container,
         dragOffset !== 0 && styles.dragging,
         {
+          borderRadius: nested ? 9 : 12,
           transform: [
             { translateY: dragOffset },
             { scale: dragOffset !== 0 ? 1.012 : 1 },
@@ -65,7 +67,13 @@ const DraggableSubtask = ({
         {...responder.panHandlers}
         accessibilityLabel={label}
         accessibilityRole="adjustable"
-        style={styles.handle}
+        style={[
+          styles.handle,
+          {
+            left: nested ? 0 : -14,
+            width: nested ? 22 : 14,
+          },
+        ]}
       >
         <Text style={styles.handleText}>⠿</Text>
       </View>
@@ -76,7 +84,6 @@ const DraggableSubtask = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 9,
     marginBottom: 2,
     position: 'relative',
     zIndex: 0,
@@ -95,10 +102,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 28,
     justifyContent: 'center',
-    left: 0,
     position: 'absolute',
-    top: 6,
-    width: 22,
+    top: 7,
     zIndex: 2,
   },
   handleText: {
@@ -107,4 +112,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DraggableSubtask;
+export default DraggableTaskRow;

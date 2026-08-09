@@ -32,9 +32,9 @@ import {
   OpenGroupMenu,
   useGroupContextMenu,
 } from './groups/useGroupContextMenu';
+import DraggableTaskRow from './tasks/DraggableTaskRow';
 import TaskIndicators from './tasks/TaskIndicators';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
-import DraggableSubtask from './tasks/DraggableSubtask';
 import ActionButton from './ui/ActionButton';
 import Toast from './ui/Toast';
 import {
@@ -51,6 +51,34 @@ interface GroupSection {
   sortOrder: number;
   todos: Todo[];
 }
+
+interface InlineComposerState {
+  anchorId: string;
+  groupId: string | null;
+  parentId: string | null;
+  renderAfterId: string;
+  scheduledDate: string;
+}
+
+const familyTailId = (todos: Todo[], rootId: string): string => {
+  const rootIndex = todos.findIndex((todo) => todo.id === rootId);
+  if (rootIndex < 0) {
+    return rootId;
+  }
+
+  const familyIds = new Set([rootId]);
+  let tailId = rootId;
+  for (let index = rootIndex + 1; index < todos.length; index += 1) {
+    const candidate = todos[index];
+    if (candidate.parentId && familyIds.has(candidate.parentId)) {
+      familyIds.add(candidate.id);
+      tailId = candidate.id;
+      continue;
+    }
+    break;
+  }
+  return tailId;
+};
 
 const CollapsibleGroupBody = ({
   children,
@@ -212,11 +240,13 @@ const GroupHeader = ({
 
 const InlineSubtaskTitle = ({
   editLabel,
+  onCreateNext,
   onOpenDetails,
   onRename,
   todo,
 }: {
   editLabel: string;
+  onCreateNext: () => void;
   onOpenDetails: () => void;
   onRename: (title: string) => void;
   todo: Todo;
@@ -271,12 +301,59 @@ const InlineSubtaskTitle = ({
         openDetails();
       }}
       onPressIn={() => requestAnimationFrame(openDetails)}
-      onSubmitEditing={commit}
+      onSubmitEditing={() => {
+        commit();
+        requestAnimationFrame(onCreateNext);
+      }}
       returnKeyType="done"
       value={draft}
     />
   );
 };
+
+const InlineTaskComposer = ({
+  draft,
+  nested,
+  onCancel,
+  onChange,
+  onSubmit,
+  placeholder,
+}: {
+  draft: string;
+  nested: boolean;
+  onCancel: () => void;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  placeholder: string;
+}) => (
+  <View
+    className={`${nested ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} my-0.5 flex-row items-center rounded-[10px] border border-[#DDD9F0] bg-[#F8F7FF] px-2`}
+    nativeID="inline-task-composer"
+  >
+    {nested ? (
+      <Text className="mr-1.5 text-[12px] text-[#9D9AAB]">↳</Text>
+    ) : null}
+    <View className="h-5 w-5 rounded-[7px] border-[1.5px] border-[#C5C2D4]" />
+    <TextInput
+      {...inputAccentProps}
+      accessibilityLabel={placeholder}
+      autoFocus
+      className="ml-3 h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold text-[#303145]"
+      maxLength={160}
+      onChangeText={onChange}
+      onKeyPress={(event) => {
+        if (event.nativeEvent.key === 'Escape') {
+          onCancel();
+        }
+      }}
+      onSubmitEditing={onSubmit}
+      placeholder={placeholder}
+      placeholderTextColor="#9A98A8"
+      returnKeyType="done"
+      value={draft}
+    />
+  </View>
+);
 
 const GroupTask = ({
   todo,
@@ -284,6 +361,7 @@ const GroupTask = ({
   markActive,
   markComplete,
   editLabel,
+  onCreateNext,
   onEdit,
   onOpenMenu,
   onRename,
@@ -296,6 +374,7 @@ const GroupTask = ({
   markActive: string;
   markComplete: string;
   editLabel: string;
+  onCreateNext: () => void;
   onEdit: (id: string) => void;
   onOpenMenu: OpenTaskMenu;
   onRename: (id: string, title: string) => void;
@@ -341,6 +420,7 @@ const GroupTask = ({
       {todo.parentId ? (
         <InlineSubtaskTitle
           editLabel={editLabel}
+          onCreateNext={onCreateNext}
           onOpenDetails={() => onEdit(todo.id)}
           onRename={(title) => onRename(todo.id, title)}
           todo={todo}
@@ -394,7 +474,7 @@ const GroupsScreen = ({
     deleteGroup,
     addTodo,
     renameGroup,
-    reorderSubtask,
+    reorderTask,
     toggleTodo,
     updateTodo,
   } = useTodos();
@@ -404,6 +484,9 @@ const GroupsScreen = ({
   });
   const [activeComposer, setActiveComposer] = useState<string | null>(null);
   const [taskDraft, setTaskDraft] = useState('');
+  const [inlineDraft, setInlineDraft] = useState('');
+  const [inlineComposer, setInlineComposer] =
+    useState<InlineComposerState | null>(null);
   const [groupDraft, setGroupDraft] = useState('');
   const [groupMenu, setGroupMenu] = useState<{
     sectionId: string;
@@ -444,15 +527,36 @@ const GroupsScreen = ({
   const activeMenuSection = groupMenu
     ? sections.find((section) => section.id === groupMenu.sectionId)
     : undefined;
-  const moveSubtask = useCallback(
+  const openInlineComposer = useCallback(
+    (todo: Todo) => {
+      const sectionId = todo.groupId ?? UNGROUPED_ID;
+      const section = sections.find((item) => item.id === sectionId);
+      setExpanded((current) => ({ ...current, [sectionId]: true }));
+      setActiveComposer(null);
+      setInlineDraft('');
+      setInlineComposer({
+        anchorId: todo.id,
+        groupId: todo.groupId,
+        parentId: todo.parentId,
+        renderAfterId: section
+          ? familyTailId(section.todos, todo.id)
+          : todo.id,
+        scheduledDate: todo.scheduledDate,
+      });
+    },
+    [sections],
+  );
+  const moveTask = useCallback(
     (id: string, targetIndex: number) => {
       const dragged = todos.find((todo) => todo.id === id);
-      if (!dragged?.parentId) {
+      if (!dragged) {
         return;
       }
 
       const siblings = todos.filter(
-        (todo) => todo.parentId === dragged.parentId,
+        (todo) =>
+          todo.parentId === dragged.parentId &&
+          todo.groupId === dragged.groupId,
       );
       const sourceIndex = siblings.findIndex((todo) => todo.id === id);
       const boundedTarget = Math.max(
@@ -463,14 +567,51 @@ const GroupsScreen = ({
         return;
       }
 
-      reorderSubtask(id, boundedTarget);
+      reorderTask(id, boundedTarget);
       setToast({
         id: Date.now(),
         message: labels.notifications.orderUpdated,
       });
     },
-    [labels.notifications.orderUpdated, reorderSubtask, todos],
+    [labels.notifications.orderUpdated, reorderTask, todos],
   );
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return undefined;
+    }
+
+    const createAfterSelection = (event: KeyboardEvent) => {
+      if (
+        inlineComposer ||
+        event.key !== 'Enter' ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.shiftKey
+      ) {
+        return;
+      }
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.matches('input, textarea, select') ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      const selectedTodo = todos.find((todo) => todo.id === selectedTaskId);
+      if (!selectedTodo) {
+        return;
+      }
+
+      event.preventDefault();
+      openInlineComposer(selectedTodo);
+    };
+
+    document.addEventListener('keydown', createAfterSelection);
+    return () =>
+      document.removeEventListener('keydown', createAfterSelection);
+  }, [inlineComposer, openInlineComposer, selectedTaskId, todos]);
 
   const toggleGroup = (id: string) => {
     setExpanded((current) => ({ ...current, [id]: !current[id] }));
@@ -478,6 +619,8 @@ const GroupsScreen = ({
 
   const openComposer = (id: string) => {
     setExpanded((current) => ({ ...current, [id]: true }));
+    setInlineComposer(null);
+    setInlineDraft('');
     setActiveComposer(id);
     setTaskDraft('');
   };
@@ -493,6 +636,24 @@ const GroupsScreen = ({
     });
     setTaskDraft('');
     setActiveComposer(null);
+    Keyboard.dismiss();
+  };
+
+  const submitInlineTask = () => {
+    const title = inlineDraft.trim();
+    if (!title || !inlineComposer) {
+      return;
+    }
+
+    addTodo({
+      title,
+      scheduledDate: inlineComposer.scheduledDate,
+      groupId: inlineComposer.groupId,
+      parentId: inlineComposer.parentId,
+      insertAfterId: inlineComposer.anchorId,
+    });
+    setInlineDraft('');
+    setInlineComposer(null);
     Keyboard.dismiss();
   };
 
@@ -671,6 +832,10 @@ const GroupsScreen = ({
                       </Pressable>
                     ) : (
                       section.todos.map((todo) => {
+                        const nested = Boolean(todo.parentId);
+                        const siblings = section.todos.filter(
+                          (item) => item.parentId === todo.parentId,
+                        );
                         const row = (
                           <GroupTask
                             childCount={
@@ -681,6 +846,7 @@ const GroupsScreen = ({
                             language={language}
                             markActive={labels.markActive}
                             markComplete={labels.markComplete}
+                            onCreateNext={() => openInlineComposer(todo)}
                             onEdit={onEditTask}
                             onOpenMenu={onOpenTaskMenu}
                             onRename={(id, title) =>
@@ -691,31 +857,42 @@ const GroupsScreen = ({
                             todo={todo}
                           />
                         );
-
-                        if (!todo.parentId) {
-                          return (
-                            <React.Fragment key={todo.id}>
-                              {row}
-                            </React.Fragment>
-                          );
-                        }
-
-                        const siblings = section.todos.filter(
-                          (item) => item.parentId === todo.parentId,
-                        );
                         return (
-                          <DraggableSubtask
-                            id={todo.id}
-                            index={siblings.findIndex(
-                              (item) => item.id === todo.id,
-                            )}
-                            key={todo.id}
-                            label={`${labels.groups.reorderSubtask}: ${todo.title}`}
-                            onMove={moveSubtask}
-                            parentId={todo.parentId}
-                          >
-                            {row}
-                          </DraggableSubtask>
+                          <React.Fragment key={todo.id}>
+                            <DraggableTaskRow
+                              id={todo.id}
+                              index={siblings.findIndex(
+                                (item) => item.id === todo.id,
+                              )}
+                              label={`${labels.groups.reorderTask}: ${todo.title}`}
+                              nested={nested}
+                              onMove={moveTask}
+                              scopeId={
+                                todo.parentId
+                                  ? `parent:${todo.parentId}`
+                                  : `group:${section.id}:root`
+                              }
+                            >
+                              {row}
+                            </DraggableTaskRow>
+                            {inlineComposer?.renderAfterId === todo.id ? (
+                              <InlineTaskComposer
+                                draft={inlineDraft}
+                                nested={Boolean(inlineComposer.parentId)}
+                                onCancel={() => {
+                                  setInlineComposer(null);
+                                  setInlineDraft('');
+                                }}
+                                onChange={setInlineDraft}
+                                onSubmit={submitInlineTask}
+                                placeholder={
+                                  inlineComposer.parentId
+                                    ? labels.taskMenu.subtaskPlaceholder
+                                    : labels.groups.taskPlaceholder
+                                }
+                              />
+                            ) : null}
+                          </React.Fragment>
                         );
                       })
                     )}

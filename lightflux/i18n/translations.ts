@@ -109,7 +109,7 @@ export interface Translation {
     taskPlaceholder: string;
     addTaskTitle: string;
     cancelTask: string;
-    reorderSubtask: string;
+    reorderTask: string;
     addGroupAbove: string;
     addGroupBelow: string;
     renameGroup: string;
@@ -290,7 +290,7 @@ export const translations: Record<Language, Translation> = {
       taskPlaceholder: '添加任务到此分组…',
       addTaskTitle: '添加主任务',
       cancelTask: '取消',
-      reorderSubtask: '拖拽排序子任务',
+      reorderTask: '拖拽排序任务',
       addGroupAbove: '在上方添加分组',
       addGroupBelow: '在下方添加分组',
       renameGroup: '重命名',
@@ -473,7 +473,7 @@ export const translations: Record<Language, Translation> = {
       taskPlaceholder: 'Add a task to this group…',
       addTaskTitle: 'Add main task',
       cancelTask: 'Cancel',
-      reorderSubtask: 'Drag to reorder subtask',
+      reorderTask: 'Drag to reorder task',
       addGroupAbove: 'Add group above',
       addGroupBelow: 'Add group below',
       renameGroup: 'Rename',

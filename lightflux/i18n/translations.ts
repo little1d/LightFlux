@@ -66,6 +66,9 @@ export interface Translation {
     wechat: string;
     wechatError: string;
   };
+  notifications: {
+    orderUpdated: string;
+  };
   overview: string;
   remaining: string;
   taskUnit: string;
@@ -230,6 +233,9 @@ export const translations: Record<Language, Translation> = {
       continue: '重新进入 LightFlux',
       wechat: '微信登录 / 注册',
       wechatError: '暂时无法启动微信登录，请检查认证服务配置。',
+    },
+    notifications: {
+      orderUpdated: '顺序已更新',
     },
     overview: '今日概览',
     remaining: '待完成',
@@ -406,6 +412,9 @@ export const translations: Record<Language, Translation> = {
       continue: 'Return to LightFlux',
       wechat: 'Continue with WeChat',
       wechatError: 'Unable to start WeChat login. Check the auth service configuration.',
+    },
+    notifications: {
+      orderUpdated: 'Order updated.',
     },
     overview: 'TODAY AT A GLANCE',
     remaining: 'Remaining',

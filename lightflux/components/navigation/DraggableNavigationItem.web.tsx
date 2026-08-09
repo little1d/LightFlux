@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 import { NavigationItemId } from '../../types/todo';
 
@@ -21,6 +21,14 @@ const DraggableNavigationItem = ({
 }: DraggableNavigationItemProps) => {
   const [dragging, setDragging] = useState(false);
   const [targeted, setTargeted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const tab = containerRef.current?.querySelector<HTMLElement>('[role="tab"]');
+    if (tab) {
+      tab.style.cursor = dragging ? 'grabbing' : 'grab';
+    }
+  }, [dragging]);
 
   return (
     <div
@@ -39,6 +47,16 @@ const DraggableNavigationItem = ({
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData(DRAG_TYPE, id);
+        event.currentTarget.style.backgroundColor = '#ECE9FF';
+        event.currentTarget.style.boxShadow =
+          '0 10px 24px rgba(58, 49, 120, 0.24)';
+        event.currentTarget.style.transform = 'scale(1.06)';
+        const bounds = event.currentTarget.getBoundingClientRect();
+        event.dataTransfer.setDragImage(
+          event.currentTarget,
+          bounds.width / 2,
+          bounds.height / 2,
+        );
         setDragging(true);
       }}
       onDrop={(event) => {
@@ -51,12 +69,25 @@ const DraggableNavigationItem = ({
           onMove(sourceId, index);
         }
       }}
+      ref={containerRef}
       role="listitem"
       style={{
+        alignItems: 'center',
+        backgroundColor: dragging ? '#ECE9FF' : 'transparent',
         borderRadius: 15,
-        boxShadow: targeted ? 'inset 0 2px 0 #8B7EFF' : 'none',
+        boxShadow: dragging
+          ? '0 10px 24px rgba(58, 49, 120, 0.24)'
+          : targeted
+            ? 'inset 0 0 0 2px #8B7EFF'
+            : 'none',
         cursor: dragging ? 'grabbing' : 'grab',
+        display: 'inline-flex',
+        justifyContent: 'center',
+        marginBottom: 12,
         opacity: dragging ? 0.52 : 1,
+        transform: dragging ? 'scale(1.06)' : 'scale(1)',
+        transition:
+          'background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease',
       }}
       tabIndex={0}
     >

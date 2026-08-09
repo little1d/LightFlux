@@ -42,10 +42,19 @@ const DraggableSubtask = ({
       }}
       role="listitem"
       style={{
-        boxShadow: isTarget ? 'inset 0 2px 0 #8B7EFF' : 'none',
+        backgroundColor: isDragging ? '#F0EEFF' : 'transparent',
+        borderRadius: 9,
+        boxShadow: isDragging
+          ? '0 9px 22px rgba(58, 49, 120, 0.2)'
+          : isTarget
+            ? 'inset 0 2px 0 #8B7EFF'
+            : 'none',
         marginBottom: 2,
-        opacity: isDragging ? 0.48 : 1,
+        opacity: isDragging ? 0.68 : 1,
         position: 'relative',
+        transform: isDragging ? 'scale(1.012)' : 'scale(1)',
+        transition:
+          'background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease',
       }}
     >
       <div
@@ -59,13 +68,25 @@ const DraggableSubtask = ({
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move';
           event.dataTransfer.setData(DRAG_TYPE, `${parentId}:${id}`);
+          const row = event.currentTarget.parentElement;
+          if (row) {
+            row.style.backgroundColor = '#F0EEFF';
+            row.style.boxShadow = '0 9px 22px rgba(58, 49, 120, 0.2)';
+            row.style.transform = 'scale(1.012)';
+            const bounds = row.getBoundingClientRect();
+            event.dataTransfer.setDragImage(
+              row,
+              bounds.width / 2,
+              bounds.height / 2,
+            );
+          }
           setIsDragging(true);
         }}
         role="button"
         style={{
           alignItems: 'center',
           color: '#A3A2AD',
-          cursor: 'grab',
+          cursor: isDragging ? 'grabbing' : 'grab',
           display: 'flex',
           fontSize: 12,
           height: 28,

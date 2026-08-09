@@ -36,6 +36,7 @@ import TaskIndicators from './tasks/TaskIndicators';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import DraggableSubtask from './tasks/DraggableSubtask';
 import ActionButton from './ui/ActionButton';
+import Toast from './ui/Toast';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -253,7 +254,7 @@ const InlineSubtaskTitle = ({
     <TextInput
       {...inputAccentProps}
       accessibilityLabel={`${editLabel}: ${todo.title}`}
-      className={`ml-2 h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
+      className={`ml-3 h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
         todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
       }`}
       maxLength={160}
@@ -309,12 +310,12 @@ const GroupTask = ({
 
   return (
     <View
-      className={`${todo.parentId ? 'ml-6 min-h-[40px] px-2' : 'min-h-[42px] px-1.5'} flex-row items-center border-b border-[#ECECF1] ${
+      className={`${todo.parentId ? 'ml-6 min-h-[40px] px-2' : 'min-h-[48px] px-2'} my-0.5 flex-row items-center border-b ${
         selected
           ? todo.parentId
-            ? 'bg-[#F6F4FF]'
-            : 'rounded-[10px] bg-[#EEECFF]'
-          : ''
+            ? 'rounded-[8px] border-transparent bg-[#F6F4FF]'
+            : 'rounded-[12px] border-transparent bg-[#EEECFF]'
+          : 'border-[#ECECF1]'
       }`}
       ref={targetRef}
     >
@@ -348,7 +349,7 @@ const GroupTask = ({
         <Pressable
           accessibilityLabel={`${editLabel}: ${todo.title}`}
           accessibilityRole="button"
-          className="ml-2.5 flex-1 py-1.5"
+          className="ml-3 flex-1 py-2"
           delayLongPress={350}
           onLongPress={openFromLongPress}
           onPress={() => onEdit(todo.id)}
@@ -366,7 +367,7 @@ const GroupTask = ({
       <Pressable
         accessibilityLabel={translations[language].taskMenu.moreActions}
         accessibilityRole="button"
-        className="h-7 w-7 items-center justify-center rounded-[10px]"
+        className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
         onPress={openFromButton}
       >
         <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
@@ -408,6 +409,10 @@ const GroupsScreen = ({
     sectionId: string;
     position?: GroupMenuPosition;
   } | null>(null);
+  const [toast, setToast] = useState<{
+    id: number;
+    message: string;
+  } | null>(null);
 
   const sections = useMemo<GroupSection[]>(
     () =>
@@ -439,6 +444,33 @@ const GroupsScreen = ({
   const activeMenuSection = groupMenu
     ? sections.find((section) => section.id === groupMenu.sectionId)
     : undefined;
+  const moveSubtask = useCallback(
+    (id: string, targetIndex: number) => {
+      const dragged = todos.find((todo) => todo.id === id);
+      if (!dragged?.parentId) {
+        return;
+      }
+
+      const siblings = todos.filter(
+        (todo) => todo.parentId === dragged.parentId,
+      );
+      const sourceIndex = siblings.findIndex((todo) => todo.id === id);
+      const boundedTarget = Math.max(
+        0,
+        Math.min(targetIndex, siblings.length - 1),
+      );
+      if (sourceIndex < 0 || sourceIndex === boundedTarget) {
+        return;
+      }
+
+      reorderSubtask(id, boundedTarget);
+      setToast({
+        id: Date.now(),
+        message: labels.notifications.orderUpdated,
+      });
+    },
+    [labels.notifications.orderUpdated, reorderSubtask, todos],
+  );
 
   const toggleGroup = (id: string) => {
     setExpanded((current) => ({ ...current, [id]: !current[id] }));
@@ -586,7 +618,7 @@ const GroupsScreen = ({
                 />
 
                 <CollapsibleGroupBody expanded={isExpanded}>
-                  <View className="border-t border-[#ECEBF1] px-4 pb-2">
+                  <View className="border-t border-[#ECEBF1] px-4 py-1.5">
                     {activeComposer === section.id ? (
                       <View
                         className="mb-3 mt-3 rounded-[14px] border border-[#E0DDEE] bg-[#F8F7FB] p-3"
@@ -679,7 +711,7 @@ const GroupsScreen = ({
                             )}
                             key={todo.id}
                             label={`${labels.groups.reorderSubtask}: ${todo.title}`}
-                            onMove={reorderSubtask}
+                            onMove={moveSubtask}
                             parentId={todo.parentId}
                           >
                             {row}
@@ -715,6 +747,14 @@ const GroupsScreen = ({
             );
           }}
           position={groupMenu.position}
+        />
+      ) : null}
+
+      {toast ? (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          onDismiss={() => setToast(null)}
         />
       ) : null}
     </View>

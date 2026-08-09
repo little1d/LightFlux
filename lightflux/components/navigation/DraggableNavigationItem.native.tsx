@@ -54,7 +54,12 @@ const DraggableNavigationItem = ({
       style={[
         styles.container,
         offset !== 0 && styles.dragging,
-        { transform: [{ translateY: offset }] },
+        {
+          transform: [
+            { translateY: offset },
+            { scale: offset !== 0 ? 1.06 : 1 },
+          ],
+        },
       ]}
     >
       {children}
@@ -64,10 +69,19 @@ const DraggableNavigationItem = ({
 
 const styles = StyleSheet.create({
   container: {
+    alignSelf: 'center',
+    borderRadius: 15,
+    marginBottom: 12,
     zIndex: 0,
   },
   dragging: {
-    opacity: 0.55,
+    backgroundColor: '#ECE9FF',
+    elevation: 8,
+    opacity: 0.68,
+    shadowColor: '#3A3178',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.24,
+    shadowRadius: 16,
     zIndex: 10,
   },
 });

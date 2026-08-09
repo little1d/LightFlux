@@ -53,7 +53,12 @@ const DraggableSubtask = ({
       style={[
         styles.container,
         dragOffset !== 0 && styles.dragging,
-        { transform: [{ translateY: dragOffset }] },
+        {
+          transform: [
+            { translateY: dragOffset },
+            { scale: dragOffset !== 0 ? 1.012 : 1 },
+          ],
+        },
       ]}
     >
       <View
@@ -71,12 +76,19 @@ const DraggableSubtask = ({
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: 9,
     marginBottom: 2,
     position: 'relative',
     zIndex: 0,
   },
   dragging: {
-    opacity: 0.55,
+    backgroundColor: '#F0EEFF',
+    elevation: 7,
+    opacity: 0.7,
+    shadowColor: '#3A3178',
+    shadowOffset: { height: 7, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
     zIndex: 10,
   },
   handle: {

@@ -34,6 +34,7 @@ import {
   OpenTaskMenu,
   TaskMenuPosition,
 } from './components/tasks/useTaskContextMenu';
+import Toast from './components/ui/Toast';
 import { TodoProvider, useTodos } from './context/TodoContext';
 import { translations } from './i18n/translations';
 import { isRemoteAuthConfigured } from './services/authApi';
@@ -50,6 +51,10 @@ type SelectedTask = {
   id: string;
   readOnly: boolean;
   requestId: number;
+};
+type ToastMessage = {
+  id: number;
+  message: string;
 };
 
 const DESKTOP_NAV_WIDTH = 78;
@@ -75,6 +80,7 @@ const AppContent = () => {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [taskMenu, setTaskMenu] = useState<{
     todoId: string;
     position?: TaskMenuPosition;
@@ -106,6 +112,29 @@ const AppContent = () => {
     id,
     icon: NAV_ICONS[id],
   }));
+  const moveNavigationItem = useCallback(
+    (id: NavigationItemId, targetIndex: number) => {
+      const sourceIndex = navigationOrder.indexOf(id);
+      const boundedTarget = Math.max(
+        0,
+        Math.min(targetIndex, navigationOrder.length - 1),
+      );
+      if (sourceIndex < 0 || sourceIndex === boundedTarget) {
+        return;
+      }
+
+      reorderNavigationItem(id, boundedTarget);
+      setToast({
+        id: Date.now(),
+        message: labels.notifications.orderUpdated,
+      });
+    },
+    [
+      labels.notifications.orderUpdated,
+      navigationOrder,
+      reorderNavigationItem,
+    ],
+  );
 
   const openTaskMenu = useCallback<OpenTaskMenu>((todoId, position) => {
     setTaskMenu({ todoId, position });
@@ -292,13 +321,13 @@ const AppContent = () => {
                   index={index}
                   key={item.id}
                   label={labels.navigation[item.id]}
-                  onMove={reorderNavigationItem}
+                  onMove={moveNavigationItem}
                 >
                   <Pressable
                     accessibilityLabel={labels.navigation[item.id]}
                     accessibilityRole="tab"
                     accessibilityState={{ selected: isActive }}
-                    className={`mb-3 h-12 w-12 items-center justify-center rounded-[15px] ${
+                    className={`h-12 w-12 items-center justify-center rounded-[15px] ${
                       isActive ? 'bg-[#E8E5FF]' : 'bg-transparent'
                     }`}
                     onPress={() => changeView(item.id)}
@@ -404,6 +433,14 @@ const AppContent = () => {
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
           onSignOut={signOut}
+        />
+      ) : null}
+
+      {toast ? (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          onDismiss={() => setToast(null)}
         />
       ) : null}
     </View>

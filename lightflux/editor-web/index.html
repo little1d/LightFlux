@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+    />
+    <title>LightFlux Editor</title>
+    <style>
+      body {
+        background: #ffffff;
+        margin: 0;
+        padding: 0;
+      }
+
+      #root > div:first-of-type {
+        bottom: 0;
+        height: 100%;
+        overflow: auto;
+        position: absolute;
+        top: 0;
+        width: 100%;
+      }
+
+      #root div .ProseMirror {
+        box-sizing: border-box;
+        color: #303145;
+        font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        min-height: 100%;
+        outline: none;
+        overflow: visible;
+        padding: 20px;
+      }
+
+      .ProseMirror blockquote {
+        border-left: 3px solid #8b7eff;
+        color: #696b7d;
+        margin-left: 0;
+        padding-left: 14px;
+      }
+
+      .ProseMirror img {
+        border-radius: 14px;
+        height: auto;
+        max-width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

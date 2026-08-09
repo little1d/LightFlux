@@ -63,7 +63,6 @@ const TaskPriorityIndicator = ({
   const theme = TASK_PRIORITY_THEME[priority];
   return (
     <View
-      pointerEvents="none"
       style={[
         styles.indicator,
         { backgroundColor: theme.softBackground },
@@ -81,6 +80,7 @@ const styles = StyleSheet.create({
     height: 22,
     justifyContent: 'center',
     marginLeft: 6,
+    pointerEvents: 'none',
     width: 22,
   },
 });

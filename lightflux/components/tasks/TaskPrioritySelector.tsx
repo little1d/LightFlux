@@ -30,6 +30,7 @@ const PriorityOption = ({
       accessibilityLabel={label}
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
+      aria-checked={selected}
       nativeID={`priority-option-${priority}`}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}

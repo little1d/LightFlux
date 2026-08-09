@@ -34,7 +34,12 @@ import {
 } from './groups/useGroupContextMenu';
 import DraggableTaskRow from './tasks/DraggableTaskRow';
 import TaskIndicators from './tasks/TaskIndicators';
-import TaskSelectionMarker from './tasks/TaskSelectionMarker';
+import TaskPriorityIndicator, {
+  TASK_PRIORITY_THEME,
+} from './tasks/TaskPriorityIndicator';
+import TaskSelectionMarker, {
+  TASK_SELECTED_ROW_STYLE,
+} from './tasks/TaskSelectionMarker';
 import ActionButton from './ui/ActionButton';
 import Toast from './ui/Toast';
 import {
@@ -291,6 +296,7 @@ const InlineSubtaskTitle = ({
       nativeID={`subtask-title-${todo.id}`}
       onBlur={commit}
       onChangeText={(value) => {
+        openDetails();
         setDraft(value);
         if (value.trim()) {
           onRename(value);
@@ -300,6 +306,7 @@ const InlineSubtaskTitle = ({
         setFocused(true);
         openDetails();
       }}
+      onPointerDown={openDetails}
       onPressIn={() => requestAnimationFrame(openDetails)}
       onSubmitEditing={() => {
         commit();
@@ -389,6 +396,7 @@ const GroupTask = ({
 
   return (
     <View
+      accessibilityState={{ selected }}
       className={`${todo.parentId ? 'ml-6 min-h-[40px] px-2' : 'min-h-[48px] px-2'} my-0.5 flex-row items-center border-b ${
         selected
           ? todo.parentId
@@ -396,7 +404,16 @@ const GroupTask = ({
             : 'rounded-[12px] border-transparent bg-[#EEECFF]'
           : 'border-[#ECECF1]'
       }`}
+      nativeID={`group-task-${todo.id}`}
       ref={targetRef}
+      style={[
+        !selected &&
+          todo.priority !== 'none' && {
+            backgroundColor:
+              TASK_PRIORITY_THEME[todo.priority].rowBackground,
+          },
+        selected && TASK_SELECTED_ROW_STYLE,
+      ]}
     >
       <TaskSelectionMarker visible={selected} />
       {todo.parentId ? (
@@ -443,6 +460,7 @@ const GroupTask = ({
           </Text>
         </Pressable>
       )}
+      <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
       <Pressable
         accessibilityLabel={translations[language].taskMenu.moreActions}

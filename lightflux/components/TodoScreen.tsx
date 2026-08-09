@@ -21,7 +21,12 @@ import { Todo, TodoFilter } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
 import { todayKey } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
-import TaskSelectionMarker from './tasks/TaskSelectionMarker';
+import TaskPriorityIndicator, {
+  TASK_PRIORITY_THEME,
+} from './tasks/TaskPriorityIndicator';
+import TaskSelectionMarker, {
+  TASK_SELECTED_ROW_STYLE,
+} from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -55,14 +60,25 @@ const TodoRow = ({
 
   return (
     <View
-      className={`${todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} flex-row items-center border-b px-2 ${
+      accessibilityState={{ selected }}
+      className={`${todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} my-0.5 flex-row items-center rounded-[10px] border-b px-2 ${
         selected
           ? 'border-[#D6D2EF] bg-[#EEECFF]'
           : todo.completed
             ? 'border-[#ECEBF1] bg-[#FAFAFC]'
             : 'border-[#ECEBF1] bg-transparent'
       }`}
+      nativeID={`today-task-${todo.id}`}
       ref={targetRef}
+      style={[
+        !selected &&
+          !todo.completed &&
+          todo.priority !== 'none' && {
+            backgroundColor:
+              TASK_PRIORITY_THEME[todo.priority].rowBackground,
+          },
+        selected && TASK_SELECTED_ROW_STYLE,
+      ]}
     >
     <TaskSelectionMarker visible={selected} />
     {todo.parentId ? (
@@ -110,6 +126,7 @@ const TodoRow = ({
       </Text>
     </Pressable>
 
+    <TaskPriorityIndicator priority={todo.priority} />
     <TaskIndicators childCount={childCount} todo={todo} />
     <Pressable
       accessibilityLabel={labels.taskMenu.moreActions}

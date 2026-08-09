@@ -1,5 +1,16 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+
+export const TASK_SELECTED_ROW_STYLE: ViewStyle = {
+  backgroundColor: '#EEECFF',
+  borderColor: '#D7D2FF',
+  borderWidth: 1,
+  elevation: 2,
+  shadowColor: '#6759E8',
+  shadowOffset: { height: 2, width: 0 },
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+};
 
 const TaskSelectionMarker = ({ visible }: { visible: boolean }) =>
   visible ? (

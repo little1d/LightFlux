@@ -150,7 +150,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
 
     const timer = setTimeout(() => {
       saveAppState({
-        schemaVersion: 5,
+        schemaVersion: 6,
         language,
         navigationOrder,
         ungroupedName,
@@ -189,6 +189,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         scheduledDate: todo.scheduledDate,
         groupId: todo.groupId ?? null,
         parentId: todo.parentId ?? null,
+        priority: 'none',
         sortOrder: 0,
         trashedAt: null,
         content: todo.content ?? emptyRichTextDocument(),

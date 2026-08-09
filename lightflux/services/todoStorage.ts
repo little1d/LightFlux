@@ -88,6 +88,12 @@ const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
         : todayKey(),
     groupId: typeof todo.groupId === 'string' ? todo.groupId : null,
     parentId: typeof todo.parentId === 'string' ? todo.parentId : null,
+    priority:
+      todo.priority === 'high' ||
+      todo.priority === 'medium' ||
+      todo.priority === 'low'
+        ? todo.priority
+        : 'none',
     sortOrder:
       typeof todo.sortOrder === 'number' ? todo.sortOrder : fallbackOrder,
     trashedAt:
@@ -140,7 +146,7 @@ const parseState = (rawState: string): PersistedAppState | null => {
       .filter((todo): todo is Todo => todo !== null);
 
     return {
-      schemaVersion: 5,
+      schemaVersion: 6,
       language: parsed.language === 'en' ? 'en' : 'zh',
       navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
       ungroupedName:

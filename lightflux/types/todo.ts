@@ -2,6 +2,8 @@ export type Language = 'zh' | 'en';
 
 export type TodoFilter = 'all' | 'active' | 'completed';
 
+export type TodoPriority = 'none' | 'high' | 'medium' | 'low';
+
 export const NAVIGATION_ITEM_IDS = [
   'search',
   'today',
@@ -41,6 +43,7 @@ export interface Todo {
   scheduledDate: string;
   groupId: string | null;
   parentId: string | null;
+  priority: TodoPriority;
   sortOrder: number;
   trashedAt: number | null;
   content: RichTextDocument;
@@ -55,7 +58,7 @@ export interface TodoGroup {
 }
 
 export interface PersistedAppState {
-  schemaVersion: 5;
+  schemaVersion: 6;
   language: Language;
   navigationOrder: NavigationItemId[];
   ungroupedName: string | null;
@@ -84,6 +87,7 @@ export type TodoUpdate = Partial<
     | 'scheduledDate'
     | 'groupId'
     | 'parentId'
+    | 'priority'
     | 'sortOrder'
     | 'content'
   >

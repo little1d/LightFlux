@@ -62,4 +62,5 @@ EXPO_PUBLIC_AUTH_API_URL=http://localhost:8787
 
 微信开放平台应用审核完成前，认证接口会返回明确的未配置错误。服务端
 负责使用 AppSecret 换取微信 token、首次登录自动注册用户、UnionID
-账号合并和会话管理。详细配置见 `server/README.md`。
+账号合并和会话管理。服务端配置见 `server/README.md`，申请材料和审核步骤见
+[`docs/wechat-open-platform/README.md`](docs/wechat-open-platform/README.md)。

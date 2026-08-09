@@ -52,7 +52,6 @@ type AppView =
   | 'settings';
 type NavigationView = Exclude<AppView, 'settings'>;
 type SelectedTask = {
-  focusTitle: boolean;
   id: string;
   readOnly: boolean;
   requestId: number;
@@ -106,21 +105,15 @@ const AppContent = () => {
   const openTaskMenu = useCallback<OpenTaskMenu>((todoId, position) => {
     setTaskMenu({ todoId, position });
   }, []);
-  const openActiveTask = useCallback(
-    (id: string) => {
-      const todo = todos.find((item) => item.id === id);
-      setSelectedTask({
-        focusTitle: Boolean(todo?.parentId),
-        id,
-        readOnly: false,
-        requestId: Date.now(),
-      });
-    },
-    [todos],
-  );
+  const openActiveTask = useCallback((id: string) => {
+    setSelectedTask({
+      id,
+      readOnly: false,
+      requestId: Date.now(),
+    });
+  }, []);
   const openTrashedTask = useCallback((id: string) => {
     setSelectedTask({
-      focusTitle: false,
       id,
       readOnly: true,
       requestId: Date.now(),
@@ -222,7 +215,6 @@ const AppContent = () => {
   if (selectedTask && !usesDesktopLayout) {
     return (
       <TaskEditorScreen
-        focusTitle={selectedTask.focusTitle}
         key={`${selectedTask.id}-${selectedTask.requestId}`}
         onClose={closeSelectedTask}
         readOnly={selectedTask.readOnly}
@@ -373,7 +365,6 @@ const AppContent = () => {
           <View className="flex-1 bg-white">
             <TaskEditorScreen
               embedded
-              focusTitle={selectedTask.focusTitle}
               key={`${selectedTask.id}-${selectedTask.requestId}`}
               onClose={closeSelectedTask}
               readOnly={selectedTask.readOnly}

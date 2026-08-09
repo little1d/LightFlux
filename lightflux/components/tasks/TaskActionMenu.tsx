@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Keyboard,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -64,20 +63,11 @@ const TaskActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={isAddingSubtask ? 125 : 130}
+      estimatedHeight={isAddingSubtask ? 110 : 100}
       onClose={onClose}
       position={position}
       width={MENU_WIDTH}
     >
-      <View className="border-b border-[#ECEBF1] px-3 py-2.5">
-        <Text
-          className="text-[13px] font-semibold text-[#4A4B5C]"
-          numberOfLines={1}
-        >
-          {todo.title}
-        </Text>
-      </View>
-
       {isAddingSubtask ? (
         <View
           className="m-2 flex-row rounded-[9px] border border-[#D8D4F0] bg-[#F7F6FA] p-1 pl-2.5"

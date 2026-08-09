@@ -29,7 +29,6 @@ import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 const TaskEditorScreen = ({
   todoId,
   onClose,
-  focusTitle = false,
   readOnly = false,
 }: TaskEditorScreenProps) => {
   const {
@@ -77,6 +76,13 @@ const TaskEditorScreen = ({
       }
     }
   }, [editorContent, readOnly, todoId, updateTodo]);
+
+  useEffect(() => {
+    if (todo) {
+      setTitle(todo.title);
+      setTitleError('');
+    }
+  }, [todo?.title]);
 
   if (!todo) {
     return null;
@@ -126,7 +132,6 @@ const TaskEditorScreen = ({
             <TextInput
               {...inputAccentProps}
               accessibilityLabel={labels.editor.titlePlaceholder}
-              autoFocus={focusTitle}
               className="min-h-[52px] border-b border-[#DDDBE7] py-2 text-[25px] font-extrabold text-[#252638]"
               maxLength={160}
               onChangeText={(value) => {
@@ -138,7 +143,6 @@ const TaskEditorScreen = ({
               }}
               placeholder={labels.editor.titlePlaceholder}
               placeholderTextColor="#A5A6B1"
-              selectTextOnFocus={focusTitle}
               value={title}
             />
           )}

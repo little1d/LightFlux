@@ -32,16 +32,41 @@ const MenuSurface = ({
   position,
   width = 220,
 }: MenuSurfaceProps) => {
-  const entrance = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const motion = useRef(new Animated.Value(0)).current;
   const viewport = useWindowDimensions();
 
   useEffect(() => {
-    Animated.timing(entrance, {
-      duration: 140,
-      toValue: 1,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-  }, [entrance]);
+    const useNativeDriver = Platform.OS !== 'web';
+    Animated.parallel([
+      Animated.timing(opacity, {
+        duration: 110,
+        toValue: 1,
+        useNativeDriver,
+      }),
+      Animated.spring(motion, {
+        damping: 18,
+        mass: 0.7,
+        stiffness: 230,
+        toValue: 1,
+        useNativeDriver,
+      }),
+    ]).start();
+  }, [motion, opacity]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return undefined;
+    }
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [onClose]);
 
   const surfacePosition =
     Platform.OS === 'web' && position
@@ -76,18 +101,18 @@ const MenuSurface = ({
           style={[
             styles.surface,
             {
-              opacity: entrance,
+              opacity,
               transform: [
                 {
-                  translateY: entrance.interpolate({
+                  translateY: motion.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [-7, 0],
+                    outputRange: [-8, 0],
                   }),
                 },
                 {
-                  scale: entrance.interpolate({
+                  scale: motion.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0.98, 1],
+                    outputRange: [0.975, 1],
                   }),
                 },
               ],
@@ -140,7 +165,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     overflow: 'hidden',
-    padding: 5,
+    padding: 6,
     shadowColor: '#242235',
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.15,

@@ -65,20 +65,11 @@ const GroupActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={mode ? 160 : groupId ? 220 : 140}
+      estimatedHeight={mode ? 150 : groupId ? 190 : 100}
       onClose={onClose}
       position={position}
       width={MENU_WIDTH}
     >
-      <View className="border-b border-[#ECEBF1] px-3 py-2.5">
-        <Text
-          className="text-[13px] font-semibold text-[#4A4B5C]"
-          numberOfLines={1}
-        >
-          {groupName}
-        </Text>
-      </View>
-
       {mode ? (
         <View className="p-2.5">
           <Text className="mb-2 text-[11px] font-semibold text-[#858693]">

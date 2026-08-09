@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 9,
     flexDirection: 'row',
+    marginVertical: 2,
     minHeight: 40,
     paddingHorizontal: 12,
   },

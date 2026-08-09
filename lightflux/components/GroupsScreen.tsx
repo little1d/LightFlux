@@ -1,12 +1,16 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
 import {
+  Animated,
   Keyboard,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -46,6 +50,74 @@ interface GroupSection {
   todos: Todo[];
 }
 
+const CollapsibleGroupBody = ({
+  children,
+  expanded,
+}: {
+  children: React.ReactNode;
+  expanded: boolean;
+}) => {
+  const transition = useRef(new Animated.Value(expanded ? 1 : 0)).current;
+  const [visible, setVisible] = useState(expanded);
+
+  useEffect(() => {
+    transition.stopAnimation();
+    let frame: number | undefined;
+
+    if (expanded) {
+      setVisible(true);
+      transition.setValue(0);
+      frame = requestAnimationFrame(() => {
+        Animated.timing(transition, {
+          duration: 170,
+          toValue: 1,
+          useNativeDriver: Platform.OS !== 'web',
+        }).start();
+      });
+    } else {
+      Animated.timing(transition, {
+        duration: 130,
+        toValue: 0,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start(({ finished }) => {
+        if (finished) {
+          setVisible(false);
+        }
+      });
+    }
+
+    return () => {
+      if (frame !== undefined) {
+        cancelAnimationFrame(frame);
+      }
+      transition.stopAnimation();
+    };
+  }, [expanded, transition]);
+
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <Animated.View
+      pointerEvents={expanded ? 'auto' : 'none'}
+      style={{
+        opacity: transition,
+        transform: [
+          {
+            translateY: transition.interpolate({
+              inputRange: [0, 1],
+              outputRange: [-5, 0],
+            }),
+          },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+};
+
 const GroupHeader = ({
   isExpanded,
   labels,
@@ -66,6 +138,15 @@ const GroupHeader = ({
     onOpenMenu,
   );
   const longPressHandled = useRef(false);
+  const expansion = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
+
+  useEffect(() => {
+    Animated.timing(expansion, {
+      duration: 170,
+      toValue: isExpanded ? 1 : 0,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [expansion, isExpanded]);
 
   return (
     <View className="flex-row items-center px-4 py-4" ref={targetRef}>
@@ -89,12 +170,27 @@ const GroupHeader = ({
           }
         }}
       >
+        <Animated.View
+          className="mr-2"
+          style={{
+            transform: [
+              {
+                rotate: expansion.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['0deg', '90deg'],
+                }),
+              },
+            ],
+          }}
+        >
+          <Ionicons color="#777888" name="chevron-forward" size={17} />
+        </Animated.View>
         <View
           className="mr-3 h-3 w-3 rounded-[6px]"
           style={{ backgroundColor: section.color }}
         />
         <Text className="text-[17px] font-extrabold text-[#292A3D]">
-          {isExpanded ? '⌄' : '›'} {section.name}
+          {section.name}
         </Text>
         <Text className="ml-2 text-xs font-semibold text-[#A0A1AC]">
           {labels.groups.count(section.todos.length)}
@@ -112,6 +208,74 @@ const GroupHeader = ({
   );
 };
 
+const InlineSubtaskTitle = ({
+  editLabel,
+  onOpenDetails,
+  onRename,
+  todo,
+}: {
+  editLabel: string;
+  onOpenDetails: () => void;
+  onRename: (title: string) => void;
+  todo: Todo;
+}) => {
+  const [draft, setDraft] = useState(todo.title);
+  const [focused, setFocused] = useState(false);
+  const detailsOpened = useRef(false);
+
+  useEffect(() => {
+    if (!focused) {
+      setDraft(todo.title);
+    }
+  }, [focused, todo.title]);
+
+  const commit = () => {
+    const title = draft.trim();
+    setFocused(false);
+    detailsOpened.current = false;
+    if (title) {
+      setDraft(title);
+      onRename(title);
+    } else {
+      setDraft(todo.title);
+    }
+  };
+
+  const openDetails = () => {
+    if (!detailsOpened.current) {
+      detailsOpened.current = true;
+      onOpenDetails();
+    }
+  };
+
+  return (
+    <TextInput
+      {...inputAccentProps}
+      accessibilityLabel={`${editLabel}: ${todo.title}`}
+      className={`ml-2.5 h-8 flex-1 border-0 bg-transparent p-0 text-[13px] font-semibold ${
+        todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
+      }`}
+      maxLength={160}
+      nativeID={`subtask-title-${todo.id}`}
+      onBlur={commit}
+      onChangeText={(value) => {
+        setDraft(value);
+        if (value.trim()) {
+          onRename(value);
+        }
+      }}
+      onFocus={() => {
+        setFocused(true);
+        openDetails();
+      }}
+      onPressIn={() => requestAnimationFrame(openDetails)}
+      onSubmitEditing={commit}
+      returnKeyType="done"
+      value={draft}
+    />
+  );
+};
+
 const GroupTask = ({
   todo,
   language,
@@ -120,6 +284,7 @@ const GroupTask = ({
   editLabel,
   onEdit,
   onOpenMenu,
+  onRename,
   onToggle,
   selected,
   childCount,
@@ -131,6 +296,7 @@ const GroupTask = ({
   editLabel: string;
   onEdit: (id: string) => void;
   onOpenMenu: OpenTaskMenu;
+  onRename: (id: string, title: string) => void;
   onToggle: (id: string) => void;
   selected: boolean;
   childCount: number;
@@ -147,49 +313,58 @@ const GroupTask = ({
       }`}
       ref={targetRef}
     >
-    {todo.parentId ? (
-      <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
-    ) : null}
-    <Pressable
-      accessibilityLabel={todo.completed ? markActive : markComplete}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: todo.completed }}
-      className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
-        todo.completed
-          ? 'border-primary bg-primary'
-          : 'border-[#BFC1CB]'
-      }`}
-      onPress={() => onToggle(todo.id)}
-    >
-      {todo.completed ? (
-        <Text className="text-sm font-black leading-[17px] text-white">✓</Text>
+      {todo.parentId ? (
+        <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
       ) : null}
-    </Pressable>
-    <Pressable
-      accessibilityLabel={`${editLabel}: ${todo.title}`}
-      accessibilityRole="button"
-      className="ml-2.5 flex-1 py-1.5"
-      delayLongPress={350}
-      onLongPress={openFromLongPress}
-      onPress={() => onEdit(todo.id)}
-    >
-      <Text
-        className={`text-[13px] font-semibold leading-[18px] ${
-          todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
+      <Pressable
+        accessibilityLabel={todo.completed ? markActive : markComplete}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: todo.completed }}
+        className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
+          todo.completed
+            ? 'border-primary bg-primary'
+            : 'border-[#BFC1CB]'
         }`}
+        onPress={() => onToggle(todo.id)}
       >
-        {todo.title}
-      </Text>
-    </Pressable>
-    <TaskIndicators childCount={childCount} todo={todo} />
-    <Pressable
-      accessibilityLabel={translations[language].taskMenu.moreActions}
-      accessibilityRole="button"
-      className="h-7 w-7 items-center justify-center rounded-[10px]"
-      onPress={openFromButton}
-    >
-      <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
-    </Pressable>
+        {todo.completed ? (
+          <Text className="text-sm font-black leading-[17px] text-white">✓</Text>
+        ) : null}
+      </Pressable>
+      {todo.parentId ? (
+        <InlineSubtaskTitle
+          editLabel={editLabel}
+          onOpenDetails={() => onEdit(todo.id)}
+          onRename={(title) => onRename(todo.id, title)}
+          todo={todo}
+        />
+      ) : (
+        <Pressable
+          accessibilityLabel={`${editLabel}: ${todo.title}`}
+          accessibilityRole="button"
+          className="ml-2.5 flex-1 py-1.5"
+          delayLongPress={350}
+          onLongPress={openFromLongPress}
+          onPress={() => onEdit(todo.id)}
+        >
+          <Text
+            className={`text-[13px] font-semibold leading-[18px] ${
+              todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
+            }`}
+          >
+            {todo.title}
+          </Text>
+        </Pressable>
+      )}
+      <TaskIndicators childCount={childCount} todo={todo} />
+      <Pressable
+        accessibilityLabel={translations[language].taskMenu.moreActions}
+        accessibilityRole="button"
+        className="h-7 w-7 items-center justify-center rounded-[10px]"
+        onPress={openFromButton}
+      >
+        <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
+      </Pressable>
     </View>
   );
 };
@@ -213,6 +388,7 @@ const GroupsScreen = ({
     renameGroup,
     reorderSubtask,
     toggleTodo,
+    updateTodo,
   } = useTodos();
   const labels = translations[language];
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
@@ -402,7 +578,7 @@ const GroupsScreen = ({
                   section={section}
                 />
 
-                {isExpanded ? (
+                <CollapsibleGroupBody expanded={isExpanded}>
                   <View className="border-t border-[#ECEBF1] px-4 pb-2">
                     {activeComposer === section.id ? (
                       <View
@@ -468,6 +644,9 @@ const GroupsScreen = ({
                             markComplete={labels.markComplete}
                             onEdit={onEditTask}
                             onOpenMenu={onOpenTaskMenu}
+                            onRename={(id, title) =>
+                              updateTodo(id, { title })
+                            }
                             onToggle={toggleTodo}
                             selected={selectedTaskId === todo.id}
                             todo={todo}
@@ -475,7 +654,11 @@ const GroupsScreen = ({
                         );
 
                         if (!todo.parentId) {
-                          return <React.Fragment key={todo.id}>{row}</React.Fragment>;
+                          return (
+                            <React.Fragment key={todo.id}>
+                              {row}
+                            </React.Fragment>
+                          );
                         }
 
                         const siblings = section.todos.filter(
@@ -498,7 +681,7 @@ const GroupsScreen = ({
                       })
                     )}
                   </View>
-                ) : null}
+                </CollapsibleGroupBody>
               </View>
             );
           })}

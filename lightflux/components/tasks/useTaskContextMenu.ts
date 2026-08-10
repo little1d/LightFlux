@@ -27,14 +27,32 @@ export const useTaskContextMenu = (
       return undefined;
     }
 
+    const suppressSecondaryPointer = (event: PointerEvent) => {
+      if (event.button === 2) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
     const openMenu = (event: MouseEvent) => {
       event.preventDefault();
       event.stopPropagation();
       onOpen(todoId, { x: event.clientX, y: event.clientY });
     };
 
+    element.addEventListener(
+      'pointerdown',
+      suppressSecondaryPointer,
+      true,
+    );
     element.addEventListener('contextmenu', openMenu);
-    return () => element.removeEventListener('contextmenu', openMenu);
+    return () => {
+      element.removeEventListener(
+        'pointerdown',
+        suppressSecondaryPointer,
+        true,
+      );
+      element.removeEventListener('contextmenu', openMenu);
+    };
   }, [onOpen, todoId]);
 
   const openFromLongPress = useCallback(

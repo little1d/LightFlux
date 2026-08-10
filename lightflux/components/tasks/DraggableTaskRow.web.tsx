@@ -12,6 +12,33 @@ interface DraggableTaskRowProps {
 
 const DRAG_TYPE = 'text/lightflux-task-id';
 
+const createDragPreview = (
+  row: HTMLElement,
+  nested: boolean,
+): HTMLElement => {
+  const visibleRow = row.lastElementChild as HTMLElement | null;
+  const source = visibleRow ?? row;
+  const bounds = source.getBoundingClientRect();
+  const preview = source.cloneNode(true) as HTMLElement;
+  Object.assign(preview.style, {
+    backgroundColor: '#F0EEFF',
+    borderRadius: nested ? '9px' : '12px',
+    boxShadow: '0 9px 22px rgba(58, 49, 120, 0.2)',
+    height: `${bounds.height}px`,
+    left: '-10000px',
+    margin: '0',
+    opacity: '0.96',
+    pointerEvents: 'none',
+    position: 'fixed',
+    top: '-10000px',
+    transform: 'none',
+    width: `${bounds.width}px`,
+    zIndex: '9999',
+  });
+  document.body.appendChild(preview);
+  return preview;
+};
+
 const DraggableTaskRow = ({
   children,
   id,
@@ -55,19 +82,14 @@ const DraggableTaskRow = ({
       }}
       role="listitem"
       style={{
-        backgroundColor: dragging ? '#F0EEFF' : 'transparent',
+        backgroundColor: 'transparent',
         borderRadius: nested ? 9 : 12,
-        boxShadow: dragging
-          ? '0 9px 22px rgba(58, 49, 120, 0.2)'
-          : targeted
-            ? 'inset 0 2px 0 #8B7EFF'
-            : 'none',
+        boxShadow: targeted ? 'inset 0 2px 0 #8B7EFF' : 'none',
         marginBottom: 2,
-        opacity: dragging ? 0.68 : 1,
+        opacity: dragging ? 0.52 : 1,
         position: 'relative',
-        transform: dragging ? 'scale(1.012)' : 'scale(1)',
         transition:
-          'background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease',
+          'box-shadow 120ms ease, opacity 120ms ease',
       }}
     >
       <div
@@ -86,15 +108,14 @@ const DraggableTaskRow = ({
           );
           const row = event.currentTarget.parentElement;
           if (row) {
-            row.style.backgroundColor = '#F0EEFF';
-            row.style.boxShadow = '0 9px 22px rgba(58, 49, 120, 0.2)';
-            row.style.transform = 'scale(1.012)';
-            const bounds = row.getBoundingClientRect();
+            const preview = createDragPreview(row, nested);
+            const bounds = preview.getBoundingClientRect();
             event.dataTransfer.setDragImage(
-              row,
+              preview,
               bounds.width / 2,
               bounds.height / 2,
             );
+            requestAnimationFrame(() => preview.remove());
           }
           setDragging(true);
         }}

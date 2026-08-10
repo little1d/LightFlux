@@ -31,20 +31,33 @@ runs use the version from `tauri.conf.json`.
 
 ## Local Build
 
-Install Rust and the Tauri CLI before running a local desktop build:
+The Tauri CLI is installed with the frontend dependencies. This workspace keeps
+Rust isolated under `.dev_env/lightflux-rust`; initialize it once with:
 
 ```bash
-rustup toolchain install stable
+mkdir -p .dev_env/lightflux-rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/lightflux-rustup-init.sh
+RUSTUP_HOME="$PWD/.dev_env/lightflux-rust/rustup" \
+  CARGO_HOME="$PWD/.dev_env/lightflux-rust/cargo" \
+  sh /tmp/lightflux-rustup-init.sh -y --no-modify-path --profile minimal
+```
+
+Then build from the repository root:
+
+```bash
 cd lightflux
-npm install --no-save @tauri-apps/cli@^2
-npx tauri build
+npm install
+cd ..
+scripts/use-rust-env.sh cargo check --manifest-path lightflux/src-tauri/Cargo.toml
+cd lightflux
+../scripts/use-rust-env.sh npx tauri build
 ```
 
 For desktop development:
 
 ```bash
 cd lightflux
-npx tauri dev
+../scripts/use-rust-env.sh npx tauri dev
 ```
 
 ## Signing

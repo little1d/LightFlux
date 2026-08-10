@@ -3,5 +3,5 @@
   "compilerOptions": {
     "strict": true
   },
-  "exclude": ["editor-web"]
+  "exclude": ["editor-web", "src-tauri/target"]
 }

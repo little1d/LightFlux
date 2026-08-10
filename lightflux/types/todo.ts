@@ -5,7 +5,6 @@ export type TodoFilter = 'all' | 'active' | 'completed';
 export type TodoPriority = 'none' | 'high' | 'medium' | 'low';
 
 export const NAVIGATION_ITEM_IDS = [
-  'search',
   'today',
   'completed',
   'calendar',
@@ -59,6 +58,28 @@ export interface TodoGroup {
   sortOrder: number;
 }
 
+export type TaskEventType =
+  | 'created'
+  | 'completed'
+  | 'reopened'
+  | 'rescheduled'
+  | 'trashed'
+  | 'restored';
+
+export interface TaskEventMetadata {
+  scheduledDate?: string;
+  previousScheduledDate?: string;
+  migrated?: boolean;
+}
+
+export interface TaskEvent {
+  id: string;
+  taskId: string;
+  type: TaskEventType;
+  occurredAt: number;
+  metadata?: TaskEventMetadata;
+}
+
 export type MilestoneType =
   | 'anniversary'
   | 'countdown'
@@ -106,14 +127,16 @@ export interface Milestone {
 }
 
 export interface PersistedAppState {
-  schemaVersion: 8;
+  schemaVersion: 9;
   updatedAt: number;
+  analyticsStartedAt: number;
   language: Language;
   navigationOrder: NavigationItemId[];
   ungroupedName: string | null;
   todos: Todo[];
   groups: TodoGroup[];
   milestones: Milestone[];
+  taskEvents: TaskEvent[];
 }
 
 export interface GroupPlacement {

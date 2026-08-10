@@ -24,9 +24,10 @@ import CalendarScreen from './components/CalendarScreen';
 import CompletedScreen from './components/CompletedScreen';
 import GroupsScreen from './components/GroupsScreen';
 import MilestonesScreen from './components/MilestonesScreen';
-import SearchScreen from './components/SearchScreen';
+import SearchOverlay from './components/SearchOverlay';
 import SettingsScreen from './components/SettingsScreen';
 import SignedOutScreen from './components/SignedOutScreen';
+import StatisticsScreen from './components/StatisticsScreen';
 import TrashScreen from './components/TrashScreen';
 import TodoScreen from './components/TodoScreen';
 import AccountMenu, {
@@ -42,6 +43,8 @@ import {
   TaskMenuPosition,
 } from './components/tasks/useTaskContextMenu';
 import Toast from './components/ui/Toast';
+import IconButton from './components/ui/IconButton';
+import Tooltip from './components/ui/Tooltip';
 import { TodoProvider, useTodoStore } from './store/todoStore';
 import { translations } from './i18n/translations';
 import { isRemoteAuthConfigured } from './services/authApi';
@@ -52,7 +55,7 @@ import {
 import { NavigationItemId } from './types/todo';
 import { requestConfirmation } from './utils/confirm';
 
-type AppView = NavigationItemId | 'settings';
+type AppView = NavigationItemId | 'settings' | 'statistics';
 type NavigationView = NavigationItemId;
 type SelectedTask = {
   id: string;
@@ -74,13 +77,109 @@ const NAV_ICONS: Record<
   NavigationView,
   ComponentProps<typeof Ionicons>['name']
 > = {
-  search: 'search-outline',
   today: 'sunny-outline',
   completed: 'checkmark-done-outline',
   calendar: 'calendar-outline',
   milestones: 'hourglass-outline',
   groups: 'albums-outline',
   trash: 'trash-outline',
+};
+
+const DesktopNavigationButton = ({
+  badgeCount = 0,
+  icon,
+  isActive,
+  label,
+  onPress,
+}: {
+  badgeCount?: number;
+  icon: ComponentProps<typeof Ionicons>['name'];
+  isActive: boolean;
+  label: string;
+  onPress: () => void;
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={styles.desktopNavigationButton}>
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isActive }}
+        onBlur={() => setFocused(false)}
+        onFocus={() => setFocused(true)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.navigationButton,
+          isActive && styles.navigationButtonActive,
+          hovered && !isActive && styles.navigationButtonHovered,
+          focused && styles.navigationButtonFocused,
+          pressed && styles.navigationButtonPressed,
+        ]}
+      >
+        <Ionicons
+          color={isActive ? '#6759E8' : hovered ? '#666778' : '#92939F'}
+          name={icon}
+          size={22}
+        />
+        {badgeCount > 0 ? (
+          <View style={styles.navigationBadge}>
+            <Text style={styles.navigationBadgeText}>{badgeCount}</Text>
+          </View>
+        ) : null}
+      </Pressable>
+      <Tooltip
+        label={label}
+        position="right"
+        visible={hovered || focused}
+      />
+    </View>
+  );
+};
+
+const AccountTrigger = ({
+  active,
+  label,
+  onPress,
+  tooltipPosition,
+}: {
+  active: boolean;
+  label: string;
+  onPress: () => void;
+  tooltipPosition: 'right' | 'bottom';
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={styles.accountTrigger}>
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        onBlur={() => setFocused(false)}
+        onFocus={() => setFocused(true)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.accountTriggerButton,
+          hovered && styles.accountTriggerHovered,
+          focused && styles.accountTriggerFocused,
+          pressed && styles.accountTriggerPressed,
+        ]}
+      >
+        <AccountAvatar active={active} />
+      </Pressable>
+      <Tooltip
+        label={label}
+        position={tooltipPosition}
+        visible={hovered || focused}
+      />
+    </View>
+  );
 };
 
 const AppContent = () => {
@@ -91,6 +190,7 @@ const AppContent = () => {
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [taskMenu, setTaskMenu] = useState<{
     todoId: string;
     position?: TaskMenuPosition;
@@ -191,6 +291,19 @@ const AppContent = () => {
     setSelectedTask(null);
     setTaskMenu(null);
   }, []);
+  const openSearch = useCallback(() => {
+    setAccountMenuOpen(false);
+    setAgentOpen(false);
+    setTaskMenu(null);
+    setSearchOpen(true);
+  }, []);
+  const selectNavigationView = useCallback(
+    (view: NavigationItemId) => {
+      setSearchOpen(false);
+      changeView(view);
+    },
+    [changeView],
+  );
   const openAgent = useCallback(() => {
     setAccountMenuOpen(false);
     setTaskMenu(null);
@@ -228,13 +341,17 @@ const AppContent = () => {
         openAgent();
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        changeView('search');
+        openSearch();
         return;
       }
 
       if (event.key === 'Escape') {
+        if (searchOpen) {
+          setSearchOpen(false);
+          return;
+        }
         setAgentOpen(false);
         setAccountMenuOpen(false);
         setTaskMenu(null);
@@ -244,7 +361,7 @@ const AppContent = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [changeView, openAgent]);
+  }, [openAgent, openSearch, searchOpen]);
 
   useEffect(() => {
     if (!selectedTask) {
@@ -297,13 +414,14 @@ const AppContent = () => {
   }
 
   const activeScreen =
-    activeView === 'settings' ? (
-      <SettingsScreen />
-    ) : activeView === 'search' ? (
-      <SearchScreen
-        onOpenTaskMenu={openTaskMenu}
-        onEditTask={openActiveTask}
-        selectedTaskId={selectedTaskId}
+    activeView === 'statistics' ? (
+      <StatisticsScreen
+        onBack={() => changeView('settings')}
+        onOpenGroups={() => changeView('groups')}
+      />
+    ) : activeView === 'settings' ? (
+      <SettingsScreen
+        onOpenStatistics={() => changeView('statistics')}
       />
     ) : activeView === 'today' ? (
       <TodoScreen
@@ -342,31 +460,31 @@ const AppContent = () => {
       />
     );
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
+  const mainContentHidden = mobileEditorOpen || searchOpen;
 
   return (
     <>
     <View
-      accessibilityElementsHidden={mobileEditorOpen}
-      aria-hidden={mobileEditorOpen || undefined}
+      accessibilityElementsHidden={mainContentHidden}
+      aria-hidden={mainContentHidden || undefined}
       className="flex-1 flex-row bg-canvas"
       importantForAccessibility={
-        mobileEditorOpen ? 'no-hide-descendants' : 'auto'
+        mainContentHidden ? 'no-hide-descendants' : 'auto'
       }
     >
       {usesDesktopLayout ? (
         <SafeAreaView className="w-[78px] border-r border-[#E2E1E8] bg-[#F7F6F9]">
           <View className="flex-1 items-center pt-5">
-            <Pressable
-              accessibilityLabel={labels.account.localAccount}
-              accessibilityRole="button"
-              className="mb-7"
+            <View style={styles.desktopAccountPosition}>
+              <AccountTrigger
+                active={
+                  activeView === 'settings' || activeView === 'statistics'
+                }
+                label={labels.account.localAccount}
               onPress={() => setAccountMenuOpen((current) => !current)}
-              style={({ pressed }) =>
-                pressed ? styles.avatarPressed : undefined
-              }
-            >
-              <AccountAvatar active={activeView === 'settings'} />
-            </Pressable>
+                tooltipPosition="right"
+              />
+            </View>
             {navigationItems.map((item, index) => {
               const isActive = item.id === activeView;
               return (
@@ -377,43 +495,29 @@ const AppContent = () => {
                   label={labels.navigation[item.id]}
                   onMove={moveNavigationItem}
                 >
-                  <Pressable
-                    accessibilityLabel={labels.navigation[item.id]}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isActive }}
-                    className={`h-12 w-12 items-center justify-center rounded-[15px] ${
-                      isActive ? 'bg-[#E8E5FF]' : 'bg-transparent'
-                    }`}
-                    onPress={() => changeView(item.id)}
-                  >
-                    <Ionicons
-                      color={isActive ? '#6759E8' : '#92939F'}
-                      name={item.icon}
-                      size={22}
-                    />
-                    {item.id === 'trash' && trashItemCount > 0 ? (
-                      <View className="absolute right-0 top-0 min-w-[17px] items-center rounded-[9px] bg-[#D85B6B] px-1 py-0.5">
-                        <Text className="text-[8px] font-extrabold text-white">
-                          {trashItemCount}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </Pressable>
+                  <DesktopNavigationButton
+                    badgeCount={
+                      item.id === 'trash' ? trashItemCount : 0
+                    }
+                    icon={item.icon}
+                    isActive={isActive}
+                    label={labels.navigation[item.id]}
+                    onPress={() => selectNavigationView(item.id)}
+                  />
                 </DraggableNavigationItem>
               );
             })}
           </View>
-          <Pressable
-            accessibilityLabel={labels.agent.title}
-            accessibilityRole="button"
-            onPress={openAgent}
-            style={({ pressed }) => [
-              styles.agentButton,
-              pressed && styles.agentButtonPressed,
-            ]}
-          >
-            <Ionicons color="#6759E8" name="sparkles" size={19} />
-          </Pressable>
+          <View style={styles.agentButtonPosition}>
+            <IconButton
+              icon="sparkles"
+              label={labels.agent.title}
+              onPress={openAgent}
+              size="large"
+              tooltipPosition="right"
+              variant="primary"
+            />
+          </View>
         </SafeAreaView>
       ) : null}
 
@@ -426,7 +530,7 @@ const AppContent = () => {
       >
         <View className="flex-1">{activeScreen}</View>
 
-        {!usesDesktopLayout ? (
+        {!usesDesktopLayout && activeView !== 'statistics' ? (
           <SafeAreaView className="border-t border-[#E4E3EA] bg-white">
             <View className="h-[66px] flex-row items-center justify-around px-6">
               {navigationItems.map((item) => {
@@ -437,7 +541,7 @@ const AppContent = () => {
                     accessibilityState={{ selected: isActive }}
                     className="flex-1 items-center justify-center py-2"
                     key={item.id}
-                    onPress={() => changeView(item.id)}
+                    onPress={() => selectNavigationView(item.id)}
                   >
                     <Ionicons
                       color={isActive ? '#6759E8' : '#A3A3AF'}
@@ -483,27 +587,24 @@ const AppContent = () => {
       {!usesDesktopLayout && !selectedTask ? (
         <SafeAreaView style={styles.mobileAccountOverlay}>
           <View style={styles.mobileAccountPosition}>
-            <Pressable
-              accessibilityLabel={labels.agent.title}
-              accessibilityRole="button"
-              onPress={openAgent}
-              style={({ pressed }) => [
-                styles.mobileAgentButton,
-                pressed && styles.agentButtonPressed,
-              ]}
-            >
-              <Ionicons color="#6759E8" name="sparkles" size={18} />
-            </Pressable>
-            <Pressable
-              accessibilityLabel={labels.account.localAccount}
-              accessibilityRole="button"
-              onPress={() => setAccountMenuOpen((current) => !current)}
-              style={({ pressed }) =>
-                pressed ? styles.avatarPressed : undefined
+            <View style={styles.mobileAgentButtonPosition}>
+              <IconButton
+                icon="sparkles"
+                label={labels.agent.title}
+                onPress={openAgent}
+                size="large"
+                tooltipPosition="bottom"
+                variant="primary"
+              />
+            </View>
+            <AccountTrigger
+              active={
+                activeView === 'settings' || activeView === 'statistics'
               }
-            >
-              <AccountAvatar active={activeView === 'settings'} />
-            </Pressable>
+              label={labels.account.localAccount}
+              onPress={() => setAccountMenuOpen((current) => !current)}
+              tooltipPosition="bottom"
+            />
           </View>
         </SafeAreaView>
       ) : null}
@@ -548,6 +649,12 @@ const AppContent = () => {
         />
       ) : null}
     </View>
+    <SearchOverlay
+      onClose={() => setSearchOpen(false)}
+      onOpenTask={openActiveTask}
+      selectedTaskId={selectedTaskId}
+      visible={searchOpen}
+    />
     <AgentCommandPanel
       onClose={() => setAgentOpen(false)}
       onNotify={(message, variant = 'success') =>
@@ -577,12 +684,81 @@ const AppContent = () => {
 };
 
 const styles = StyleSheet.create({
-  avatarPressed: {
-    opacity: 0.78,
+  accountTrigger: {
+    position: 'relative',
+  },
+  accountTriggerButton: {
+    borderColor: 'transparent',
+    borderRadius: 17,
+    borderWidth: 2,
+  },
+  accountTriggerHovered: {
+    backgroundColor: '#EFEDF5',
+    transform: [{ translateY: -1 }],
+  },
+  accountTriggerFocused: {
+    borderColor: '#AFA6F5',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  accountTriggerPressed: {
+    opacity: 0.72,
     transform: [{ scale: 0.94 }],
+  },
+  desktopAccountPosition: {
+    marginBottom: 28,
   },
   fullPane: {
     flex: 1,
+  },
+  desktopNavigationButton: {
+    position: 'relative',
+  },
+  navigationButton: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderRadius: 15,
+    borderWidth: 2,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  navigationButtonActive: {
+    backgroundColor: '#E8E5FF',
+  },
+  navigationButtonHovered: {
+    backgroundColor: '#EFEDF5',
+    transform: [{ translateY: -1 }],
+  },
+  navigationButtonFocused: {
+    borderColor: '#AFA6F5',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+  },
+  navigationButtonPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.93 }],
+  },
+  navigationBadge: {
+    backgroundColor: '#D85B6B',
+    borderRadius: 9,
+    minWidth: 17,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    position: 'absolute',
+    right: -1,
+    top: -1,
+  },
+  navigationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   mobileAccountOverlay: {
     bottom: 0,
@@ -601,27 +777,11 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     pointerEvents: 'box-none',
   },
-  agentButton: {
-    alignItems: 'center',
-    backgroundColor: '#F0EEFF',
-    borderRadius: 13,
-    height: 40,
-    justifyContent: 'center',
+  agentButtonPosition: {
     marginBottom: 14,
-    width: 40,
   },
-  mobileAgentButton: {
-    alignItems: 'center',
-    backgroundColor: '#F0EEFF',
-    borderRadius: 13,
-    height: 40,
-    justifyContent: 'center',
+  mobileAgentButtonPosition: {
     marginRight: 10,
-    width: 40,
-  },
-  agentButtonPressed: {
-    opacity: 0.76,
-    transform: [{ scale: 0.92 }],
   },
   mobileEditorOverlay: {
     backgroundColor: '#F5F5FA',

@@ -26,11 +26,14 @@ const MenuItem = ({
   trailing,
 }: MenuItemProps) => {
   const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   return (
     <Pressable
       accessibilityRole="menuitem"
       disabled={disabled}
+      onBlur={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       onPress={onPress}
@@ -38,6 +41,7 @@ const MenuItem = ({
         styles.item,
         selected && styles.selected,
         hovered && !selected && styles.hovered,
+        focused && styles.focused,
         pressed && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -61,7 +65,9 @@ const MenuItem = ({
 const styles = StyleSheet.create({
   item: {
     alignItems: 'center',
+    borderColor: 'transparent',
     borderRadius: 9,
+    borderWidth: 1,
     flexDirection: 'row',
     marginVertical: 2,
     minHeight: 40,
@@ -72,6 +78,10 @@ const styles = StyleSheet.create({
   },
   hovered: {
     backgroundColor: '#F3F2F6',
+  },
+  focused: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#B9B2F2',
   },
   pressed: {
     backgroundColor: '#EAE8F1',

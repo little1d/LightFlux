@@ -28,6 +28,7 @@ import { OpenMilestoneMenu } from './milestones/useMilestoneContextMenu';
 import MenuItem from './ui/MenuItem';
 import MenuSurface, { MenuSurfacePosition } from './ui/MenuSurface';
 import Toast from './ui/Toast';
+import IconButton from './ui/IconButton';
 
 type MilestoneFilter = 'all' | MilestoneType | 'archived';
 
@@ -178,7 +179,11 @@ const MilestonesScreen = () => {
           >
             <View>
               <Text style={styles.title}>{labels.title}</Text>
-              <Text style={styles.count}>{milestones.length}</Text>
+              {milestones.length > 0 ? (
+                <Text style={styles.count}>
+                  {labels.count(milestones.length)}
+                </Text>
+              ) : null}
             </View>
             <View
               style={[
@@ -203,18 +208,15 @@ const MilestonesScreen = () => {
                   value={query}
                 />
               </View>
-              <View ref={addButtonRef}>
-                <Pressable
-                  accessibilityLabel={labels.add}
-                  accessibilityRole="button"
+              <View ref={addButtonRef} style={styles.addButtonPosition}>
+                <IconButton
+                  icon="add"
+                  label={labels.add}
                   onPress={openTemplateMenu}
-                  style={({ pressed }) => [
-                    styles.addButton,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <Ionicons color="#333445" name="add" size={23} />
-                </Pressable>
+                  size="large"
+                  tooltipPosition="bottom"
+                  variant="neutral"
+                />
               </View>
             </View>
           </View>
@@ -431,14 +433,8 @@ const styles = StyleSheet.create({
     marginLeft: 7,
     paddingVertical: 7,
   },
-  addButton: {
-    alignItems: 'center',
-    backgroundColor: '#F1F0F4',
-    borderRadius: 12,
-    height: 40,
-    justifyContent: 'center',
+  addButtonPosition: {
     marginLeft: 8,
-    width: 40,
   },
   pressed: {
     opacity: 0.72,

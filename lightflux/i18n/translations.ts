@@ -5,7 +5,6 @@ export interface Translation {
   appName: string;
   tagline: string;
   navigation: {
-    search: string;
     today: string;
     completed: string;
     calendar: string;
@@ -17,6 +16,9 @@ export interface Translation {
     title: string;
     placeholder: string;
     clear: string;
+    close: string;
+    tasks: string;
+    shortcut: string;
     resultCount: (count: number) => string;
     idleTitle: string;
     idleDescription: string;
@@ -43,6 +45,9 @@ export interface Translation {
     languageTitle: string;
     chinese: string;
     english: string;
+    dataTitle: string;
+    statisticsTitle: string;
+    statisticsDescription: string;
     shortcutsTitle: string;
     shortcutSearch: string;
     shortcutClose: string;
@@ -60,6 +65,52 @@ export interface Translation {
     keyList: string;
     keyQuote: string;
     keyCode: string;
+  };
+  statistics: {
+    eyebrow: string;
+    title: string;
+    subtitle: string;
+    back: string;
+    ranges: {
+      '7d': string;
+      '30d': string;
+      '90d': string;
+      year: string;
+    };
+    estimated: string;
+    completedTasks: string;
+    completionRate: string;
+    pendingChange: string;
+    currentOverdue: string;
+    completedDetail: (count: number) => string;
+    rateDelta: (delta: number) => string;
+    rateNoComparison: string;
+    pendingDetail: (created: number, completed: number) => string;
+    overdueDetail: (count: number) => string;
+    trendTitle: string;
+    trendDescription: string;
+    planned: string;
+    completed: string;
+    insightsEyebrow: string;
+    insightsTitle: string;
+    stableTitle: string;
+    stableDescription: (days: string, advantage: number) => string;
+    pressureInsightTitle: (group: string) => string;
+    pressureInsightDescription: (pending: number, overdue: number) => string;
+    reduceTitle: string;
+    reduceDescription: (day: string, gap: number) => string;
+    buildingTitle: string;
+    buildingDescription: string;
+    viewTasks: string;
+    pressureTitle: string;
+    pressureDescription: string;
+    pending: string;
+    weeklyTitle: string;
+    weeklyDescription: string;
+    noPlannedTasks: string;
+    weekdays: string[];
+    definition: string;
+    estimatedDefinition: string;
   };
   signedOut: {
     title: string;
@@ -177,6 +228,7 @@ export interface Translation {
   };
   milestones: {
     title: string;
+    count: (count: number) => string;
     add: string;
     addTemplate: string;
     templates: {
@@ -284,7 +336,6 @@ export const translations: Record<Language, Translation> = {
     appName: '流光清单',
     tagline: '把今天，安排得刚刚好',
     navigation: {
-      search: '搜索',
       today: '今天',
       completed: '已完成',
       calendar: '日历',
@@ -296,6 +347,9 @@ export const translations: Record<Language, Translation> = {
       title: '搜索任务',
       placeholder: '输入关键词…',
       clear: '清除搜索',
+      close: '关闭搜索',
+      tasks: '任务',
+      shortcut: 'Esc 关闭 · Enter 打开任务',
       resultCount: (count) => `${count} 项结果`,
       idleTitle: '查找你的任务',
       idleDescription: '输入标题、详情内容或分组名称开始搜索。',
@@ -322,6 +376,9 @@ export const translations: Record<Language, Translation> = {
       languageTitle: '语言',
       chinese: '简体中文',
       english: 'English',
+      dataTitle: '数据与统计',
+      statisticsTitle: '统计',
+      statisticsDescription: '查看完成节奏、任务压力与安排规律',
       shortcutsTitle: '键盘快捷键',
       shortcutSearch: '搜索任务',
       shortcutClose: '关闭详情或菜单',
@@ -331,7 +388,7 @@ export const translations: Record<Language, Translation> = {
       shortcutList: '无序列表',
       shortcutQuote: '引用',
       shortcutCode: '代码块',
-      keySearch: '⌘ / Ctrl + K',
+      keySearch: '⌘ / Ctrl + F',
       keyClose: 'Esc',
       keyBold: '⌘ / Ctrl + B',
       keyItalic: '⌘ / Ctrl + I',
@@ -339,6 +396,59 @@ export const translations: Record<Language, Translation> = {
       keyList: '- + 空格',
       keyQuote: '> + 空格',
       keyCode: '``` + 空格',
+    },
+    statistics: {
+      eyebrow: 'PERSONAL INSIGHTS',
+      title: '统计',
+      subtitle: '看清任务节奏，而不是给自己打分。',
+      back: '返回设置',
+      ranges: {
+        '7d': '7 天',
+        '30d': '30 天',
+        '90d': '90 天',
+        year: '今年',
+      },
+      estimated: '含迁移前估算',
+      completedTasks: '完成任务',
+      completionRate: '计划完成率',
+      pendingChange: '待办净变化',
+      currentOverdue: '当前延期',
+      completedDetail: (count) => `${count} 条完成记录`,
+      rateDelta: (delta) =>
+        `较上一周期${delta >= 0 ? '提高' : '下降'} ${Math.abs(delta)} 个百分点`,
+      rateNoComparison: '上一周期暂无足够计划数据',
+      pendingDetail: (created, completed) =>
+        `新增 ${created} · 完成 ${completed}`,
+      overdueDetail: (count) => `其中高优先级 ${count} 项`,
+      trendTitle: '计划与完成节奏',
+      trendDescription: '同一时间段内计划处理的任务与实际完成数',
+      planned: '计划',
+      completed: '完成',
+      insightsEyebrow: '值得关注',
+      insightsTitle: '从数据到下一步',
+      stableTitle: '稳定完成日',
+      stableDescription: (days, advantage) =>
+        `${days}的计划完成率比周期均值高 ${advantage} 个百分点。`,
+      pressureInsightTitle: (group) => `${group}仍有积压`,
+      pressureInsightDescription: (pending, overdue) =>
+        `当前待处理 ${pending} 项，其中 ${overdue} 项已延期。`,
+      reduceTitle: '安排建议',
+      reduceDescription: (day, gap) =>
+        `${day}平均少完成 ${gap} 项，可减少当天计划量。`,
+      buildingTitle: '数据正在积累',
+      buildingDescription: '继续安排并完成任务后，这里会生成可执行建议。',
+      viewTasks: '查看相关任务',
+      pressureTitle: '任务压力分布',
+      pressureDescription: '哪些分组贡献了完成量，哪些仍有积压',
+      pending: '仍待处理',
+      weeklyTitle: '每周规律',
+      weeklyDescription: '按计划日期计算的完成率',
+      noPlannedTasks: '暂无计划任务',
+      weekdays: ['周日', '周一', '周二', '周三', '周四', '周五', '周六'],
+      definition:
+        '计划完成率 = 统计周期内已完成的计划任务 ÷ 该周期计划任务总数。回收站任务不计入，数据仅在本地聚合。',
+      estimatedDefinition:
+        '当前周期包含升级前的迁移数据，反复完成、重开或改期的旧历史可能不完整；升级后的事件会被准确记录。',
     },
     signedOut: {
       title: '已退出登录',
@@ -488,6 +598,7 @@ export const translations: Record<Language, Translation> = {
     },
     milestones: {
       title: '倒数纪念日',
+      count: (count) => `${count} 个节点`,
       add: '新增节点',
       addTemplate: '选择节点类型',
       templates: {
@@ -599,7 +710,6 @@ export const translations: Record<Language, Translation> = {
     appName: 'LightFlux',
     tagline: 'Make space for what matters',
     navigation: {
-      search: 'Search',
       today: 'Today',
       completed: 'Completed',
       calendar: 'Calendar',
@@ -611,6 +721,9 @@ export const translations: Record<Language, Translation> = {
       title: 'Search tasks',
       placeholder: 'Type a keyword…',
       clear: 'Clear search',
+      close: 'Close search',
+      tasks: 'Tasks',
+      shortcut: 'Esc to close · Enter to open task',
       resultCount: (count) => `${count} ${count === 1 ? 'result' : 'results'}`,
       idleTitle: 'Find your tasks',
       idleDescription: 'Search by title, task details, or group name.',
@@ -637,6 +750,10 @@ export const translations: Record<Language, Translation> = {
       languageTitle: 'Language',
       chinese: '简体中文',
       english: 'English',
+      dataTitle: 'Data and statistics',
+      statisticsTitle: 'Statistics',
+      statisticsDescription:
+        'Review completion rhythm, task pressure, and planning patterns',
       shortcutsTitle: 'Keyboard shortcuts',
       shortcutSearch: 'Search tasks',
       shortcutClose: 'Close details or menus',
@@ -646,7 +763,7 @@ export const translations: Record<Language, Translation> = {
       shortcutList: 'Bullet list',
       shortcutQuote: 'Quote',
       shortcutCode: 'Code block',
-      keySearch: 'Cmd / Ctrl + K',
+      keySearch: 'Cmd / Ctrl + F',
       keyClose: 'Esc',
       keyBold: 'Cmd / Ctrl + B',
       keyItalic: 'Cmd / Ctrl + I',
@@ -654,6 +771,71 @@ export const translations: Record<Language, Translation> = {
       keyList: '- + Space',
       keyQuote: '> + Space',
       keyCode: '``` + Space',
+    },
+    statistics: {
+      eyebrow: 'PERSONAL INSIGHTS',
+      title: 'Statistics',
+      subtitle: 'Understand your task rhythm without scoring yourself.',
+      back: 'Back to settings',
+      ranges: {
+        '7d': '7 days',
+        '30d': '30 days',
+        '90d': '90 days',
+        year: 'This year',
+      },
+      estimated: 'Includes migrated estimates',
+      completedTasks: 'Completed tasks',
+      completionRate: 'Planned completion',
+      pendingChange: 'Pending net change',
+      currentOverdue: 'Currently overdue',
+      completedDetail: (count) =>
+        `${count} completion ${count === 1 ? 'record' : 'records'}`,
+      rateDelta: (delta) =>
+        `${Math.abs(delta)} points ${delta >= 0 ? 'higher' : 'lower'} than the previous period`,
+      rateNoComparison: 'Not enough planned data in the previous period',
+      pendingDetail: (created, completed) =>
+        `${created} created · ${completed} completed`,
+      overdueDetail: (count) => `${count} high-priority`,
+      trendTitle: 'Planned and completed rhythm',
+      trendDescription:
+        'Tasks planned for each period compared with actual completions',
+      planned: 'Planned',
+      completed: 'Completed',
+      insightsEyebrow: 'Worth attention',
+      insightsTitle: 'From data to next steps',
+      stableTitle: 'More consistent days',
+      stableDescription: (days, advantage) =>
+        `${days} are ${advantage} points above the period average.`,
+      pressureInsightTitle: (group) => `${group} has accumulated work`,
+      pressureInsightDescription: (pending, overdue) =>
+        `${pending} pending, including ${overdue} overdue.`,
+      reduceTitle: 'Planning suggestion',
+      reduceDescription: (day, gap) =>
+        `${day} averages ${gap} fewer completions; reduce the planned load.`,
+      buildingTitle: 'Building your history',
+      buildingDescription:
+        'Keep planning and completing tasks to generate actionable patterns.',
+      viewTasks: 'View related tasks',
+      pressureTitle: 'Task pressure distribution',
+      pressureDescription:
+        'Which groups contributed completions and which still have backlog',
+      pending: 'Pending',
+      weeklyTitle: 'Weekly pattern',
+      weeklyDescription: 'Completion rate by planned weekday',
+      noPlannedTasks: 'No planned tasks',
+      weekdays: [
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ],
+      definition:
+        'Planned completion = completed planned tasks in the period ÷ all planned tasks in the period. Trashed tasks are excluded and aggregation stays local.',
+      estimatedDefinition:
+        'This range includes migrated history. Older reopen and reschedule activity may be incomplete; events after the upgrade are recorded accurately.',
     },
     signedOut: {
       title: 'You are signed out',
@@ -811,6 +993,7 @@ export const translations: Record<Language, Translation> = {
     },
     milestones: {
       title: 'Milestones',
+      count: (count) => `${count} ${count === 1 ? 'milestone' : 'milestones'}`,
       add: 'Add milestone',
       addTemplate: 'Choose milestone type',
       templates: {

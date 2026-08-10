@@ -6,6 +6,7 @@ import {
   TASK_PRIORITY_THEME,
   TaskPriorityIcon,
 } from './TaskPriorityIndicator';
+import Tooltip from '../ui/Tooltip';
 
 const PRIORITIES: TodoPriority[] = ['none', 'high', 'medium', 'low'];
 
@@ -23,6 +24,7 @@ const PriorityOption = ({
   selected,
 }: PriorityOptionProps) => {
   const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
   const theme = TASK_PRIORITY_THEME[priority];
 
   return (
@@ -32,6 +34,8 @@ const PriorityOption = ({
       accessibilityState={{ checked: selected }}
       aria-checked={selected}
       nativeID={`priority-option-${priority}`}
+      onBlur={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       onPress={onPress}
@@ -42,10 +46,12 @@ const PriorityOption = ({
           borderColor: theme.color,
         },
         hovered && !selected && styles.optionHovered,
+        focused && styles.optionFocused,
         pressed && styles.optionPressed,
       ]}
     >
-      <TaskPriorityIcon priority={priority} size={14} />
+      <TaskPriorityIcon priority={priority} size={16} />
+      <Tooltip label={label} visible={hovered || focused} />
     </Pressable>
   );
 };
@@ -106,10 +112,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 30,
     justifyContent: 'center',
+    position: 'relative',
     width: 30,
   },
   optionHovered: {
     backgroundColor: '#F3F2F6',
+    transform: [{ translateY: -1 }],
+  },
+  optionFocused: {
+    borderColor: '#AFA6F5',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   optionPressed: {
     opacity: 0.72,

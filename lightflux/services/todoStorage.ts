@@ -8,6 +8,8 @@ import {
   MilestoneType,
   NavigationItemId,
   PersistedAppState,
+  TaskEvent,
+  TaskEventType,
   Todo,
   TodoGroup,
   SolarMilestoneDateRule,
@@ -32,6 +34,7 @@ import {
   saveRemoteAppState,
 } from './authApi';
 import { loadWebState, saveWebState } from './indexedDbStorage';
+import { migrateTaskEvents } from '../store/taskEventDomain';
 
 const STORAGE_KEY = 'lightflux.app-state.v1';
 const stateFile = () => new File(Paths.document, 'lightflux-state.json');
@@ -112,6 +115,61 @@ const MILESTONE_TYPES = new Set<MilestoneType>([
   'holiday',
   'custom',
 ]);
+const TASK_EVENT_TYPES = new Set<TaskEventType>([
+  'created',
+  'completed',
+  'reopened',
+  'rescheduled',
+  'trashed',
+  'restored',
+]);
+const TASK_EVENT_ORDER: Record<TaskEventType, number> = {
+  created: 0,
+  rescheduled: 1,
+  completed: 2,
+  reopened: 2,
+  trashed: 3,
+  restored: 3,
+};
+
+const normalizeTaskEvent = (value: unknown): TaskEvent | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const event = value as Partial<TaskEvent>;
+  if (
+    typeof event.id !== 'string' ||
+    typeof event.taskId !== 'string' ||
+    !TASK_EVENT_TYPES.has(event.type as TaskEventType) ||
+    typeof event.occurredAt !== 'number' ||
+    !Number.isFinite(event.occurredAt) ||
+    event.occurredAt < 0
+  ) {
+    return null;
+  }
+  const metadata =
+    event.metadata && typeof event.metadata === 'object'
+      ? {
+          ...(typeof event.metadata.scheduledDate === 'string'
+            ? { scheduledDate: event.metadata.scheduledDate }
+            : {}),
+          ...(typeof event.metadata.previousScheduledDate === 'string'
+            ? {
+                previousScheduledDate:
+                  event.metadata.previousScheduledDate,
+              }
+            : {}),
+          ...(event.metadata.migrated === true ? { migrated: true } : {}),
+        }
+      : undefined;
+  return {
+    id: event.id,
+    taskId: event.taskId,
+    type: event.type as TaskEventType,
+    occurredAt: event.occurredAt,
+    ...(metadata && Object.keys(metadata).length > 0 ? { metadata } : {}),
+  };
+};
 
 const normalizeDateRule = (value: unknown): MilestoneDateRule | null => {
   if (!value || typeof value !== 'object') {
@@ -251,6 +309,7 @@ const normalizeGroup = (
 
 export const parsePersistedAppState = (
   rawState: string,
+  now = Date.now(),
 ): PersistedAppState | null => {
   try {
     const parsed = JSON.parse(rawState) as Partial<PersistedAppState>;
@@ -281,9 +340,37 @@ export const parsePersistedAppState = (
         ? { ...todo, milestoneId: null }
         : todo,
     );
+    const taskIds = new Set(todos.map((todo) => todo.id));
+    const normalizedEvents = Array.isArray(parsed.taskEvents)
+      ? parsed.taskEvents
+          .map(normalizeTaskEvent)
+          .filter(
+            (event): event is TaskEvent =>
+              event !== null && taskIds.has(event.taskId),
+          )
+      : [];
+    const taskEvents =
+      parsed.schemaVersion === 9 && Array.isArray(parsed.taskEvents)
+        ? Array.from(
+            new Map(
+              normalizedEvents.map((event) => [event.id, event]),
+            ).values(),
+          ).sort(
+            (a, b) =>
+              a.occurredAt - b.occurredAt ||
+              TASK_EVENT_ORDER[a.type] - TASK_EVENT_ORDER[b.type] ||
+              a.id.localeCompare(b.id),
+          )
+        : migrateTaskEvents(todos);
+    const analyticsStartedAt =
+      typeof parsed.analyticsStartedAt === 'number' &&
+      Number.isFinite(parsed.analyticsStartedAt) &&
+      parsed.analyticsStartedAt >= 0
+        ? parsed.analyticsStartedAt
+        : now;
 
     return {
-      schemaVersion: 8,
+      schemaVersion: 9,
       updatedAt: deriveStateUpdatedAt(
         todos,
         groups,
@@ -291,6 +378,7 @@ export const parsePersistedAppState = (
         parsed.updatedAt,
       ),
       language: parsed.language === 'en' ? 'en' : 'zh',
+      analyticsStartedAt,
       navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
       ungroupedName:
         typeof parsed.ungroupedName === 'string' &&
@@ -300,6 +388,7 @@ export const parsePersistedAppState = (
       todos,
       groups,
       milestones,
+      taskEvents,
     };
   } catch {
     return null;

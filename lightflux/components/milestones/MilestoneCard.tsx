@@ -10,6 +10,7 @@ import {
 import { Translation } from '../../i18n/translations';
 import { Milestone } from '../../types/todo';
 import { MilestoneOccurrence } from '../../utils/milestoneDate';
+import IconButton from '../ui/IconButton';
 import { OpenMilestoneMenu, useMilestoneContextMenu } from './useMilestoneContextMenu';
 
 interface MilestoneCardProps {
@@ -131,34 +132,23 @@ const MilestoneCard = ({
         ) : null}
       </Pressable>
 
-      <View style={[styles.actions, !hovered && !selected && styles.actionsIdle]}>
-        <Pressable
-          accessibilityLabel={milestone.pinned ? labels.unpin : labels.pin}
-          accessibilityRole="button"
+      <View style={styles.actions}>
+        <IconButton
+          icon={milestone.pinned ? 'pin' : 'pin-outline'}
+          label={milestone.pinned ? labels.unpin : labels.pin}
           onPress={() => onTogglePin(milestone.id, !milestone.pinned)}
-          style={({ pressed }) => [
-            styles.iconButton,
-            milestone.pinned && styles.iconButtonActive,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Ionicons
-            color={milestone.pinned ? '#6759E8' : '#777887'}
-            name={milestone.pinned ? 'pin' : 'pin-outline'}
-            size={16}
-          />
-        </Pressable>
-        <Pressable
-          accessibilityLabel={labels.moreActions}
-          accessibilityRole="button"
+          size="small"
+          tooltipPosition="bottom"
+          variant={milestone.pinned ? 'primary' : 'neutral'}
+        />
+        <IconButton
+          icon="ellipsis-horizontal"
+          label={labels.moreActions}
           onPress={openFromButton}
-          style={({ pressed }) => [
-            styles.iconButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <Ionicons color="#777887" name="ellipsis-horizontal" size={18} />
-        </Pressable>
+          size="small"
+          tooltipPosition="bottom"
+          variant="neutral"
+        />
       </View>
 
       {milestone.archivedAt ? (
@@ -251,24 +241,10 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
+    gap: 5,
     position: 'absolute',
     right: 11,
     top: 11,
-  },
-  actionsIdle: {
-    opacity: 0.46,
-  },
-  iconButton: {
-    alignItems: 'center',
-    backgroundColor: '#F2F1F5',
-    borderRadius: 10,
-    height: 32,
-    justifyContent: 'center',
-    marginLeft: 5,
-    width: 32,
-  },
-  iconButtonActive: {
-    backgroundColor: '#ECE9FF',
   },
   pressed: {
     opacity: 0.7,

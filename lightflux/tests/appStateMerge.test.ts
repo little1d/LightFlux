@@ -8,12 +8,12 @@ import { PersistedAppState, Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 
 const state = (updatedAt: number): PersistedAppState => ({
-  schemaVersion: 8,
+  schemaVersion: 9,
   updatedAt,
+  analyticsStartedAt: 1,
   groups: [],
   language: 'zh',
   navigationOrder: [
-    'search',
     'today',
     'completed',
     'calendar',
@@ -22,6 +22,7 @@ const state = (updatedAt: number): PersistedAppState => ({
   ],
   todos: [],
   milestones: [],
+  taskEvents: [],
   ungroupedName: null,
 });
 

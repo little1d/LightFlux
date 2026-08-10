@@ -17,6 +17,7 @@ import {
   NewMilestone,
   NewTodo,
   PersistedAppState,
+  TaskEvent,
   Todo,
   TodoGroup,
   TodoUpdate,
@@ -39,6 +40,10 @@ import {
   restoreTodoBranch,
   todoState,
 } from './todoDomain';
+import {
+  createTaskEvent,
+  deriveTaskEventsFromTodoDiff,
+} from './taskEventDomain';
 
 const GROUP_COLORS = [
   '#8B7EFF',
@@ -54,6 +59,8 @@ interface TodoStore {
   todos: Todo[];
   trashedTodos: Todo[];
   groups: TodoGroup[];
+  taskEvents: TaskEvent[];
+  analyticsStartedAt: number;
   allMilestones: Milestone[];
   milestones: Milestone[];
   archivedMilestones: Milestone[];
@@ -99,6 +106,8 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   language: 'zh',
   ...todoState([]),
   groups: [],
+  taskEvents: [],
+  analyticsStartedAt: Date.now(),
   ...milestoneState([]),
   navigationOrder: [...NAVIGATION_ITEM_IDS],
   ungroupedName: null,
@@ -120,6 +129,8 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
           language: state.language,
           ...todoState(state.todos),
           groups: state.groups,
+          taskEvents: state.taskEvents,
+          analyticsStartedAt: state.analyticsStartedAt,
           ...milestoneState(state.milestones),
           navigationOrder: state.navigationOrder,
           ungroupedName: state.ungroupedName,
@@ -201,62 +212,132 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         },
       ];
 
-      return todoState(nextTodos);
+      return {
+        ...todoState(nextTodos),
+        taskEvents: [
+          ...state.taskEvents,
+          createTaskEvent(newTodo.id, 'created', timestamp, {
+            scheduledDate: newTodo.scheduledDate,
+          }),
+        ],
+      };
     });
   },
 
   toggleTodo: (id) =>
-    set((state) =>
-      todoState(
-        state.allTodos.map((todo) => {
-          if (todo.id !== id) {
-            return todo;
-          }
-          const completed = !todo.completed;
-          const timestamp = Date.now();
-          return {
-            ...todo,
-            completed,
-            completedAt: completed ? timestamp : null,
-            updatedAt: timestamp,
-          };
-        }),
-      ),
-    ),
+    set((state) => {
+      const target = state.allTodos.find((todo) => todo.id === id);
+      if (!target) {
+        return state;
+      }
+      const completed = !target.completed;
+      const timestamp = Date.now();
+      return {
+        ...todoState(
+          state.allTodos.map((todo) =>
+            todo.id === id
+              ? {
+                  ...todo,
+                  completed,
+                  completedAt: completed ? timestamp : null,
+                  updatedAt: timestamp,
+                }
+              : todo,
+          ),
+        ),
+        taskEvents: [
+          ...state.taskEvents,
+          createTaskEvent(
+            id,
+            completed ? 'completed' : 'reopened',
+            timestamp,
+          ),
+        ],
+      };
+    }),
 
   updateTodo: (id, changes) =>
-    set((state) =>
-      todoState(
-        state.allTodos.map((todo) =>
-          todo.id === id
-            ? { ...todo, ...changes, updatedAt: Date.now() }
-            : todo,
+    set((state) => {
+      const target = state.allTodos.find((todo) => todo.id === id);
+      if (!target) {
+        return state;
+      }
+      const timestamp = Date.now();
+      const scheduleChanged =
+        changes.scheduledDate !== undefined &&
+        changes.scheduledDate !== target.scheduledDate;
+      return {
+        ...todoState(
+          state.allTodos.map((todo) =>
+            todo.id === id
+              ? { ...todo, ...changes, updatedAt: timestamp }
+              : todo,
+          ),
         ),
-      ),
-    ),
+        taskEvents: scheduleChanged
+          ? [
+              ...state.taskEvents,
+              createTaskEvent(id, 'rescheduled', timestamp, {
+                previousScheduledDate: target.scheduledDate,
+                scheduledDate: changes.scheduledDate,
+              }),
+            ]
+          : state.taskEvents,
+      };
+    }),
 
   trashTodos: (ids) =>
     set((state) => {
+      const activeTodos = state.allTodos.filter(
+        (todo) => todo.trashedAt === null,
+      );
+      const activeIds = new Set(activeTodos.map((todo) => todo.id));
       const idsToTrash = collectTodoFamily(
-        state.allTodos.filter((todo) => todo.trashedAt === null),
-        ids,
+        activeTodos,
+        ids.filter((id) => activeIds.has(id)),
       );
+      if (idsToTrash.size === 0) {
+        return state;
+      }
       const trashedAt = Date.now();
-      return todoState(
-        state.allTodos.map((todo) =>
-          idsToTrash.has(todo.id)
-            ? { ...todo, trashedAt, updatedAt: trashedAt }
-            : todo,
-        ),
+      const nextTodos = state.allTodos.map((todo) =>
+        idsToTrash.has(todo.id)
+          ? { ...todo, trashedAt, updatedAt: trashedAt }
+          : todo,
       );
+      return {
+        ...todoState(nextTodos),
+        taskEvents: [
+          ...state.taskEvents,
+          ...Array.from(idsToTrash).map((todoId) =>
+            createTaskEvent(todoId, 'trashed', trashedAt),
+          ),
+        ],
+      };
     }),
 
   trashTodo: (id) => get().trashTodos([id]),
 
   restoreTodo: (id) =>
-    set((state) =>
-      todoState(restoreTodoBranch(state.allTodos, id, Date.now())),
-    ),
+    set((state) => {
+      const timestamp = Date.now();
+      const nextTodos = restoreTodoBranch(
+        state.allTodos,
+        id,
+        timestamp,
+      );
+      return {
+        ...todoState(nextTodos),
+        taskEvents: [
+          ...state.taskEvents,
+          ...deriveTaskEventsFromTodoDiff(
+            state.allTodos,
+            nextTodos,
+            timestamp,
+          ).filter((event) => event.type === 'restored'),
+        ],
+      };
+    }),
 
   reorderTask: (id, targetIndex) =>
     set((state) => {
@@ -304,16 +385,30 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     }),
 
   deleteTodoPermanently: (id) =>
-    set((state) =>
-      todoState(
-        deleteTrashedTodoBranch(state.allTodos, id, Date.now()),
-      ),
-    ),
+    set((state) => {
+      const nextTodos = deleteTrashedTodoBranch(
+        state.allTodos,
+        id,
+        Date.now(),
+      );
+      const remainingIds = new Set(nextTodos.map((todo) => todo.id));
+      return {
+        ...todoState(nextTodos),
+        taskEvents: state.taskEvents.filter((event) =>
+          remainingIds.has(event.taskId),
+        ),
+      };
+    }),
 
   emptyTrash: () =>
     set((state) => {
       const trashedMilestoneIds = new Set(
         state.trashedMilestones.map((milestone) => milestone.id),
+      );
+      const trashedTodoIds = new Set(
+        state.allTodos
+          .filter((todo) => todo.trashedAt !== null)
+          .map((todo) => todo.id),
       );
       return {
         ...todoState(
@@ -328,6 +423,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
           state.allMilestones.filter(
             (milestone) => milestone.trashedAt === null,
           ),
+        ),
+        taskEvents: state.taskEvents.filter(
+          (event) => !trashedTodoIds.has(event.taskId),
         ),
       };
     }),
@@ -591,14 +689,16 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 }));
 
 const persistedState = (state: TodoStore): PersistedAppState => ({
-  schemaVersion: 8,
+  schemaVersion: 9,
   updatedAt: Date.now(),
+  analyticsStartedAt: state.analyticsStartedAt,
   language: state.language,
   navigationOrder: state.navigationOrder,
   ungroupedName: state.ungroupedName,
   todos: state.allTodos,
   groups: state.groups,
   milestones: state.allMilestones,
+  taskEvents: state.taskEvents,
 });
 
 export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
@@ -606,6 +706,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const language = useTodoStore((state) => state.language);
   const allTodos = useTodoStore((state) => state.allTodos);
   const groups = useTodoStore((state) => state.groups);
+  const taskEvents = useTodoStore((state) => state.taskEvents);
   const allMilestones = useTodoStore((state) => state.allMilestones);
   const navigationOrder = useTodoStore((state) => state.navigationOrder);
   const ungroupedName = useTodoStore((state) => state.ungroupedName);
@@ -684,6 +785,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     language,
     navigationOrder,
     persistenceReady,
+    taskEvents,
     ungroupedName,
   ]);
 

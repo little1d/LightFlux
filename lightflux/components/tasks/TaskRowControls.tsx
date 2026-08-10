@@ -1,10 +1,14 @@
-import React from 'react';
+import { useState } from 'react';
 import {
   GestureResponderEvent,
   Pressable,
   StyleSheet,
   Text,
+  View,
 } from 'react-native';
+
+import IconButton from '../ui/IconButton';
+import Tooltip from '../ui/Tooltip';
 
 export const TaskNestingIndicator = () => (
   <Text style={styles.nestingIndicator}>↳</Text>
@@ -24,33 +28,51 @@ export const TaskCheckbox = ({
   muted?: boolean;
   onPress: () => void;
   uncheckedBorderColor?: string;
-}) => (
-  <Pressable
-    accessibilityLabel={completed ? markActive : markComplete}
-    accessibilityRole="checkbox"
-    accessibilityState={{ checked: completed }}
-    hitSlop={8}
-    onPress={onPress}
-    style={({ pressed }) => [
-      styles.checkbox,
-      {
-        backgroundColor: completed
-          ? muted
-            ? '#D8D8DE'
-            : '#6759E8'
-          : 'transparent',
-        borderColor: completed
-          ? muted
-            ? '#D8D8DE'
-            : '#6759E8'
-          : uncheckedBorderColor,
-      },
-      pressed && styles.pressed,
-    ]}
-  >
-    {completed ? <Text style={styles.checkmark}>✓</Text> : null}
-  </Pressable>
-);
+}) => {
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const label = completed ? markActive : markComplete;
+
+  return (
+    <View style={styles.checkboxWrapper}>
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: completed }}
+        hitSlop={8}
+        onBlur={() => setFocused(false)}
+        onFocus={() => setFocused(true)}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.checkbox,
+          {
+            backgroundColor: completed
+              ? muted
+                ? '#D8D8DE'
+                : '#6759E8'
+              : hovered
+                ? '#F5F3FF'
+                : 'transparent',
+            borderColor: completed
+              ? muted
+                ? '#D8D8DE'
+                : '#6759E8'
+              : hovered
+                ? '#8E82EC'
+                : uncheckedBorderColor,
+          },
+          focused && styles.checkboxFocused,
+          pressed && styles.pressed,
+        ]}
+      >
+        {completed ? <Text style={styles.checkmark}>✓</Text> : null}
+      </Pressable>
+      <Tooltip label={label} visible={hovered || focused} />
+    </View>
+  );
+};
 
 export const TaskMoreButton = ({
   label,
@@ -59,21 +81,21 @@ export const TaskMoreButton = ({
   label: string;
   onPress: (event: GestureResponderEvent) => void;
 }) => (
-  <Pressable
-    accessibilityLabel={label}
-    accessibilityRole="button"
-    hitSlop={8}
-    onPress={onPress}
-    style={({ pressed }) => [
-      styles.moreButton,
-      pressed && styles.pressed,
-    ]}
-  >
-    <Text style={styles.moreText}>⋯</Text>
-  </Pressable>
+  <View style={styles.moreButtonPosition}>
+    <IconButton
+      icon="ellipsis-horizontal"
+      label={label}
+      onPress={onPress}
+      size="compact"
+      variant="transparent"
+    />
+  </View>
 );
 
 const styles = StyleSheet.create({
+  checkboxWrapper: {
+    position: 'relative',
+  },
   checkbox: {
     alignItems: 'center',
     borderRadius: 7,
@@ -81,6 +103,13 @@ const styles = StyleSheet.create({
     height: 20,
     justifyContent: 'center',
     width: 20,
+  },
+  checkboxFocused: {
+    borderColor: '#8E82EC',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 6,
   },
   checkmark: {
     color: '#FFFFFF',
@@ -93,19 +122,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginRight: 6,
   },
-  moreButton: {
-    alignItems: 'center',
-    borderRadius: 10,
-    height: 28,
-    justifyContent: 'center',
+  moreButtonPosition: {
     marginLeft: 4,
-    width: 28,
-  },
-  moreText: {
-    color: '#9293A0',
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 18,
   },
   pressed: {
     opacity: 0.68,

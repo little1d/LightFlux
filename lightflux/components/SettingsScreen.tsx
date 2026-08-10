@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -34,7 +34,11 @@ const ShortcutRow = ({ description, keys }: ShortcutRowProps) => (
   </View>
 );
 
-const SettingsScreen = () => {
+const SettingsScreen = ({
+  onOpenStatistics,
+}: {
+  onOpenStatistics: () => void;
+}) => {
   const language = useTodoStore((state) => state.language);
   const setLanguage = useTodoStore((state) => state.setLanguage);
   const labels = translations[language];
@@ -117,6 +121,44 @@ const SettingsScreen = () => {
             </View>
           </View>
 
+          <View className="mb-7">
+            <Text className="mb-2 text-[18px] font-extrabold text-[#2E2F41]">
+              {labels.settings.dataTitle}
+            </Text>
+            <Pressable
+              accessibilityLabel={labels.settings.statisticsTitle}
+              accessibilityRole="button"
+              onPress={onOpenStatistics}
+              style={({ pressed }) => [
+                styles.statisticsCard,
+                pressed && styles.statisticsCardPressed,
+              ]}
+            >
+              <View style={styles.statisticsIcon}>
+                <Ionicons
+                  color="#6759E8"
+                  name="stats-chart"
+                  size={19}
+                />
+              </View>
+              <View style={styles.statisticsText}>
+                <Text style={styles.statisticsTitle}>
+                  {labels.settings.statisticsTitle}
+                </Text>
+                <Text style={styles.statisticsDescription}>
+                  {labels.settings.statisticsDescription}
+                </Text>
+              </View>
+              <View style={styles.statisticsArrow}>
+                <Ionicons
+                  color="#8B8C98"
+                  name="chevron-forward"
+                  size={17}
+                />
+              </View>
+            </Pressable>
+          </View>
+
           <View>
             <Text className="mb-2 text-[18px] font-extrabold text-[#2E2F41]">
               {labels.settings.shortcutsTitle}
@@ -192,6 +234,55 @@ const styles = StyleSheet.create({
   },
   languageChevron: {
     marginLeft: 8,
+  },
+  statisticsCard: {
+    alignItems: 'center',
+    backgroundColor: '#F8F8FA',
+    borderColor: '#E6E5EB',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    minHeight: 82,
+    paddingHorizontal: 16,
+    shadowColor: '#45435F',
+    shadowOffset: { height: 5, width: 0 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+  },
+  statisticsCardPressed: {
+    backgroundColor: '#F0EEFF',
+    borderColor: '#D8D2FA',
+    transform: [{ scale: 0.99 }],
+  },
+  statisticsIcon: {
+    alignItems: 'center',
+    backgroundColor: '#EAE6FF',
+    borderRadius: 12,
+    height: 42,
+    justifyContent: 'center',
+    marginRight: 13,
+    width: 42,
+  },
+  statisticsText: {
+    flex: 1,
+  },
+  statisticsTitle: {
+    color: '#303143',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  statisticsDescription: {
+    color: '#858692',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 4,
+  },
+  statisticsArrow: {
+    alignItems: 'center',
+    height: 32,
+    justifyContent: 'center',
+    marginLeft: 10,
+    width: 32,
   },
 });
 

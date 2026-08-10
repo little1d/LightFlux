@@ -1,8 +1,11 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { ComponentProps } from 'react';
+import { ComponentProps, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
+import { translations } from '../../i18n/translations';
+import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
+import Tooltip from '../ui/Tooltip';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -16,25 +19,25 @@ interface PriorityTheme {
 export const TASK_PRIORITY_THEME: Record<TodoPriority, PriorityTheme> = {
   none: {
     color: '#9294A1',
-    icon: 'remove-outline',
+    icon: 'remove-circle-outline',
     rowBackground: 'transparent',
     softBackground: '#F1F1F4',
   },
   high: {
     color: '#CE5264',
-    icon: 'chevron-up',
+    icon: 'alert-circle',
     rowBackground: '#FFF7F8',
     softBackground: '#FCECEF',
   },
   medium: {
     color: '#C67A2D',
-    icon: 'remove',
+    icon: 'flag',
     rowBackground: '#FFFAF3',
     softBackground: '#FFF0DD',
   },
   low: {
     color: '#5278C9',
-    icon: 'chevron-down',
+    icon: 'arrow-down-circle',
     rowBackground: '#F6F8FF',
     softBackground: '#EAF0FF',
   },
@@ -56,6 +59,8 @@ const TaskPriorityIndicator = ({
 }: {
   priority: TodoPriority;
 }) => {
+  const language = useTodoStore((state) => state.language);
+  const [hovered, setHovered] = useState(false);
   if (priority === 'none') {
     return null;
   }
@@ -63,12 +68,20 @@ const TaskPriorityIndicator = ({
   const theme = TASK_PRIORITY_THEME[priority];
   return (
     <View
+      accessibilityLabel={translations[language].taskMenu.priorityOptions[priority]}
+      accessible
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
       style={[
         styles.indicator,
         { backgroundColor: theme.softBackground },
       ]}
     >
       <TaskPriorityIcon priority={priority} />
+      <Tooltip
+        label={translations[language].taskMenu.priorityOptions[priority]}
+        visible={hovered}
+      />
     </View>
   );
 };
@@ -80,7 +93,7 @@ const styles = StyleSheet.create({
     height: 22,
     justifyContent: 'center',
     marginLeft: 6,
-    pointerEvents: 'none',
+    position: 'relative',
     width: 22,
   },
 });

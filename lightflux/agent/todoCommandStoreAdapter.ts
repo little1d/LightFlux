@@ -15,9 +15,11 @@ import { useTodoStore } from '../store/todoStore';
 import {
   MilestoneDateRule,
   MilestoneType,
+  TaskEvent,
   TodoPriority,
 } from '../types/todo';
 import { milestoneState } from '../store/milestoneDomain';
+import { deriveTaskEventsFromTodoDiff } from '../store/taskEventDomain';
 
 const MAX_AUDIT_RECORDS = 100;
 
@@ -95,6 +97,7 @@ export interface AgentAuditRecord {
 }
 
 let lastUndoToken: AgentUndoToken | null = null;
+let lastUndoTaskEvents: TaskEvent[] | null = null;
 let auditRecords: AgentAuditRecord[] = [];
 
 const currentCommandState = () => {
@@ -109,11 +112,13 @@ const currentCommandState = () => {
 
 const applyCommandState = (
   state: ReturnType<typeof currentCommandState>,
+  taskEvents?: TaskEvent[],
 ) => {
   useTodoStore.setState({
     ...deriveTodoCommandCollections(state.todos),
     groups: state.groups,
     ...milestoneState(state.milestones),
+    ...(taskEvents ? { taskEvents } : {}),
     ungroupedName: state.ungroupedName,
   });
 };
@@ -255,12 +260,27 @@ export const executeConfirmedAgentProposal = (
   proposal: AgentProposal,
   now = Date.now(),
 ): AgentExecutionResult => {
-  const result = executeAgentProposal(currentCommandState(), proposal, {
+  const storeState = useTodoStore.getState();
+  const sourceState = currentCommandState();
+  const previousTaskEvents = storeState.taskEvents ?? [];
+  const result = executeAgentProposal(sourceState, proposal, {
     confirmed: true,
     now,
   });
-  applyCommandState(result.state);
+  const taskEvents = [
+    ...previousTaskEvents,
+    ...deriveTaskEventsFromTodoDiff(
+      sourceState.todos,
+      result.state.todos,
+      now,
+    ),
+  ];
+  applyCommandState(result.state, taskEvents);
   lastUndoToken = result.undoToken;
+  lastUndoTaskEvents = previousTaskEvents.map((event) => ({
+    ...event,
+    ...(event.metadata ? { metadata: { ...event.metadata } } : {}),
+  }));
   auditRecords = [
     ...auditRecords,
     {
@@ -288,13 +308,14 @@ export const undoLastAgentProposal = (
   }
   const token = lastUndoToken;
   const restoredState = undoAgentExecution(currentCommandState(), token);
-  applyCommandState(restoredState);
+  applyCommandState(restoredState, lastUndoTaskEvents ?? undefined);
   auditRecords = auditRecords.map((record) =>
     record.proposalId === token.proposalId && record.undoneAt === null
       ? { ...record, undoneAt: now }
       : record,
   );
   lastUndoToken = null;
+  lastUndoTaskEvents = null;
   return true;
 };
 
@@ -312,6 +333,7 @@ export const getAgentAuditRecords = (): AgentAuditRecord[] =>
 
 export const clearAgentRuntimeHistory = () => {
   lastUndoToken = null;
+  lastUndoTaskEvents = null;
   auditRecords = [];
 };
 

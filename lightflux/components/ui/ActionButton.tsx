@@ -21,11 +21,14 @@ const ActionButton = ({
   variant = 'primary',
 }: ActionButtonProps) => {
   const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   return (
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
+      onBlur={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       onPress={onPress}
@@ -34,6 +37,7 @@ const ActionButton = ({
         size === 'small' ? styles.small : styles.medium,
         styles[variant],
         hovered && !disabled && styles[`${variant}Hovered`],
+        focused && !disabled && styles.focused,
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
       ]}
@@ -58,7 +62,9 @@ const ActionButton = ({
 const styles = StyleSheet.create({
   base: {
     alignItems: 'center',
+    borderColor: 'transparent',
     borderRadius: 9,
+    borderWidth: 2,
     justifyContent: 'center',
     paddingHorizontal: 13,
   },
@@ -95,6 +101,13 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.78,
     transform: [{ scale: 0.98 }],
+  },
+  focused: {
+    borderColor: '#AFA6F5',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
   },
   disabled: {
     backgroundColor: '#C9C6DD',

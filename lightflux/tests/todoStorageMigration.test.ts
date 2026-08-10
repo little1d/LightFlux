@@ -36,8 +36,8 @@ const legacyTodo = {
   trashedAt: null,
 };
 
-describe('persisted state V8 migration', () => {
-  it('upgrades V7 state with milestone defaults', () => {
+describe('persisted state V9 migration', () => {
+  it('upgrades V7 state with milestone and analytics defaults', () => {
     const result = parsePersistedAppState(
       JSON.stringify({
         schemaVersion: 7,
@@ -55,14 +55,70 @@ describe('persisted state V8 migration', () => {
         todos: [legacyTodo],
         groups: [],
       }),
+      100,
     );
 
     expect(result).toMatchObject({
-      schemaVersion: 8,
+      schemaVersion: 9,
+      analyticsStartedAt: 100,
       milestones: [],
+      taskEvents: [
+        expect.objectContaining({
+          id: 'migration-legacy-task-created',
+          taskId: 'legacy-task',
+          type: 'created',
+        }),
+      ],
       todos: [expect.objectContaining({ milestoneId: null })],
     });
     expect(result?.navigationOrder).toContain('milestones');
+    expect(result?.navigationOrder).not.toContain('search');
+  });
+
+  it('normalizes persisted V9 events and filters unknown tasks', () => {
+    const result = parsePersistedAppState(
+      JSON.stringify({
+        schemaVersion: 9,
+        updatedAt: 20,
+        analyticsStartedAt: 15,
+        language: 'zh',
+        todos: [legacyTodo],
+        groups: [],
+        milestones: [],
+        taskEvents: [
+          {
+            id: 'created',
+            taskId: 'legacy-task',
+            type: 'created',
+            occurredAt: 10,
+            metadata: {
+              scheduledDate: '2026-08-10',
+            },
+          },
+          {
+            id: 'unknown',
+            taskId: 'missing-task',
+            type: 'completed',
+            occurredAt: 11,
+          },
+          {
+            id: 'invalid',
+            taskId: 'legacy-task',
+            type: 'deleted',
+            occurredAt: 12,
+          },
+        ],
+      }),
+      100,
+    );
+
+    expect(result?.analyticsStartedAt).toBe(15);
+    expect(result?.taskEvents).toEqual([
+      expect.objectContaining({
+        id: 'created',
+        taskId: 'legacy-task',
+      }),
+    ]);
   });
 
   it('keeps valid milestones and filters invalid records', () => {

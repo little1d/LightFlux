@@ -24,7 +24,7 @@ import {
 } from '../agent/todoCommandStoreAdapter';
 import { deriveTodoCommandCollections } from '../agent/todoCommandExecutor';
 import { AgentProposal } from '../agent/types';
-import { Milestone, Todo } from '../types/todo';
+import { Milestone, TaskEvent, Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 import { milestoneState } from '../store/milestoneDomain';
 
@@ -82,9 +82,10 @@ beforeEach(() => {
     ...deriveTodoCommandCollections([todo('existing')]),
     ...milestoneState([]),
     groups: [],
+    taskEvents: [],
+    analyticsStartedAt: 1,
     language: 'zh',
     navigationOrder: [
-      'search',
       'today',
       'completed',
       'calendar',
@@ -187,11 +188,19 @@ describe('agent Zustand adapter', () => {
         undoneAt: null,
       }),
     ]);
+    expect(mockStore.state.taskEvents).toEqual([
+      expect.objectContaining({
+        taskId: 'created',
+        type: 'created',
+        occurredAt: 100,
+      }),
+    ]);
 
     expect(undoLastAgentProposal(200)).toBe(true);
     expect(
       (mockStore.state.allTodos as Todo[]).some((item) => item.id === 'created'),
     ).toBe(false);
+    expect(mockStore.state.taskEvents as TaskEvent[]).toEqual([]);
     expect(getAgentAuditRecords()[0].undoneAt).toBe(200);
     expect(undoLastAgentProposal()).toBe(false);
   });

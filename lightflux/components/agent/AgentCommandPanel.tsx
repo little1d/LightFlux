@@ -199,6 +199,7 @@ const AgentCommandPanel = ({
               label={labels.close}
               onPress={closePanel}
               size="small"
+              tooltipPosition="bottom"
             />
           </View>
 
@@ -332,19 +333,16 @@ const AgentCommandPanel = ({
               style={styles.input}
               value={draft}
             />
-            <Pressable
-              accessibilityLabel={labels.send}
-              accessibilityRole="button"
-              disabled={!draft.trim() || loading}
-              onPress={() => void send()}
-              style={({ pressed }) => [
-                styles.sendButton,
-                (!draft.trim() || loading) && styles.sendButtonDisabled,
-                pressed && styles.sendButtonPressed,
-              ]}
-            >
-              <Ionicons color="#FFFFFF" name="arrow-up" size={17} />
-            </Pressable>
+            <View style={styles.sendButtonPosition}>
+              <IconButton
+                disabled={!draft.trim() || loading}
+                icon="arrow-up"
+                label={labels.send}
+                onPress={() => void send()}
+                size="medium"
+                variant="solid"
+              />
+            </View>
           </View>
           {undoAvailable ? (
             <Pressable
@@ -680,21 +678,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  sendButton: {
-    alignItems: 'center',
-    backgroundColor: '#6759E8',
-    borderRadius: 11,
-    height: 38,
-    justifyContent: 'center',
+  sendButtonPosition: {
     marginLeft: 8,
-    width: 38,
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#C8C5DB',
-  },
-  sendButtonPressed: {
-    opacity: 0.78,
-    transform: [{ scale: 0.94 }],
   },
   undoButton: {
     alignItems: 'center',

@@ -6,14 +6,18 @@ import React, {
   useState,
 } from 'react';
 import {
+  Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+} from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import CalendarScreen from './components/CalendarScreen';
@@ -27,6 +31,7 @@ import TodoScreen from './components/TodoScreen';
 import AccountMenu, {
   AccountAvatar,
 } from './components/account/AccountMenu';
+import AgentCommandPanel from './components/agent/AgentCommandPanel';
 import TaskEditorScreen from './components/editor/TaskEditorScreen';
 import ResizableDivider from './components/layout/ResizableDivider';
 import DraggableNavigationItem from './components/navigation/DraggableNavigationItem';
@@ -56,6 +61,7 @@ type SelectedTask = {
 type ToastMessage = {
   id: number;
   message: string;
+  variant?: 'error' | 'success';
 };
 
 const DESKTOP_NAV_WIDTH = 78;
@@ -82,18 +88,23 @@ const AppContent = () => {
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
   const [toast, setToast] = useState<ToastMessage | null>(null);
+  const [agentOpen, setAgentOpen] = useState(false);
   const [taskMenu, setTaskMenu] = useState<{
     todoId: string;
     position?: TaskMenuPosition;
   } | null>(null);
   const {
+    clearPersistenceError,
     language,
     navigationOrder,
+    persistenceErrorAt,
     reorderNavigationItem,
   } = useTodoStore(
     useShallow((state) => ({
+      clearPersistenceError: state.clearPersistenceError,
       language: state.language,
       navigationOrder: state.navigationOrder,
+      persistenceErrorAt: state.persistenceErrorAt,
       reorderNavigationItem: state.reorderNavigationItem,
     })),
   );
@@ -177,6 +188,12 @@ const AppContent = () => {
     setSelectedTask(null);
     setTaskMenu(null);
   }, []);
+  const openAgent = useCallback(() => {
+    setAccountMenuOpen(false);
+    setTaskMenu(null);
+    setSelectedTask(null);
+    setAgentOpen(true);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -203,6 +220,11 @@ const AppContent = () => {
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
+        event.preventDefault();
+        openAgent();
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         changeView('search');
@@ -210,6 +232,7 @@ const AppContent = () => {
       }
 
       if (event.key === 'Escape') {
+        setAgentOpen(false);
         setAccountMenuOpen(false);
         setTaskMenu(null);
         setSelectedTask(null);
@@ -218,7 +241,7 @@ const AppContent = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [changeView]);
+  }, [changeView, openAgent]);
 
   useEffect(() => {
     if (!selectedTask) {
@@ -229,6 +252,16 @@ const AppContent = () => {
       setSelectedTask(null);
     }
   }, [selectedTask, selectedTaskExists]);
+
+  useEffect(() => {
+    if (persistenceErrorAt) {
+      setToast({
+        id: persistenceErrorAt,
+        message: labels.notifications.saveFailed,
+        variant: 'error',
+      });
+    }
+  }, [labels.notifications.saveFailed, persistenceErrorAt]);
 
   const signOut = () => {
     setAccountMenuOpen(false);
@@ -258,17 +291,6 @@ const AppContent = () => {
 
   if (!signedIn) {
     return <SignedOutScreen onContinue={continueSession} />;
-  }
-
-  if (selectedTask && !usesDesktopLayout) {
-    return (
-      <TaskEditorScreen
-        key={`${selectedTask.id}-${selectedTask.requestId}`}
-        onClose={closeSelectedTask}
-        readOnly={selectedTask.readOnly}
-        todoId={selectedTask.id}
-      />
-    );
   }
 
   const activeScreen =
@@ -310,9 +332,18 @@ const AppContent = () => {
         selectedTaskId={selectedTaskId}
       />
     );
+  const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
 
   return (
-    <View className="flex-1 flex-row bg-canvas">
+    <>
+    <View
+      accessibilityElementsHidden={mobileEditorOpen}
+      aria-hidden={mobileEditorOpen || undefined}
+      className="flex-1 flex-row bg-canvas"
+      importantForAccessibility={
+        mobileEditorOpen ? 'no-hide-descendants' : 'auto'
+      }
+    >
       {usesDesktopLayout ? (
         <SafeAreaView className="w-[78px] border-r border-[#E2E1E8] bg-[#F7F6F9]">
           <View className="flex-1 items-center pt-5">
@@ -363,6 +394,17 @@ const AppContent = () => {
               );
             })}
           </View>
+          <Pressable
+            accessibilityLabel={labels.agent.title}
+            accessibilityRole="button"
+            onPress={openAgent}
+            style={({ pressed }) => [
+              styles.agentButton,
+              pressed && styles.agentButtonPressed,
+            ]}
+          >
+            <Ionicons color="#6759E8" name="sparkles" size={19} />
+          </Pressable>
         </SafeAreaView>
       ) : null}
 
@@ -429,6 +471,34 @@ const AppContent = () => {
         </>
       ) : null}
 
+      {!usesDesktopLayout && !selectedTask ? (
+        <SafeAreaView style={styles.mobileAccountOverlay}>
+          <View style={styles.mobileAccountPosition}>
+            <Pressable
+              accessibilityLabel={labels.agent.title}
+              accessibilityRole="button"
+              onPress={openAgent}
+              style={({ pressed }) => [
+                styles.mobileAgentButton,
+                pressed && styles.agentButtonPressed,
+              ]}
+            >
+              <Ionicons color="#6759E8" name="sparkles" size={18} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel={labels.account.localAccount}
+              accessibilityRole="button"
+              onPress={() => setAccountMenuOpen((current) => !current)}
+              style={({ pressed }) =>
+                pressed ? styles.avatarPressed : undefined
+              }
+            >
+              <AccountAvatar active={activeView === 'settings'} />
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      ) : null}
+
       {taskMenu ? (
         <TaskActionMenu
           onClose={() => setTaskMenu(null)}
@@ -446,6 +516,11 @@ const AppContent = () => {
         <AccountMenu
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
+          position={
+            usesDesktopLayout
+              ? undefined
+              : { x: Math.max(12, width - 252), y: 72 }
+          }
           onSignOut={signOut}
         />
       ) : null}
@@ -454,10 +529,41 @@ const AppContent = () => {
         <Toast
           key={toast.id}
           message={toast.message}
-          onDismiss={() => setToast(null)}
+          onDismiss={() => {
+            if (toast.variant === 'error') {
+              clearPersistenceError();
+            }
+            setToast(null);
+          }}
+          variant={toast.variant}
         />
       ) : null}
     </View>
+    <AgentCommandPanel
+      onClose={() => setAgentOpen(false)}
+      onNotify={(message, variant = 'success') =>
+        setToast({ id: Date.now(), message, variant })
+      }
+      visible={agentOpen}
+    />
+    {selectedTask && !usesDesktopLayout ? (
+      <Modal
+        animationType="none"
+        onRequestClose={closeSelectedTask}
+        presentationStyle="fullScreen"
+        visible
+      >
+        <View style={styles.mobileEditorOverlay}>
+          <TaskEditorScreen
+            key={`${selectedTask.id}-${selectedTask.requestId}`}
+            onClose={closeSelectedTask}
+            readOnly={selectedTask.readOnly}
+            todoId={selectedTask.id}
+          />
+        </View>
+      </Modal>
+    ) : null}
+    </>
   );
 };
 
@@ -469,12 +575,57 @@ const styles = StyleSheet.create({
   fullPane: {
     flex: 1,
   },
+  mobileAccountOverlay: {
+    bottom: 0,
+    left: 0,
+    pointerEvents: 'box-none',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 50,
+  },
+  mobileAccountPosition: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    pointerEvents: 'box-none',
+  },
+  agentButton: {
+    alignItems: 'center',
+    backgroundColor: '#F0EEFF',
+    borderRadius: 13,
+    height: 40,
+    justifyContent: 'center',
+    marginBottom: 14,
+    width: 40,
+  },
+  mobileAgentButton: {
+    alignItems: 'center',
+    backgroundColor: '#F0EEFF',
+    borderRadius: 13,
+    height: 40,
+    justifyContent: 'center',
+    marginRight: 10,
+    width: 40,
+  },
+  agentButtonPressed: {
+    opacity: 0.76,
+    transform: [{ scale: 0.92 }],
+  },
+  mobileEditorOverlay: {
+    backgroundColor: '#F5F5FA',
+    flex: 1,
+  },
 });
 
 export default function App() {
   return (
-    <TodoProvider>
-      <AppContent />
-    </TodoProvider>
+    <SafeAreaProvider>
+      <TodoProvider>
+        <AppContent />
+      </TodoProvider>
+    </SafeAreaProvider>
   );
 }

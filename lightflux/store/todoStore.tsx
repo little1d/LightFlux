@@ -14,6 +14,14 @@ import {
   TodoUpdate,
 } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
+import {
+  byTodoOrder,
+  collectTodoFamily,
+  deleteTrashedTodoBranch,
+  emptyTrashTodos,
+  restoreTodoBranch,
+  todoState,
+} from './todoDomain';
 
 const GROUP_COLORS = [
   '#8B7EFF',
@@ -33,8 +41,10 @@ interface TodoStore {
   ungroupedName: string | null;
   isHydrated: boolean;
   persistenceReady: boolean;
+  persistenceErrorAt: number | null;
   hydrationStarted: boolean;
   hydrate: () => Promise<void>;
+  clearPersistenceError: () => void;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   addTodo: (todo: NewTodo) => void;
   toggleTodo: (id: string) => void;
@@ -57,67 +67,6 @@ interface TodoStore {
 const makeId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-const collectTodoFamily = (todos: Todo[], rootIds: string[]): Set<string> => {
-  const result = new Set(rootIds);
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-    todos.forEach((todo) => {
-      if (todo.parentId && result.has(todo.parentId) && !result.has(todo.id)) {
-        result.add(todo.id);
-        changed = true;
-      }
-    });
-  }
-
-  return result;
-};
-
-const byTodoOrder = (a: Todo, b: Todo) =>
-  a.sortOrder - b.sortOrder || b.createdAt - a.createdAt;
-
-const orderWithSubtasks = (
-  todos: Todo[],
-  compare: (a: Todo, b: Todo) => number = byTodoOrder,
-): Todo[] => {
-  const ids = new Set(todos.map((todo) => todo.id));
-  const children = new Map<string, Todo[]>();
-
-  todos.forEach((todo) => {
-    if (todo.parentId && ids.has(todo.parentId)) {
-      const current = children.get(todo.parentId) ?? [];
-      current.push(todo);
-      children.set(todo.parentId, current);
-    }
-  });
-
-  const result: Todo[] = [];
-  const append = (todo: Todo) => {
-    result.push(todo);
-    children.get(todo.id)?.sort(compare).forEach(append);
-  };
-
-  todos
-    .filter((todo) => !todo.parentId || !ids.has(todo.parentId))
-    .sort(compare)
-    .forEach(append);
-
-  return result;
-};
-
-const todoState = (allTodos: Todo[]) => ({
-  allTodos,
-  todos: orderWithSubtasks(
-    allTodos.filter((todo) => todo.trashedAt === null),
-  ),
-  trashedTodos: orderWithSubtasks(
-    allTodos.filter((todo) => todo.trashedAt !== null),
-    (a, b) =>
-      (b.trashedAt ?? 0) - (a.trashedAt ?? 0) || byTodoOrder(a, b),
-  ),
-});
-
 export const useTodoStore = create<TodoStore>((set, get) => ({
   language: 'zh',
   ...todoState([]),
@@ -126,6 +75,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   ungroupedName: null,
   isHydrated: false,
   persistenceReady: false,
+  persistenceErrorAt: null,
   hydrationStarted: false,
 
   hydrate: async () => {
@@ -148,9 +98,15 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       set({ isHydrated: true, persistenceReady: true });
     } catch (error) {
       console.warn('Unable to load LightFlux data.', error);
-      set({ isHydrated: true, persistenceReady: false });
+      set({
+        isHydrated: true,
+        persistenceErrorAt: Date.now(),
+        persistenceReady: false,
+      });
     }
   },
+
+  clearPersistenceError: () => set({ persistenceErrorAt: null }),
 
   setLanguage: (value) =>
     set((state) => ({
@@ -250,7 +206,10 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
   trashTodos: (ids) =>
     set((state) => {
-      const idsToTrash = collectTodoFamily(state.allTodos, ids);
+      const idsToTrash = collectTodoFamily(
+        state.allTodos.filter((todo) => todo.trashedAt === null),
+        ids,
+      );
       const trashedAt = Date.now();
       return todoState(
         state.allTodos.map((todo) =>
@@ -264,17 +223,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   trashTodo: (id) => get().trashTodos([id]),
 
   restoreTodo: (id) =>
-    set((state) => {
-      const idsToRestore = collectTodoFamily(state.allTodos, [id]);
-      const timestamp = Date.now();
-      return todoState(
-        state.allTodos.map((todo) =>
-          idsToRestore.has(todo.id)
-            ? { ...todo, trashedAt: null, updatedAt: timestamp }
-            : todo,
-        ),
-      );
-    }),
+    set((state) =>
+      todoState(restoreTodoBranch(state.allTodos, id, Date.now())),
+    ),
 
   reorderTask: (id, targetIndex) =>
     set((state) => {
@@ -322,18 +273,15 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     }),
 
   deleteTodoPermanently: (id) =>
-    set((state) => {
-      const idsToDelete = collectTodoFamily(state.allTodos, [id]);
-      return todoState(
-        state.allTodos.filter((todo) => !idsToDelete.has(todo.id)),
-      );
-    }),
+    set((state) =>
+      todoState(
+        deleteTrashedTodoBranch(state.allTodos, id, Date.now()),
+      ),
+    ),
 
   emptyTrash: () =>
     set((state) =>
-      todoState(
-        state.allTodos.filter((todo) => todo.trashedAt === null),
-      ),
+      todoState(emptyTrashTodos(state.allTodos, Date.now())),
     ),
 
   addGroup: (name, placement) => {
@@ -431,7 +379,8 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 }));
 
 const persistedState = (state: TodoStore): PersistedAppState => ({
-  schemaVersion: 6,
+  schemaVersion: 7,
+  updatedAt: Date.now(),
   language: state.language,
   navigationOrder: state.navigationOrder,
   ungroupedName: state.ungroupedName,
@@ -463,6 +412,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         persistedState(useTodoStore.getState()),
       ).catch((error: unknown) => {
         console.warn('Unable to save LightFlux data.', error);
+        useTodoStore.setState({ persistenceErrorAt: Date.now() });
       });
     }, 180);
 

@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import {
@@ -14,6 +14,10 @@ import {
   isRichTextDocument,
 } from '../utils/richText';
 import {
+  deriveStateUpdatedAt,
+  selectLatestAppState,
+} from './appStateMerge';
+import {
   isRemoteAuthConfigured,
   loadRemoteAppState,
   saveRemoteAppState,
@@ -21,9 +25,7 @@ import {
 import { loadWebState, saveWebState } from './indexedDbStorage';
 
 const STORAGE_KEY = 'lightflux.app-state.v1';
-const FILE_URI = FileSystem.documentDirectory
-  ? `${FileSystem.documentDirectory}lightflux-state.json`
-  : null;
+const stateFile = () => new File(Paths.document, 'lightflux-state.json');
 
 const normalizeNavigationOrder = (value: unknown): NavigationItemId[] => {
   const saved = Array.isArray(value)
@@ -132,9 +134,15 @@ const parseState = (rawState: string): PersistedAppState | null => {
     const todos = parsed.todos
       .map((todo, index) => normalizeTodo(todo, index))
       .filter((todo): todo is Todo => todo !== null);
+    const groups = Array.isArray(parsed.groups)
+      ? parsed.groups
+          .map((group, index) => normalizeGroup(group, index + 1))
+          .filter((group): group is TodoGroup => group !== null)
+      : [];
 
     return {
-      schemaVersion: 6,
+      schemaVersion: 7,
+      updatedAt: deriveStateUpdatedAt(todos, groups, parsed.updatedAt),
       language: parsed.language === 'en' ? 'en' : 'zh',
       navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
       ungroupedName:
@@ -143,11 +151,7 @@ const parseState = (rawState: string): PersistedAppState | null => {
           ? parsed.ungroupedName.trim()
           : null,
       todos,
-      groups: Array.isArray(parsed.groups)
-        ? parsed.groups
-            .map((group, index) => normalizeGroup(group, index + 1))
-            .filter((group): group is TodoGroup => group !== null)
-        : [],
+      groups,
     };
   } catch {
     return null;
@@ -160,16 +164,12 @@ const loadDeviceState = async (): Promise<PersistedAppState | null> => {
     return rawState ? parseState(rawState) : null;
   }
 
-  if (!FILE_URI) {
-    return null;
-  }
-
-  const file = await FileSystem.getInfoAsync(FILE_URI);
+  const file = stateFile();
   if (!file.exists) {
     return null;
   }
 
-  return parseState(await FileSystem.readAsStringAsync(FILE_URI));
+  return parseState(await file.text());
 };
 
 const saveDeviceState = async (
@@ -182,9 +182,7 @@ const saveDeviceState = async (
     return;
   }
 
-  if (FILE_URI) {
-    await FileSystem.writeAsStringAsync(FILE_URI, serializedState);
-  }
+  stateFile().write(serializedState);
 };
 
 export const loadAppState = async (): Promise<PersistedAppState | null> => {
@@ -201,8 +199,19 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
 
     const normalizedRemoteState = parseState(JSON.stringify(remoteState));
     if (normalizedRemoteState) {
-      await saveDeviceState(normalizedRemoteState);
-      return normalizedRemoteState;
+      const latestState = selectLatestAppState(
+        deviceState,
+        normalizedRemoteState,
+      );
+      if (latestState === normalizedRemoteState) {
+        await saveDeviceState(normalizedRemoteState);
+      } else if (
+        latestState &&
+        latestState.updatedAt > normalizedRemoteState.updatedAt
+      ) {
+        await saveRemoteAppState(latestState);
+      }
+      return latestState;
     }
     return deviceState;
   } catch (error) {

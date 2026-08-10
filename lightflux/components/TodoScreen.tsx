@@ -6,25 +6,31 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   StatusBar as NativeStatusBar,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
+import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { Translation, translations } from '../i18n/translations';
+import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo, TodoFilter } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
-import { todayKey } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
 import TaskPriorityIndicator, {
   TASK_PRIORITY_THEME,
 } from './tasks/TaskPriorityIndicator';
+import {
+  TaskCheckbox,
+  TaskMoreButton,
+  TaskNestingIndicator,
+} from './tasks/TaskRowControls';
 import TaskSelectionMarker, {
   TASK_SELECTED_ROW_STYLE,
 } from './tasks/TaskSelectionMarker';
@@ -81,65 +87,41 @@ const TodoRow = ({
         selected && TASK_SELECTED_ROW_STYLE,
       ]}
     >
-    <TaskSelectionMarker visible={selected} />
-    {todo.parentId ? (
-      <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
-    ) : null}
-    <Pressable
-      accessibilityLabel={
-        todo.completed ? labels.markActive : labels.markComplete
-      }
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: todo.completed }}
-      className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
-        todo.completed
-          ? 'border-primary bg-primary'
-          : 'border-[#C5C2D4]'
-      }`}
-      hitSlop={8}
-      onPress={() => onToggle(todo.id)}
-      style={({ pressed }) => [
-        pressed && styles.buttonPressed,
-      ]}
-    >
-      {todo.completed ? (
-        <Text className="text-sm font-black leading-[17px] text-white">✓</Text>
-      ) : null}
-    </Pressable>
+      <TaskSelectionMarker visible={selected} />
+      {todo.parentId ? <TaskNestingIndicator /> : null}
+      <TaskCheckbox
+        completed={todo.completed}
+        markActive={labels.markActive}
+        markComplete={labels.markComplete}
+        onPress={() => onToggle(todo.id)}
+      />
 
-    <Pressable
-      accessibilityLabel={`${labels.editor.title}: ${todo.title}`}
-      accessibilityRole="button"
-      className="ml-2.5 flex-1 py-1.5"
-      delayLongPress={350}
-      onLongPress={openFromLongPress}
-      onPress={() => onEdit(todo.id)}
-    >
-      <Text
-        className={`text-[13px] font-semibold leading-[18px] ${
-          todo.completed
-            ? 'text-[#999AAA] line-through'
-            : 'text-[#303145]'
-        }`}
-        numberOfLines={1}
+      <Pressable
+        accessibilityLabel={`${labels.editor.title}: ${todo.title}`}
+        accessibilityRole="button"
+        className="ml-2.5 flex-1 py-1.5"
+        delayLongPress={350}
+        onLongPress={openFromLongPress}
+        onPress={() => onEdit(todo.id)}
       >
-        {todo.title}
-      </Text>
-    </Pressable>
+        <Text
+          className={`text-[13px] font-semibold leading-[18px] ${
+            todo.completed
+              ? 'text-[#999AAA] line-through'
+              : 'text-[#303145]'
+          }`}
+          numberOfLines={1}
+        >
+          {todo.title}
+        </Text>
+      </Pressable>
 
-    <TaskPriorityIndicator priority={todo.priority} />
-    <TaskIndicators childCount={childCount} todo={todo} />
-    <Pressable
-      accessibilityLabel={labels.taskMenu.moreActions}
-      accessibilityRole="button"
-      className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
-      hitSlop={8}
-      onPress={openFromButton}
-    >
-      <Text className="text-[16px] font-bold leading-[18px] text-[#9293A0]">
-        ⋯
-      </Text>
-    </Pressable>
+      <TaskPriorityIndicator priority={todo.priority} />
+      <TaskIndicators childCount={childCount} todo={todo} />
+      <TaskMoreButton
+        label={labels.taskMenu.moreActions}
+        onPress={openFromButton}
+      />
     </View>
   );
 };
@@ -170,10 +152,14 @@ const TodoScreen = ({
       trashTodos: state.trashTodos,
     })),
   );
-  const dateKey = useMemo(todayKey, []);
+  const dateKey = useCurrentDateKey();
   const todos = useMemo(
     () => allTodos.filter((todo) => todo.scheduledDate === dateKey),
     [allTodos, dateKey],
+  );
+  const childCountByParent = useMemo(
+    () => buildChildCountByParent(allTodos),
+    [allTodos],
   );
 
   const labels = translations[language];
@@ -241,44 +227,45 @@ const TodoScreen = ({
             </Text>
           </View>
         </View>
-
       </View>
 
-      <View
-        className="mb-[18px] overflow-hidden rounded-[26px] bg-[#25233B] p-[22px]"
-        style={styles.summaryShadow}
-      >
-        <View style={styles.summaryGlow} />
-        <Text className="mb-[13px] text-[11px] font-bold tracking-[1.2px] text-[#B7B3D7]">
-          {labels.overview}
-        </Text>
-        <View className="flex-row items-center justify-between">
-          <View>
-            <View className="flex-row items-end">
-              <Text className="text-[42px] font-extrabold leading-[46px] tracking-[-1.5px] text-white">
-                {activeCount}
-              </Text>
-              <Text className="mb-1.5 ml-2 text-[13px] font-semibold text-[#DAD7EC]">
-                {labels.taskUnit}
+      {todos.length > 0 ? (
+        <View
+          className="mb-[18px] overflow-hidden rounded-[26px] bg-[#25233B] p-[22px]"
+          style={styles.summaryShadow}
+        >
+          <View style={styles.summaryGlow} />
+          <Text className="mb-[13px] text-[11px] font-bold tracking-[1.2px] text-[#B7B3D7]">
+            {labels.overview}
+          </Text>
+          <View className="flex-row items-center justify-between">
+            <View>
+              <View className="flex-row items-end">
+                <Text className="text-[42px] font-extrabold leading-[46px] tracking-[-1.5px] text-white">
+                  {activeCount}
+                </Text>
+                <Text className="mb-1.5 ml-2 text-[13px] font-semibold text-[#DAD7EC]">
+                  {labels.taskUnit}
+                </Text>
+              </View>
+              <Text className="mt-0.5 text-[13px] text-[#9D99B7]">
+                {labels.remaining}
               </Text>
             </View>
-            <Text className="mt-0.5 text-[13px] text-[#9D99B7]">
-              {labels.remaining}
-            </Text>
+            <View className="h-[50px] w-[50px] items-center justify-center rounded-[25px] border border-white/15 bg-white/10">
+              <Text className="text-[13px] font-extrabold text-white">
+                {Math.round(progress * 100)}%
+              </Text>
+            </View>
           </View>
-          <View className="h-[50px] w-[50px] items-center justify-center rounded-[25px] border border-white/15 bg-white/10">
-            <Text className="text-[13px] font-extrabold text-white">
-              {Math.round(progress * 100)}%
-            </Text>
+          <View className="mt-5 h-1.5 overflow-hidden rounded bg-white/10">
+            <View style={[styles.progressFill, { width: progressWidth }]} />
           </View>
+          <Text className="mt-[9px] text-xs text-[#ABA7C3]">
+            {labels.progress(completedCount, todos.length)}
+          </Text>
         </View>
-        <View className="mt-5 h-1.5 overflow-hidden rounded bg-white/10">
-          <View style={[styles.progressFill, { width: progressWidth }]} />
-        </View>
-        <Text className="mt-[9px] text-xs text-[#ABA7C3]">
-          {labels.progress(completedCount, todos.length)}
-        </Text>
-      </View>
+      ) : null}
 
       <View
         className="mb-5 flex-row items-center rounded-[20px] border border-[#E8E7EF] bg-surface p-[7px] pl-[17px]"
@@ -288,7 +275,6 @@ const TodoScreen = ({
         <TextInput
           {...inputAccentProps}
           accessibilityLabel={labels.inputPlaceholder}
-          blurOnSubmit={false}
           className="min-h-[46px] flex-1 py-2.5 text-[15px] text-[#292A3D]"
           maxLength={120}
           onChangeText={setDraft}
@@ -296,6 +282,7 @@ const TodoScreen = ({
           placeholder={labels.inputPlaceholder}
           placeholderTextColor="#9297A8"
           returnKeyType="done"
+          submitBehavior="blurAndSubmit"
           value={draft}
         />
         <Pressable
@@ -317,50 +304,52 @@ const TodoScreen = ({
         </Pressable>
       </View>
 
-      <View className="mb-3.5 min-h-[34px] flex-row items-center justify-between">
-        <View className="flex-row rounded-[17px] bg-[#EAE9F1] p-[3px]">
-          {FILTERS.map((item) => {
-            const isSelected = item === filter;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: isSelected }}
-                className={`rounded-[14px] px-[13px] py-[7px] ${
-                  isSelected ? 'bg-white' : ''
-                }`}
-                key={item}
-                onPress={() => setFilter(item)}
-                style={({ pressed }) => [
-                  isSelected && styles.selectedFilterShadow,
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                <Text
-                  className={`text-xs ${
-                    isSelected
-                      ? 'font-extrabold text-[#39374F]'
-                      : 'font-semibold text-[#777A8B]'
+      {todos.length > 0 ? (
+        <View className="mb-3.5 min-h-[34px] flex-row items-center justify-between">
+          <View className="flex-row rounded-[17px] bg-[#EAE9F1] p-[3px]">
+            {FILTERS.map((item) => {
+              const isSelected = item === filter;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  className={`rounded-[14px] px-[13px] py-[7px] ${
+                    isSelected ? 'bg-white' : ''
                   }`}
+                  key={item}
+                  onPress={() => setFilter(item)}
+                  style={({ pressed }) => [
+                    isSelected && styles.selectedFilterShadow,
+                    pressed && styles.buttonPressed,
+                  ]}
                 >
-                  {labels.filters[item]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+                  <Text
+                    className={`text-xs ${
+                      isSelected
+                        ? 'font-extrabold text-[#39374F]'
+                        : 'font-semibold text-[#777A8B]'
+                    }`}
+                  >
+                    {labels.filters[item]}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
-        {completedCount > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={requestClearCompleted}
-            style={({ pressed }) => pressed && styles.buttonPressed}
-          >
-            <Text className="py-2 pl-2.5 text-xs font-bold text-[#7772AD]">
-              {labels.clearCompleted}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
+          {completedCount > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={requestClearCompleted}
+              style={({ pressed }) => pressed && styles.buttonPressed}
+            >
+              <Text className="py-2 pl-2.5 text-xs font-bold text-[#7772AD]">
+                {labels.clearCompleted}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </>
   );
 
@@ -397,7 +386,7 @@ const TodoScreen = ({
             ListHeaderComponent={listHeader}
             renderItem={({ item }) => (
               <TodoRow
-                childCount={allTodos.filter((todo) => todo.parentId === item.id).length}
+                childCount={childCountByParent.get(item.id) ?? 0}
                 labels={labels}
                 onEdit={onEditTask}
                 onOpenMenu={onOpenTaskMenu}

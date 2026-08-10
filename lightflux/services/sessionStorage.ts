@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import {
@@ -8,9 +8,8 @@ import {
 } from './authApi';
 
 const STORAGE_KEY = 'lightflux.session.v1';
-const FILE_URI = FileSystem.documentDirectory
-  ? `${FileSystem.documentDirectory}lightflux-session.json`
-  : null;
+const sessionFile = () =>
+  new File(Paths.document, 'lightflux-session.json');
 
 interface WebStorage {
   getItem(key: string): string | null;
@@ -33,16 +32,12 @@ export const loadSessionState = async (): Promise<boolean> => {
     return getWebStorage()?.getItem(STORAGE_KEY) !== 'signed-out';
   }
 
-  if (!FILE_URI) {
-    return true;
-  }
-
-  const file = await FileSystem.getInfoAsync(FILE_URI);
+  const file = sessionFile();
   if (!file.exists) {
     return true;
   }
 
-  return (await FileSystem.readAsStringAsync(FILE_URI)) !== 'signed-out';
+  return (await file.text()) !== 'signed-out';
 };
 
 export const saveSessionState = async (signedIn: boolean): Promise<void> => {
@@ -60,7 +55,5 @@ export const saveSessionState = async (signedIn: boolean): Promise<void> => {
     return;
   }
 
-  if (FILE_URI) {
-    await FileSystem.writeAsStringAsync(FILE_URI, value);
-  }
+  sessionFile().write(value);
 };

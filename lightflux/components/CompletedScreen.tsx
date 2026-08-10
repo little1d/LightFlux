@@ -2,19 +2,26 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, { useMemo } from 'react';
 import {
   Pressable,
-  SafeAreaView,
   SectionList,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
+import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { translations } from '../i18n/translations';
+import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
-import { toDateKey } from '../utils/date';
+import { fromDateKey, toDateKey } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
+import {
+  TaskCheckbox,
+  TaskMoreButton,
+  TaskNestingIndicator,
+} from './tasks/TaskRowControls';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
@@ -64,19 +71,14 @@ const CompletedTaskRow = ({
       ref={targetRef}
     >
       <TaskSelectionMarker visible={selected} />
-      {nested ? (
-        <Text className="mr-1.5 text-[12px] text-[#AAA9B3]">↳</Text>
-      ) : null}
-      <Pressable
-        accessibilityLabel={labels.markActive}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: true }}
-        className="h-5 w-5 items-center justify-center rounded-[6px] bg-[#D8D8DE]"
-        hitSlop={8}
+      {nested ? <TaskNestingIndicator /> : null}
+      <TaskCheckbox
+        completed
+        markActive={labels.markActive}
+        markComplete={labels.markComplete}
+        muted
         onPress={() => onToggle(todo.id)}
-      >
-        <Text className="text-xs font-black leading-[15px] text-white">✓</Text>
-      </Pressable>
+      />
 
       <Pressable
         accessibilityLabel={`${labels.editor.title}: ${todo.title}`}
@@ -95,15 +97,10 @@ const CompletedTaskRow = ({
       </Pressable>
 
       <TaskIndicators childCount={childCount} todo={todo} />
-      <Pressable
-        accessibilityLabel={labels.taskMenu.moreActions}
-        accessibilityRole="button"
-        className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
-        hitSlop={8}
+      <TaskMoreButton
+        label={labels.taskMenu.moreActions}
         onPress={openFromButton}
-      >
-        <Text className="text-[16px] font-bold text-[#A0A1AC]">⋯</Text>
-      </Pressable>
+      />
     </View>
   );
 };
@@ -136,6 +133,10 @@ const CompletedScreen = ({
     () => new Set(completedTodos.map((todo) => todo.id)),
     [completedTodos],
   );
+  const childCountByParent = useMemo(
+    () => buildChildCountByParent(completedTodos),
+    [completedTodos],
+  );
   const sections = useMemo<CompletedSection[]>(() => {
     const grouped = new Map<string, Todo[]>();
 
@@ -153,8 +154,9 @@ const CompletedScreen = ({
     })).sort((a, b) => b.latestTimestamp - a.latestTimestamp);
   }, [completedTodos]);
 
-  const today = toDateKey(new Date());
-  const yesterdayDate = new Date();
+  const today = useCurrentDateKey();
+  const todayDate = fromDateKey(today);
+  const yesterdayDate = new Date(todayDate);
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterday = toDateKey(yesterdayDate);
 
@@ -173,7 +175,7 @@ const CompletedScreen = ({
         day: 'numeric',
         month: 'long',
         weekday: 'short',
-        year: year === new Date().getFullYear() ? undefined : 'numeric',
+        year: year === todayDate.getFullYear() ? undefined : 'numeric',
       },
     );
   };
@@ -207,10 +209,7 @@ const CompletedScreen = ({
           }
           renderItem={({ item }) => (
             <CompletedTaskRow
-              childCount={
-                completedTodos.filter((todo) => todo.parentId === item.id)
-                  .length
-              }
+              childCount={childCountByParent.get(item.id) ?? 0}
               nested={Boolean(
                 item.parentId && completedIds.has(item.parentId),
               )}

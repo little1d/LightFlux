@@ -5,21 +5,27 @@ import {
   FlatList,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
 import { translations } from '../i18n/translations';
+import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
 import { fromDateKey } from '../utils/date';
 import { richTextPreview } from '../utils/richText';
 import TaskIndicators from './tasks/TaskIndicators';
+import {
+  TaskCheckbox,
+  TaskMoreButton,
+  TaskNestingIndicator,
+} from './tasks/TaskRowControls';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
@@ -105,29 +111,14 @@ const SearchTaskRow = ({
       ref={targetRef}
     >
       <TaskSelectionMarker visible={selected} />
-      {todo.parentId ? (
-        <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
-      ) : null}
-      <Pressable
-        accessibilityLabel={
-          todo.completed ? labels.markActive : labels.markComplete
-        }
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: todo.completed }}
-        className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
-          todo.completed
-            ? 'border-primary bg-primary'
-            : 'border-[#BFC1CB]'
-        }`}
-        hitSlop={8}
+      {todo.parentId ? <TaskNestingIndicator /> : null}
+      <TaskCheckbox
+        completed={todo.completed}
+        markActive={labels.markActive}
+        markComplete={labels.markComplete}
         onPress={() => onToggle(todo.id)}
-      >
-        {todo.completed ? (
-          <Text className="text-xs font-black leading-[15px] text-white">
-            ✓
-          </Text>
-        ) : null}
-      </Pressable>
+        uncheckedBorderColor="#BFC1CB"
+      />
 
       <Pressable
         accessibilityLabel={`${labels.editor.title}: ${todo.title}`}
@@ -165,15 +156,10 @@ const SearchTaskRow = ({
       </Pressable>
 
       <TaskIndicators childCount={childCount} todo={todo} />
-      <Pressable
-        accessibilityLabel={labels.taskMenu.moreActions}
-        accessibilityRole="button"
-        className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
-        hitSlop={8}
+      <TaskMoreButton
+        label={labels.taskMenu.moreActions}
         onPress={openFromButton}
-      >
-        <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
-      </Pressable>
+      />
     </View>
   );
 };
@@ -206,6 +192,10 @@ const SearchScreen = ({
   const groupNames = useMemo(
     () => new Map(groups.map((group) => [group.id, group.name])),
     [groups],
+  );
+  const childCountByParent = useMemo(
+    () => buildChildCountByParent(todos),
+    [todos],
   );
   const results = useMemo(() => {
     if (!normalizedQuery) {
@@ -300,9 +290,7 @@ const SearchScreen = ({
           ListHeaderComponent={header}
           renderItem={({ item }) => (
             <SearchTaskRow
-              childCount={
-                todos.filter((todo) => todo.parentId === item.id).length
-              }
+              childCount={childCountByParent.get(item.id) ?? 0}
               groupName={groupNames.get(item.groupId ?? '')}
               onEdit={onEditTask}
               onOpenMenu={onOpenTaskMenu}

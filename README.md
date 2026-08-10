@@ -1,6 +1,6 @@
 # 流光 (LightFlux)
 
-基于 Expo、React Native、Tailwind CSS 和 NativeWind 的跨平台任务管理应用。
+基于 Expo 57、React Native 0.86、Tailwind CSS 和 NativeWind 的跨平台任务管理应用。
 
 ## 功能
 
@@ -28,6 +28,7 @@
 cd lightflux
 npm install
 npm run editor:build
+npm test
 npm start
 npm run typecheck
 ```
@@ -40,11 +41,11 @@ npm run typecheck
 
 ## 数据持久化
 
-任务数据使用 `schemaVersion: 5` 的 JSON 结构。Web 写入
-`localStorage`，iOS/Android 写入应用文档目录。每个任务包含稳定 ID、
+任务数据使用 `schemaVersion: 7` 的 JSON 结构。Web 写入
+IndexedDB（不可用时回退到 `localStorage`），iOS/Android 写入应用文档目录。每个任务包含稳定 ID、
 父任务 ID、分组 ID、完成/删除时间、富文本 JSON 和持久化排序字段
-`sortOrder`；任务分组也包含独立顺序字段。状态管理目前使用 React Context，存储通过独立 service
-隔离；后续切换 Zustand 或云数据库时无需改动页面数据结构。
+`sortOrder`；应用状态包含全局更新时间以协调本地与云端版本，任务分组也包含独立顺序字段。状态管理使用 Zustand，存储通过独立 service
+隔离；后续切换云数据库时无需改动页面数据结构。
 
 ## 微信登录
 

@@ -1,4 +1,5 @@
 import { Language, TodoFilter, TodoPriority } from '../types/todo';
+import type { AgentOperation, AgentRisk } from '../agent/types';
 
 export interface Translation {
   appName: string;
@@ -68,6 +69,7 @@ export interface Translation {
   };
   notifications: {
     orderUpdated: string;
+    saveFailed: string;
   };
   overview: string;
   remaining: string;
@@ -149,6 +151,28 @@ export interface Translation {
     emptyTitle: string;
     previewTitle: string;
     resizePane: string;
+  };
+  agent: {
+    title: string;
+    shortcut: string;
+    close: string;
+    empty: string;
+    inputPlaceholder: string;
+    send: string;
+    thinking: string;
+    clarification: string;
+    proposal: string;
+    assumptions: string;
+    confirm: string;
+    reject: string;
+    undo: string;
+    applied: string;
+    undone: string;
+    requestFailed: string;
+    resultReportFailed: string;
+    undoFailed: string;
+    risk: Record<AgentRisk, string>;
+    operations: Record<AgentOperation['type'], string>;
   };
   taskMenu: {
     addSubtask: string;
@@ -243,6 +267,7 @@ export const translations: Record<Language, Translation> = {
     },
     notifications: {
       orderUpdated: '顺序已更新',
+      saveFailed: '保存失败，本地数据仍会保留，请稍后重试',
     },
     overview: '今日概览',
     remaining: '待完成',
@@ -337,6 +362,41 @@ export const translations: Record<Language, Translation> = {
       emptyTitle: '任务标题不能为空。',
       previewTitle: '任务预览',
       resizePane: '调整任务列表与详情宽度',
+    },
+    agent: {
+      title: 'AI 任务助理',
+      shortcut: '⌘ / Ctrl + J',
+      close: '关闭 AI 助理',
+      empty: '用自然语言新增、查找或调整任务。所有修改都会先展示预览。',
+      inputPlaceholder: '例如：明天处理报销，先整理发票，优先级高…',
+      send: '发送给 AI 助理',
+      thinking: '正在理解并生成计划…',
+      clarification: '需要确认',
+      proposal: '操作预览',
+      assumptions: '当前假设',
+      confirm: '确认执行',
+      reject: '取消',
+      undo: '撤销上一次 AI 操作',
+      applied: 'AI 操作已执行',
+      undone: 'AI 操作已撤销',
+      requestFailed: 'AI 请求失败，请稍后重试。',
+      resultReportFailed: '操作已执行，但未能回传结果。',
+      undoFailed: '数据已变化，无法安全撤销。',
+      risk: {
+        low: '低风险',
+        medium: '中风险',
+        high: '高风险',
+      },
+      operations: {
+        'task.create': '新增任务',
+        'task.update': '修改任务',
+        'task.set_completion': '设置完成状态',
+        'task.move': '移动任务',
+        'task.trash': '移至垃圾桶',
+        'task.restore': '恢复任务',
+        'group.create': '新增分组',
+        'group.update': '修改分组',
+      },
     },
     taskMenu: {
       addSubtask: '添加子任务',
@@ -434,6 +494,7 @@ export const translations: Record<Language, Translation> = {
     },
     notifications: {
       orderUpdated: 'Order updated.',
+      saveFailed: 'Save failed. Local data is preserved; try again later.',
     },
     overview: 'TODAY AT A GLANCE',
     remaining: 'Remaining',
@@ -534,6 +595,43 @@ export const translations: Record<Language, Translation> = {
       emptyTitle: 'A task title is required.',
       previewTitle: 'Task preview',
       resizePane: 'Resize task list and details',
+    },
+    agent: {
+      title: 'AI task assistant',
+      shortcut: 'Cmd / Ctrl + J',
+      close: 'Close AI assistant',
+      empty:
+        'Create, find, or adjust tasks with natural language. Every change is previewed first.',
+      inputPlaceholder:
+        'For example: Handle expenses tomorrow, organize receipts first, high priority…',
+      send: 'Send to AI assistant',
+      thinking: 'Understanding and preparing a plan…',
+      clarification: 'Clarification',
+      proposal: 'Operation preview',
+      assumptions: 'Assumptions',
+      confirm: 'Confirm',
+      reject: 'Cancel',
+      undo: 'Undo last AI operation',
+      applied: 'AI operations applied',
+      undone: 'AI operations undone',
+      requestFailed: 'Unable to reach the AI assistant. Try again.',
+      resultReportFailed: 'Changes were applied, but the result was not reported.',
+      undoFailed: 'Task data changed, so this operation cannot be safely undone.',
+      risk: {
+        low: 'Low risk',
+        medium: 'Medium risk',
+        high: 'High risk',
+      },
+      operations: {
+        'task.create': 'Create task',
+        'task.update': 'Update task',
+        'task.set_completion': 'Set completion',
+        'task.move': 'Move task',
+        'task.trash': 'Move to trash',
+        'task.restore': 'Restore task',
+        'group.create': 'Create group',
+        'group.update': 'Update group',
+      },
     },
     taskMenu: {
       addSubtask: 'Add subtask',

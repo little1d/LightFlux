@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { translations } from '../../i18n/translations';
 import { useTodoStore } from '../../store/todoStore';
 import MenuItem from '../ui/MenuItem';
-import MenuSurface from '../ui/MenuSurface';
+import MenuSurface, { MenuSurfacePosition } from '../ui/MenuSurface';
 
 export const AccountAvatar = ({
   active = false,
@@ -31,10 +31,12 @@ export const AccountAvatar = ({
 const AccountMenu = ({
   onClose,
   onOpenSettings,
+  position,
   onSignOut,
 }: {
   onClose: () => void;
   onOpenSettings: () => void;
+  position?: MenuSurfacePosition;
   onSignOut: () => void;
 }) => {
   const language = useTodoStore((state) => state.language);
@@ -45,7 +47,7 @@ const AccountMenu = ({
       closeLabel={labels.cancel}
       estimatedHeight={150}
       onClose={onClose}
-      position={{ x: 12, y: 72 }}
+      position={position ?? { x: 12, y: 72 }}
       width={240}
     >
       <View className="border-b border-[#ECEBF1] px-4 py-3">

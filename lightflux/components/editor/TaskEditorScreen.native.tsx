@@ -10,12 +10,12 @@ import React, {
   useState,
 } from 'react';
 import {
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
@@ -23,8 +23,10 @@ import { editorHtml } from '../../editor-web/build/editorHtml';
 import { translations } from '../../i18n/translations';
 import { useTodoStore } from '../../store/todoStore';
 import { RichTextDocument } from '../../types/todo';
+import { richTextPreview } from '../../utils/richText';
 import IconButton from '../ui/IconButton';
 import { CodeBlockBridge } from './CodeBlockBridge';
+import TaskEditorMetadata from './TaskEditorMetadata';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const TaskEditorScreen = ({
@@ -33,12 +35,14 @@ const TaskEditorScreen = ({
   readOnly = false,
 }: TaskEditorScreenProps) => {
   const {
+    groups,
     language,
     todos,
     trashedTodos,
     updateTodo,
   } = useTodoStore(
     useShallow((state) => ({
+      groups: state.groups,
       language: state.language,
       todos: state.todos,
       trashedTodos: state.trashedTodos,
@@ -49,6 +53,9 @@ const TaskEditorScreen = ({
   const todo = (readOnly ? trashedTodos : todos).find(
     (item) => item.id === todoId,
   );
+  const groupName =
+    groups.find((group) => group.id === todo?.groupId)?.name ??
+    labels.groups.ungrouped;
   const [title, setTitle] = useState(todo?.title ?? '');
   const [titleError, setTitleError] = useState('');
   const lastSavedContent = useRef(
@@ -74,6 +81,11 @@ const TaskEditorScreen = ({
     debounceInterval: 350,
     type: 'json',
   }) as RichTextDocument | undefined;
+  const currentContent = editorContent ?? todo?.content;
+  const showBodyPlaceholder =
+    !readOnly &&
+    currentContent !== undefined &&
+    richTextPreview(currentContent).length === 0;
 
   useEffect(() => {
     if (!readOnly && editorContent) {
@@ -158,7 +170,21 @@ const TaskEditorScreen = ({
           </View>
         </View>
 
-        <View className="mx-4 mb-3 flex-1 overflow-hidden rounded-[18px] border border-[#E2E1E9] bg-white">
+        <View className="mx-5">
+          <TaskEditorMetadata
+            groupName={groupName}
+            labels={labels}
+            language={language}
+            todo={todo}
+          />
+        </View>
+
+        <View className="relative mx-4 mb-3 flex-1 overflow-hidden rounded-[18px] border border-[#E2E1E9] bg-white">
+          {showBodyPlaceholder ? (
+            <Text style={styles.bodyPlaceholder}>
+              {labels.editor.bodyPlaceholder}
+            </Text>
+          ) : null}
           <RichText editor={editor} style={styles.richText} />
         </View>
       </SafeAreaView>
@@ -170,6 +196,15 @@ const styles = StyleSheet.create({
   richText: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  bodyPlaceholder: {
+    color: '#A0A1AD',
+    fontSize: 15,
+    left: 20,
+    pointerEvents: 'none',
+    position: 'absolute',
+    top: 20,
+    zIndex: 2,
   },
 });
 

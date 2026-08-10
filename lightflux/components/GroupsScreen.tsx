@@ -12,17 +12,21 @@ import {
   Keyboard,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
 import { Translation, translations } from '../i18n/translations';
+import {
+  buildChildCountByParent,
+  buildSiblingIndexById,
+} from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
@@ -38,6 +42,11 @@ import TaskIndicators from './tasks/TaskIndicators';
 import TaskPriorityIndicator, {
   TASK_PRIORITY_THEME,
 } from './tasks/TaskPriorityIndicator';
+import {
+  TaskCheckbox,
+  TaskMoreButton,
+  TaskNestingIndicator,
+} from './tasks/TaskRowControls';
 import TaskSelectionMarker, {
   TASK_SELECTED_ROW_STYLE,
 } from './tasks/TaskSelectionMarker';
@@ -417,24 +426,14 @@ const GroupTask = ({
       ]}
     >
       <TaskSelectionMarker visible={selected} />
-      {todo.parentId ? (
-        <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
-      ) : null}
-      <Pressable
-        accessibilityLabel={todo.completed ? markActive : markComplete}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: todo.completed }}
-        className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
-          todo.completed
-            ? 'border-primary bg-primary'
-            : 'border-[#BFC1CB]'
-        }`}
+      {todo.parentId ? <TaskNestingIndicator /> : null}
+      <TaskCheckbox
+        completed={todo.completed}
+        markActive={markActive}
+        markComplete={markComplete}
         onPress={() => onToggle(todo.id)}
-      >
-        {todo.completed ? (
-          <Text className="text-sm font-black leading-[17px] text-white">✓</Text>
-        ) : null}
-      </Pressable>
+        uncheckedBorderColor="#BFC1CB"
+      />
       {todo.parentId ? (
         <InlineSubtaskTitle
           editLabel={editLabel}
@@ -463,14 +462,10 @@ const GroupTask = ({
       )}
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
-      <Pressable
-        accessibilityLabel={translations[language].taskMenu.moreActions}
-        accessibilityRole="button"
-        className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
+      <TaskMoreButton
+        label={translations[language].taskMenu.moreActions}
         onPress={openFromButton}
-      >
-        <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
-      </Pressable>
+      />
     </View>
   );
 };
@@ -530,6 +525,15 @@ const GroupsScreen = ({
     message: string;
   } | null>(null);
 
+  const todosByGroup = useMemo(() => {
+    const grouped = new Map<string | null, Todo[]>();
+    todos.forEach((todo) => {
+      const groupTodos = grouped.get(todo.groupId) ?? [];
+      groupTodos.push(todo);
+      grouped.set(todo.groupId, groupTodos);
+    });
+    return grouped;
+  }, [todos]);
   const sections = useMemo<GroupSection[]>(
     () =>
       [
@@ -538,18 +542,26 @@ const GroupsScreen = ({
           name: ungroupedName ?? labels.groups.ungrouped,
           color: '#9A97AD',
           sortOrder: 0,
-          todos: todos.filter((todo) => todo.groupId === null),
+          todos: todosByGroup.get(null) ?? [],
         },
         ...groups.map((group) => ({
           ...group,
-          todos: todos.filter((todo) => todo.groupId === group.id),
+          todos: todosByGroup.get(group.id) ?? [],
         })),
       ].sort(
         (a, b) =>
           a.sortOrder - b.sortOrder ||
           a.name.localeCompare(b.name, language === 'zh' ? 'zh-CN' : 'en-US'),
       ),
-    [groups, labels.groups.ungrouped, language, todos, ungroupedName],
+    [groups, labels.groups.ungrouped, language, todosByGroup, ungroupedName],
+  );
+  const childCountByParent = useMemo(
+    () => buildChildCountByParent(todos),
+    [todos],
+  );
+  const siblingIndexById = useMemo(
+    () => buildSiblingIndexById(todos),
+    [todos],
   );
   const openGroupMenu = useCallback<OpenGroupMenu>(
     (sectionId, position) => {
@@ -866,15 +878,9 @@ const GroupsScreen = ({
                     ) : (
                       section.todos.map((todo) => {
                         const nested = Boolean(todo.parentId);
-                        const siblings = section.todos.filter(
-                          (item) => item.parentId === todo.parentId,
-                        );
                         const row = (
                           <GroupTask
-                            childCount={
-                              todos.filter((item) => item.parentId === todo.id)
-                                .length
-                            }
+                            childCount={childCountByParent.get(todo.id) ?? 0}
                             editLabel={labels.editor.title}
                             language={language}
                             markActive={labels.markActive}
@@ -894,9 +900,7 @@ const GroupsScreen = ({
                           <React.Fragment key={todo.id}>
                             <DraggableTaskRow
                               id={todo.id}
-                              index={siblings.findIndex(
-                                (item) => item.id === todo.id,
-                              )}
+                              index={siblingIndexById.get(todo.id) ?? 0}
                               label={`${labels.groups.reorderTask}: ${todo.title}`}
                               nested={nested}
                               onMove={moveTask}

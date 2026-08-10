@@ -11,9 +11,14 @@ import {
 interface ToastProps {
   message: string;
   onDismiss: () => void;
+  variant?: 'error' | 'success';
 }
 
-const Toast = ({ message, onDismiss }: ToastProps) => {
+const Toast = ({
+  message,
+  onDismiss,
+  variant = 'success',
+}: ToastProps) => {
   const progress = useRef(new Animated.Value(0)).current;
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
@@ -53,6 +58,7 @@ const Toast = ({ message, onDismiss }: ToastProps) => {
         accessibilityRole="alert"
         style={[
           styles.toast,
+          variant === 'error' && styles.errorToast,
           {
             opacity: progress,
             transform: [
@@ -72,7 +78,11 @@ const Toast = ({ message, onDismiss }: ToastProps) => {
           },
         ]}
       >
-        <Ionicons color="#FFFFFF" name="checkmark-circle" size={17} />
+        <Ionicons
+          color="#FFFFFF"
+          name={variant === 'error' ? 'alert-circle' : 'checkmark-circle'}
+          size={17}
+        />
         <Text style={styles.message}>{message}</Text>
       </Animated.View>
     </View>
@@ -100,6 +110,9 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 7, width: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 16,
+  },
+  errorToast: {
+    backgroundColor: '#B44758',
   },
   message: {
     color: '#FFFFFF',

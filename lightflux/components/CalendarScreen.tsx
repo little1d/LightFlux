@@ -3,27 +3,33 @@ import React, { useMemo, useState } from 'react';
 import {
   Keyboard,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
+import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { translations } from '../i18n/translations';
+import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Language, Todo } from '../types/todo';
 import {
   addMonths,
   fromDateKey,
   monthGrid,
-  todayKey,
   toDateKey,
 } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
+import {
+  TaskCheckbox,
+  TaskMoreButton,
+  TaskNestingIndicator,
+} from './tasks/TaskRowControls';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
@@ -181,26 +187,13 @@ const CalendarTask = ({
       ]}
     >
       <TaskSelectionMarker visible={selected} />
-      {todo.parentId ? (
-        <Text className="mr-1.5 text-[12px] text-[#A09EAC]">↳</Text>
-      ) : null}
-      <Pressable
-        accessibilityLabel={todo.completed ? markActive : markComplete}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: todo.completed }}
-        className={`h-5 w-5 items-center justify-center rounded-[7px] border-[1.5px] ${
-          todo.completed
-            ? 'border-primary bg-primary'
-            : 'border-[#C5C2D4]'
-        }`}
+      {todo.parentId ? <TaskNestingIndicator /> : null}
+      <TaskCheckbox
+        completed={todo.completed}
+        markActive={markActive}
+        markComplete={markComplete}
         onPress={() => onToggle(todo.id)}
-      >
-        {todo.completed ? (
-          <Text className="text-sm font-black leading-[17px] text-white">
-            ✓
-          </Text>
-        ) : null}
-      </Pressable>
+      />
       <Pressable
         accessibilityLabel={`${editLabel}: ${todo.title}`}
         accessibilityRole="button"
@@ -224,14 +217,10 @@ const CalendarTask = ({
         className="ml-2 h-2 w-2 rounded"
         style={{ backgroundColor: color }}
       />
-      <Pressable
-        accessibilityLabel={moreActionsLabel}
-        accessibilityRole="button"
-        className="ml-1 h-7 w-7 items-center justify-center rounded-[10px]"
+      <TaskMoreButton
+        label={moreActionsLabel}
         onPress={openFromButton}
-      >
-        <Text className="text-[16px] font-bold text-[#9293A0]">⋯</Text>
-      </Pressable>
+      />
     </View>
   );
 };
@@ -261,7 +250,7 @@ const CalendarScreen = ({
     })),
   );
   const labels = translations[language];
-  const today = useMemo(todayKey, []);
+  const today = useCurrentDateKey();
   const [contentWidth, setContentWidth] = useState(0);
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
@@ -285,6 +274,10 @@ const CalendarScreen = ({
   const groupColors = useMemo(
     () => new Map(groups.map((group) => [group.id, group.color])),
     [groups],
+  );
+  const childCountByParent = useMemo(
+    () => buildChildCountByParent(todos),
+    [todos],
   );
   const selectedTodos = tasksByDate.get(selectedDate) ?? [];
   const currentMonthKey = `${visibleMonth.getFullYear()}-${visibleMonth.getMonth()}`;
@@ -485,9 +478,7 @@ const CalendarScreen = ({
               ) : (
                 selectedTodos.map((todo) => (
                   <CalendarTask
-                    childCount={
-                      todos.filter((item) => item.parentId === todo.id).length
-                    }
+                    childCount={childCountByParent.get(todo.id) ?? 0}
                     color={
                       groupColors.get(todo.groupId ?? '') ?? '#8B7EFF'
                     }

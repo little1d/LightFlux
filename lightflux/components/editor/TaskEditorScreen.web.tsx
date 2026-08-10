@@ -1,4 +1,5 @@
 import Image from '@tiptap/extension-image';
+import Placeholder from '@tiptap/extension-placeholder';
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -8,13 +9,13 @@ import React, {
   useState,
 } from 'react';
 import {
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
@@ -27,6 +28,7 @@ import {
 import { useTodoStore } from '../../store/todoStore';
 import { RichTextDocument } from '../../types/todo';
 import IconButton from '../ui/IconButton';
+import TaskEditorMetadata from './TaskEditorMetadata';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const EDITOR_CSS = `
@@ -39,6 +41,13 @@ const EDITOR_CSS = `
   }
   .lightflux-tiptap > *:first-child { margin-top: 0; }
   .lightflux-tiptap p { margin: 0 0 0.85em; }
+  .lightflux-tiptap p.is-editor-empty:first-child::before {
+    color: #a0a1ad;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
   .lightflux-tiptap h1,
   .lightflux-tiptap h2,
   .lightflux-tiptap h3 {
@@ -97,12 +106,14 @@ const TaskEditorScreen = ({
   readOnly = false,
 }: TaskEditorScreenProps) => {
   const {
+    groups,
     language,
     todos,
     trashedTodos,
     updateTodo,
   } = useTodoStore(
     useShallow((state) => ({
+      groups: state.groups,
       language: state.language,
       todos: state.todos,
       trashedTodos: state.trashedTodos,
@@ -113,6 +124,9 @@ const TaskEditorScreen = ({
   const todo = (readOnly ? trashedTodos : todos).find(
     (item) => item.id === todoId,
   );
+  const groupName =
+    groups.find((group) => group.id === todo?.groupId)?.name ??
+    labels.groups.ungrouped;
   const [title, setTitle] = useState(todo?.title ?? '');
   const [titleError, setTitleError] = useState('');
   const [imageUploadStatus, setImageUploadStatus] = useState<
@@ -154,6 +168,9 @@ const TaskEditorScreen = ({
         Image.configure({
           allowBase64: false,
           HTMLAttributes: { loading: 'lazy' },
+        }),
+        Placeholder.configure({
+          placeholder: labels.editor.bodyPlaceholder,
         }),
       ],
       content: todo?.content,
@@ -197,7 +214,12 @@ const TaskEditorScreen = ({
         },
       },
     },
-    [readOnly, todoId, uploadPastedImages],
+    [
+      labels.editor.bodyPlaceholder,
+      readOnly,
+      todoId,
+      uploadPastedImages,
+    ],
   );
 
   useEffect(() => {
@@ -308,6 +330,13 @@ const TaskEditorScreen = ({
               />
             </View>
           </View>
+
+          <TaskEditorMetadata
+            groupName={groupName}
+            labels={labels}
+            language={language}
+            todo={todo}
+          />
 
           <View
             className={`min-h-[440px] overflow-hidden rounded-[16px] border bg-white ${

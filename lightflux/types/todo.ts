@@ -58,7 +58,8 @@ export interface TodoGroup {
 }
 
 export interface PersistedAppState {
-  schemaVersion: 6;
+  schemaVersion: 7;
+  updatedAt: number;
   language: Language;
   navigationOrder: NavigationItemId[];
   ungroupedName: string | null;

@@ -4,11 +4,11 @@ import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   View,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export interface MenuSurfacePosition {
   x: number;
@@ -146,7 +146,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   webOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
     zIndex: 2000,
   },
   position: {

@@ -16,6 +16,9 @@ const config = {
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:8081',
   sessionSecret: process.env.SESSION_SECRET ?? '',
   dataFile: resolve(process.env.DATA_FILE ?? './data/auth.json'),
+  uploadDir: resolve(process.env.UPLOAD_DIR ?? './data/uploads'),
+  uploadAllowAnonymous: process.env.UPLOAD_ALLOW_ANONYMOUS === 'true',
+  maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 8 * 1024 * 1024),
   web: {
     appId: process.env.WECHAT_WEB_APP_ID ?? '',
     appSecret: process.env.WECHAT_WEB_APP_SECRET ?? '',
@@ -28,6 +31,10 @@ const config = {
     appSecret: process.env.WECHAT_MOBILE_APP_SECRET ?? '',
   },
 };
+
+if (!Number.isFinite(config.maxUploadBytes) || config.maxUploadBytes <= 0) {
+  throw new Error('MAX_UPLOAD_BYTES must be a positive number.');
+}
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -80,19 +87,76 @@ const json = (response, status, body, headers = {}) => {
   response.end(JSON.stringify(body));
 };
 
-const parseBody = async (request) => {
+const readBody = async (request, maxBytes) => {
+  const declaredSize = Number(request.headers['content-length'] ?? 0);
+  if (Number.isFinite(declaredSize) && declaredSize > maxBytes) {
+    const error = new Error('Request body is too large.');
+    error.status = 413;
+    throw error;
+  }
+
   const chunks = [];
   let size = 0;
   for await (const chunk of request) {
     size += chunk.length;
-    if (size > 2 * 1024 * 1024) {
-      throw new Error('Request body is too large.');
+    if (size > maxBytes) {
+      const error = new Error('Request body is too large.');
+      error.status = 413;
+      throw error;
     }
     chunks.push(chunk);
   }
-  return chunks.length > 0
-    ? JSON.parse(Buffer.concat(chunks).toString('utf8'))
-    : {};
+  return Buffer.concat(chunks);
+};
+
+const parseBody = async (request) => {
+  const body = await readBody(request, 2 * 1024 * 1024);
+  return body.length > 0 ? JSON.parse(body.toString('utf8')) : {};
+};
+
+const IMAGE_TYPES = {
+  'image/avif': {
+    extension: 'avif',
+    matches: (body) =>
+      body.length >= 12 &&
+      body.subarray(4, 8).toString('ascii') === 'ftyp' &&
+      ['avif', 'avis'].includes(body.subarray(8, 12).toString('ascii')),
+  },
+  'image/gif': {
+    extension: 'gif',
+    matches: (body) =>
+      ['GIF87a', 'GIF89a'].includes(body.subarray(0, 6).toString('ascii')),
+  },
+  'image/jpeg': {
+    extension: 'jpg',
+    matches: (body) =>
+      body.length >= 3 &&
+      body[0] === 0xff &&
+      body[1] === 0xd8 &&
+      body[2] === 0xff,
+  },
+  'image/png': {
+    extension: 'png',
+    matches: (body) =>
+      body.length >= 8 &&
+      body.subarray(0, 8).equals(
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      ),
+  },
+  'image/webp': {
+    extension: 'webp',
+    matches: (body) =>
+      body.length >= 12 &&
+      body.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      body.subarray(8, 12).toString('ascii') === 'WEBP',
+  },
+};
+
+const imageTypeFromFilename = (filename) => {
+  const extension = filename.split('.').pop()?.toLowerCase();
+  return Object.entries(IMAGE_TYPES).find(
+    ([, definition]) => definition.extension === extension,
+  )?.[0];
 };
 
 const base64url = (value) => Buffer.from(value).toString('base64url');
@@ -361,6 +425,75 @@ const handleRequest = async (request, response) => {
     return;
   }
 
+  const uploadMatch = url.pathname.match(
+    /^\/uploads\/([0-9a-f-]+\.(?:avif|gif|jpg|png|webp))$/,
+  );
+  if (uploadMatch && request.method === 'GET') {
+    const filename = uploadMatch[1];
+    const contentType = imageTypeFromFilename(filename);
+    try {
+      const body = await readFile(resolve(config.uploadDir, filename));
+      response.writeHead(200, {
+        ...corsHeaders,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Content-Length': body.length,
+        'Content-Type': contentType ?? 'application/octet-stream',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+      });
+      response.end(body);
+    } catch (error) {
+      if (error?.code === 'ENOENT') {
+        json(response, 404, { error: 'Image not found.' }, corsHeaders);
+        return;
+      }
+      throw error;
+    }
+    return;
+  }
+
+  if (url.pathname === '/api/uploads' && request.method === 'POST') {
+    const auth = currentSession(request);
+    if (!auth && !config.uploadAllowAnonymous) {
+      json(response, 401, { error: 'Authentication required.' }, corsHeaders);
+      return;
+    }
+
+    const contentType = String(request.headers['content-type'] ?? '')
+      .split(';')[0]
+      .trim()
+      .toLowerCase();
+    const imageType = IMAGE_TYPES[contentType];
+    if (!imageType) {
+      json(response, 415, { error: 'Unsupported image type.' }, corsHeaders);
+      return;
+    }
+
+    const body = await readBody(request, config.maxUploadBytes);
+    if (body.length === 0 || !imageType.matches(body)) {
+      json(response, 400, { error: 'Invalid image data.' }, corsHeaders);
+      return;
+    }
+
+    await mkdir(config.uploadDir, { recursive: true });
+    const filename = `${randomUUID()}.${imageType.extension}`;
+    const temporaryFile = resolve(config.uploadDir, `${filename}.tmp`);
+    const destination = resolve(config.uploadDir, filename);
+    await writeFile(temporaryFile, body, { mode: 0o600 });
+    await rename(temporaryFile, destination);
+
+    json(
+      response,
+      201,
+      {
+        contentType,
+        size: body.length,
+        url: new URL(`/uploads/${filename}`, config.publicBaseUrl).toString(),
+      },
+      corsHeaders,
+    );
+    return;
+  }
+
   if (
     url.pathname === '/api/auth/wechat/web/start' &&
     request.method === 'GET'
@@ -509,7 +642,9 @@ await loadDatabase();
 
 createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
-    console.error(error);
+    if (!error.status || error.status >= 500) {
+      console.error(error);
+    }
     json(
       response,
       error.status ?? 400,

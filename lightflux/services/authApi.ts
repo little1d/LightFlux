@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 
-const apiUrl = process.env.EXPO_PUBLIC_AUTH_API_URL?.replace(/\/$/, '') ?? '';
+const publicEnvironment = process.env as Record<string, string | undefined>;
+const apiUrl =
+  publicEnvironment.EXPO_PUBLIC_AUTH_API_URL?.replace(/\/$/, '') ?? '';
 
 export const isRemoteAuthConfigured = apiUrl.length > 0;
 

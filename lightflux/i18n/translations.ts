@@ -141,6 +141,11 @@ export interface Translation {
     imageUrl: string;
     insertImage: string;
     invalidImageUrl: string;
+    imageUploading: string;
+    imageUploadNotConfigured: string;
+    imageUploadTooLarge: string;
+    imageUploadUnsupported: string;
+    imageUploadFailed: string;
     emptyTitle: string;
     previewTitle: string;
     resizePane: string;
@@ -324,6 +329,11 @@ export const translations: Record<Language, Translation> = {
       imageUrl: '图片 URL（https://…）',
       insertImage: '插入图片',
       invalidImageUrl: '请输入有效的 http 或 https 图片地址。',
+      imageUploading: '正在上传图片…',
+      imageUploadNotConfigured: '图片上传服务尚未配置。',
+      imageUploadTooLarge: '图片不能超过 8 MB。',
+      imageUploadUnsupported: '仅支持 PNG、JPEG、WebP、GIF 或 AVIF 图片。',
+      imageUploadFailed: '图片上传失败，请稍后重试。',
       emptyTitle: '任务标题不能为空。',
       previewTitle: '任务预览',
       resizePane: '调整任务列表与详情宽度',
@@ -515,6 +525,12 @@ export const translations: Record<Language, Translation> = {
       imageUrl: 'Image URL (https://…)',
       insertImage: 'Insert image',
       invalidImageUrl: 'Enter a valid http or https image URL.',
+      imageUploading: 'Uploading image…',
+      imageUploadNotConfigured: 'Image upload is not configured.',
+      imageUploadTooLarge: 'Images must be 8 MB or smaller.',
+      imageUploadUnsupported:
+        'Use a PNG, JPEG, WebP, GIF, or AVIF image.',
+      imageUploadFailed: 'Unable to upload the image. Try again.',
       emptyTitle: 'A task title is required.',
       previewTitle: 'Task preview',
       resizePane: 'Resize task list and details',

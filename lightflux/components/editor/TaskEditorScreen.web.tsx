@@ -1,7 +1,9 @@
 import Image from '@tiptap/extension-image';
+import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import React, {
+  useCallback,
   useEffect,
   useState,
 } from 'react';
@@ -17,6 +19,11 @@ import {
 import { inputAccentProps } from '../../config/input';
 import { useTodos } from '../../context/TodoContext';
 import { translations } from '../../i18n/translations';
+import {
+  ImageUploadError,
+  ImageUploadErrorCode,
+  uploadTaskImage,
+} from '../../services/imageUpload';
 import { RichTextDocument } from '../../types/todo';
 import IconButton from '../ui/IconButton';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
@@ -100,6 +107,37 @@ const TaskEditorScreen = ({
   );
   const [title, setTitle] = useState(todo?.title ?? '');
   const [titleError, setTitleError] = useState('');
+  const [imageUploadStatus, setImageUploadStatus] = useState<
+    'uploading' | ImageUploadErrorCode | null
+  >(null);
+
+  const uploadPastedImages = useCallback(
+    async (view: EditorView, files: File[]) => {
+      setImageUploadStatus('uploading');
+      try {
+        for (const file of files) {
+          const imageUrl = await uploadTaskImage(file);
+          if (view.isDestroyed) {
+            return;
+          }
+
+          const imageNode = view.state.schema.nodes.image?.create({
+            alt: file.name || undefined,
+            src: imageUrl,
+          });
+          if (imageNode) {
+            view.dispatch(view.state.tr.replaceSelectionWith(imageNode));
+          }
+        }
+        setImageUploadStatus(null);
+      } catch (error) {
+        setImageUploadStatus(
+          error instanceof ImageUploadError ? error.code : 'upload-failed',
+        );
+      }
+    },
+    [],
+  );
 
   const editor = useEditor(
     {
@@ -128,9 +166,30 @@ const TaskEditorScreen = ({
           class: 'lightflux-tiptap',
           role: readOnly ? 'document' : 'textbox',
         },
+        handlePaste: (view, event) => {
+          if (readOnly) {
+            return false;
+          }
+
+          const files = Array.from(event.clipboardData?.items ?? [])
+            .filter(
+              (item) =>
+                item.kind === 'file' && item.type.startsWith('image/'),
+            )
+            .map((item) => item.getAsFile())
+            .filter((file): file is File => file !== null);
+
+          if (files.length === 0) {
+            return false;
+          }
+
+          event.preventDefault();
+          void uploadPastedImages(view, files);
+          return true;
+        },
       },
     },
-    [readOnly, todoId],
+    [readOnly, todoId, uploadPastedImages],
   );
 
   useEffect(() => {
@@ -147,6 +206,15 @@ const TaskEditorScreen = ({
       setTitleError('');
     }
   }, [todo?.title]);
+
+  useEffect(() => {
+    if (!imageUploadStatus || imageUploadStatus === 'uploading') {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => setImageUploadStatus(null), 4500);
+    return () => clearTimeout(timer);
+  }, [imageUploadStatus]);
 
   if (!todo) {
     return null;
@@ -170,6 +238,17 @@ const TaskEditorScreen = ({
     });
     onClose();
   };
+
+  const imageUploadMessage =
+    imageUploadStatus === 'uploading'
+      ? labels.editor.imageUploading
+      : imageUploadStatus === 'not-configured'
+        ? labels.editor.imageUploadNotConfigured
+        : imageUploadStatus === 'too-large'
+          ? labels.editor.imageUploadTooLarge
+          : imageUploadStatus === 'unsupported'
+            ? labels.editor.imageUploadUnsupported
+            : labels.editor.imageUploadFailed;
 
   return (
     <View className={`flex-1 ${embedded ? 'bg-white' : 'bg-canvas'}`}>
@@ -229,6 +308,33 @@ const TaskEditorScreen = ({
             nativeID="task-rich-editor"
             style={readOnly ? undefined : styles.editorShadow}
           >
+            {imageUploadStatus ? (
+              <View
+                accessibilityLiveRegion="polite"
+                style={[
+                  styles.uploadStatus,
+                  imageUploadStatus !== 'uploading' &&
+                    styles.uploadStatusError,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.uploadStatusDot,
+                    imageUploadStatus !== 'uploading' &&
+                      styles.uploadStatusDotError,
+                  ]}
+                />
+                <Text
+                  style={[
+                    styles.uploadStatusText,
+                    imageUploadStatus !== 'uploading' &&
+                      styles.uploadStatusTextError,
+                  ]}
+                >
+                  {imageUploadMessage}
+                </Text>
+              </View>
+            ) : null}
             {editor ? <EditorContent editor={editor} /> : null}
           </View>
         </ScrollView>
@@ -249,6 +355,43 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
+  },
+  uploadStatus: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#F0EEFF',
+    borderColor: '#DDD8FF',
+    borderRadius: 9,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: -10,
+    marginLeft: 14,
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 2,
+  },
+  uploadStatusError: {
+    backgroundColor: '#FFF1F3',
+    borderColor: '#F3D2D8',
+  },
+  uploadStatusDot: {
+    backgroundColor: '#6759E8',
+    borderRadius: 3,
+    height: 6,
+    marginRight: 7,
+    width: 6,
+  },
+  uploadStatusDotError: {
+    backgroundColor: '#C84F60',
+  },
+  uploadStatusText: {
+    color: '#5B50C7',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  uploadStatusTextError: {
+    color: '#B44758',
   },
 });
 

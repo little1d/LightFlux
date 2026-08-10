@@ -15,6 +15,10 @@ starts without WeChat credentials so `/health` can be used during setup, but
 authorization endpoints return `503` until the relevant application is
 configured.
 
+For local image-paste development without WeChat authentication, set
+`UPLOAD_ALLOW_ANONYMOUS=true`. Keep it disabled in any shared or production
+environment. Uploaded files are written beneath `UPLOAD_DIR`.
+
 ## WeChat applications
 
 - Web: approved Website Application, callback domain and
@@ -35,6 +39,8 @@ configured.
 - `POST /api/auth/logout`
 - `GET /api/app-state`
 - `PUT /api/app-state`
+- `POST /api/uploads`
+- `GET /uploads/:filename`
 
 The first successful WeChat authorization creates a user automatically.
 When WeChat returns a `UnionID`, identities from the website and mobile
@@ -48,3 +54,7 @@ storage.
 The included JSON repository is suitable for local development and a
 single-process deployment. Replace it with a transactional database before
 running multiple API instances.
+
+The included upload repository is also for local development. The client
+stores only the returned image URL, so `/api/uploads` can later be replaced
+with an object-storage adapter without migrating rich-text documents.

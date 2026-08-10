@@ -1,8 +1,8 @@
 #!/bin/sh
 
-LIGHTFLUX_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-export RUSTUP_HOME="$LIGHTFLUX_ROOT/.dev_env/lightflux-rust/rustup"
-export CARGO_HOME="$LIGHTFLUX_ROOT/.dev_env/lightflux-rust/cargo"
+DEV_ENV="${LIGHTFLUX_DEV_ENV:-$HOME/Desktop/Dev_env}"
+export RUSTUP_HOME="${RUSTUP_HOME:-$DEV_ENV/rust/rustup}"
+export CARGO_HOME="${CARGO_HOME:-$DEV_ENV/rust/cargo}"
 export PATH="$CARGO_HOME/bin:$PATH"
 
 if [ "$#" -eq 0 ]; then

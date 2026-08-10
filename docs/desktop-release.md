@@ -31,33 +31,35 @@ runs use the version from `tauri.conf.json`.
 
 ## Local Build
 
-The Tauri CLI is installed with the frontend dependencies. This workspace keeps
-Rust isolated under `.dev_env/lightflux-rust`; initialize it once with:
+The Tauri CLI is installed with the frontend dependencies. The shared Rust
+toolchain is stored under `~/Desktop/Dev_env/rust` and exposed globally through
+`/opt/homebrew/bin`. Initialize it once with:
 
 ```bash
-mkdir -p .dev_env/lightflux-rust
+mkdir -p "$HOME/Desktop/Dev_env/rust"
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/lightflux-rustup-init.sh
-RUSTUP_HOME="$PWD/.dev_env/lightflux-rust/rustup" \
-  CARGO_HOME="$PWD/.dev_env/lightflux-rust/cargo" \
+RUSTUP_HOME="$HOME/Desktop/Dev_env/rust/rustup" \
+  CARGO_HOME="$HOME/Desktop/Dev_env/rust/cargo" \
   sh /tmp/lightflux-rustup-init.sh -y --no-modify-path --profile minimal
 ```
 
-Then build from the repository root:
+After adding wrappers or the Cargo bin directory to `PATH`, build from the
+repository root:
 
 ```bash
 cd lightflux
 npm install
 cd ..
-scripts/use-rust-env.sh cargo check --manifest-path lightflux/src-tauri/Cargo.toml
+cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 cd lightflux
-../scripts/use-rust-env.sh npx tauri build
+npx tauri build
 ```
 
 For desktop development:
 
 ```bash
 cd lightflux
-../scripts/use-rust-env.sh npx tauri dev
+npx tauri dev
 ```
 
 ## Signing

@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+desktop-dist/
 web-build/
 
 # Native
@@ -19,6 +20,10 @@ web-build/
 
 # Metro
 .metro-health-check*
+
+# Tauri
+src-tauri/target/
+src-tauri/gen/schemas/
 
 # debug
 npm-debug.*

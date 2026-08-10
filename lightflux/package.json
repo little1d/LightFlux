@@ -6,6 +6,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
+    "desktop:web": "expo export --platform web --output-dir desktop-dist",
     "editor:build": "vite --config ./editor-web/vite.config.ts build && npm run editor:postbuild",
     "editor:postbuild": "node ./node_modules/@10play/tentap-editor/scripts/buildEditor.js ./editor-web/build/index.html ./editor-web/build/editorHtml.js",
     "ios": "expo start --ios",

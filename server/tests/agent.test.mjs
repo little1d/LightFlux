@@ -14,6 +14,29 @@ const context = {
   language: 'zh',
   ungroupedName: null,
   groups: [{ id: 'work', name: '工作' }],
+  milestones: [
+    {
+      id: 'anniversary',
+      title: '纪念日',
+      type: 'anniversary',
+      dateRule: {
+        calendar: 'solar',
+        year: null,
+        month: 8,
+        day: 10,
+        leapDayPolicy: 'feb-28',
+      },
+      startYear: 2020,
+      reminderOffsets: [0, 7],
+      notes: '',
+      icon: 'heart-outline',
+      color: '#F28B82',
+      pinned: false,
+      archived: false,
+      trashed: false,
+      revision: 1,
+    },
+  ],
   tasks: [
     {
       id: 'existing',
@@ -184,6 +207,85 @@ test('rejects hallucinated existing task IDs', async () => {
       },
     }),
     /unknown taskId/,
+  );
+});
+
+test('normalizes milestone operations and rejects hallucinated milestone IDs', async () => {
+  responseWith({
+    message: '准备创建生日节点。',
+    clarification: null,
+    proposal: {
+      summary: '创建生日节点',
+      assumptions: [],
+      operations: [
+        {
+          type: 'milestone.create',
+          clientRef: 'birthday',
+          title: '生日',
+          milestoneType: 'birthday',
+          dateRule: {
+            calendar: 'lunar',
+            year: null,
+            month: 6,
+            day: 1,
+            isLeapMonth: false,
+            missingLeapMonthPolicy: 'regular-month',
+          },
+          reminderOffsets: [7, 0, 7],
+        },
+      ],
+    },
+  });
+  const service = createAgentService({
+    baseUrl: 'https://model.example/v1',
+    apiKey: '',
+    model: 'test-model',
+  });
+  const result = await service.turn({
+    ownerId: 'user',
+    request: {
+      message: '创建农历生日',
+      currentTime: '2026-08-10T01:00:00.000Z',
+      timeZone: 'Asia/Shanghai',
+      context,
+    },
+  });
+
+  assert.equal(result.proposal.risk, 'low');
+  assert.match(
+    result.proposal.operations[0].milestoneId,
+    /^[0-9a-f-]{36}$/,
+  );
+  assert.deepEqual(
+    result.proposal.operations[0].reminderOffsets,
+    [0, 7],
+  );
+
+  responseWith({
+    message: '准备归档节点。',
+    clarification: null,
+    proposal: {
+      summary: '归档节点',
+      assumptions: [],
+      operations: [
+        {
+          type: 'milestone.archive',
+          milestoneId: 'invented-milestone',
+        },
+      ],
+    },
+  });
+  await assert.rejects(
+    service.turn({
+      ownerId: 'user',
+      request: {
+        message: '归档节点',
+        currentTime: '2026-08-10T01:01:00.000Z',
+        timeZone: 'Asia/Shanghai',
+        context,
+      },
+    }),
+    /unknown milestoneId/,
   );
 });
 

@@ -8,7 +8,7 @@ import { PersistedAppState, Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 
 const state = (updatedAt: number): PersistedAppState => ({
-  schemaVersion: 7,
+  schemaVersion: 8,
   updatedAt,
   groups: [],
   language: 'zh',
@@ -21,6 +21,7 @@ const state = (updatedAt: number): PersistedAppState => ({
     'trash',
   ],
   todos: [],
+  milestones: [],
   ungroupedName: null,
 });
 
@@ -49,6 +50,7 @@ describe('app-state version selection', () => {
       content: emptyRichTextDocument(),
       createdAt: 10,
       groupId: null,
+      milestoneId: null,
       parentId: null,
       priority: 'none',
       scheduledDate: '2026-08-10',
@@ -57,6 +59,6 @@ describe('app-state version selection', () => {
       updatedAt: 42,
     };
 
-    expect(deriveStateUpdatedAt([legacyTodo], [], undefined)).toBe(42);
+    expect(deriveStateUpdatedAt([legacyTodo], [], [], undefined)).toBe(42);
   });
 });

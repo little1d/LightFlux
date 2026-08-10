@@ -29,6 +29,7 @@ const todo = (
   trashedAt: null,
   updatedAt: 1,
   ...overrides,
+  milestoneId: overrides.milestoneId ?? null,
 });
 
 describe('todo trash operations', () => {

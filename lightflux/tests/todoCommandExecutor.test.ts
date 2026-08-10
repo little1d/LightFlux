@@ -11,7 +11,7 @@ import {
   AgentOperation,
   AgentProposal,
 } from '../agent/types';
-import { Todo, TodoGroup } from '../types/todo';
+import { Milestone, Todo, TodoGroup } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 
 const todo = (
@@ -32,6 +32,7 @@ const todo = (
   trashedAt: null,
   updatedAt: 1,
   ...overrides,
+  milestoneId: overrides.milestoneId ?? null,
 });
 
 const group = (id: string): TodoGroup => ({
@@ -40,6 +41,34 @@ const group = (id: string): TodoGroup => ({
   color: '#8B7EFF',
   createdAt: 1,
   sortOrder: 1,
+});
+
+const milestone = (
+  id: string,
+  overrides: Partial<Milestone> = {},
+): Milestone => ({
+  id,
+  title: id,
+  type: 'anniversary',
+  dateRule: {
+    calendar: 'solar',
+    year: null,
+    month: 8,
+    day: 10,
+    leapDayPolicy: 'feb-28',
+  },
+  startYear: null,
+  reminderOffsets: [],
+  notes: '',
+  icon: 'heart-outline',
+  color: '#F28B82',
+  pinned: false,
+  archivedAt: null,
+  trashedAt: null,
+  createdAt: 1,
+  updatedAt: 1,
+  revision: 1,
+  ...overrides,
 });
 
 const proposal = (
@@ -400,5 +429,148 @@ describe('agent task commands', () => {
         ),
       'invalid-operation',
     );
+  });
+
+  it('creates and updates a lunar milestone atomically with task changes', () => {
+    const source = createTodoCommandState([todo('task')], [], null, []);
+    const result = executeAgentProposal(
+      source,
+      proposal(
+        [
+          {
+            ...operationBase('milestone'),
+            type: 'milestone.create',
+            milestoneId: 'lunar-birthday',
+            title: '生日',
+            milestoneType: 'birthday',
+            dateRule: {
+              calendar: 'lunar',
+              year: null,
+              month: 6,
+              day: 1,
+              isLeapMonth: true,
+              missingLeapMonthPolicy: 'skip-year',
+            },
+            reminderOffsets: [7, 0, 7],
+            startYear: 2000,
+          },
+          {
+            ...operationBase('task-update'),
+            type: 'task.update',
+            taskId: 'task',
+            changes: { priority: 'high' },
+          },
+        ],
+        source.revision,
+      ),
+      { confirmed: true, now: 100 },
+    );
+
+    expect(result.state.milestones).toEqual([
+      expect.objectContaining({
+        id: 'lunar-birthday',
+        reminderOffsets: [0, 7],
+        revision: 1,
+      }),
+    ]);
+    expect(result.state.todos[0].priority).toBe('high');
+    expect(undoAgentExecution(result.state, result.undoToken)).toEqual(source);
+  });
+
+  it('archives, restores, and trashes milestones with enforced risk', () => {
+    const source = createTodoCommandState(
+      [],
+      [],
+      null,
+      [milestone('launch')],
+    );
+    const archived = executeAgentProposal(
+      source,
+      proposal(
+        [
+          {
+            ...operationBase('archive'),
+            type: 'milestone.archive',
+            milestoneId: 'launch',
+          },
+        ],
+        source.revision,
+        { risk: 'medium' },
+      ),
+      { confirmed: true, now: 100 },
+    );
+    expect(archived.state.milestones[0].archivedAt).toBe(100);
+
+    const restored = executeAgentProposal(
+      archived.state,
+      proposal(
+        [
+          {
+            ...operationBase('restore'),
+            type: 'milestone.restore',
+            milestoneId: 'launch',
+          },
+        ],
+        archived.state.revision,
+        { risk: 'medium' },
+      ),
+      { confirmed: true, now: 200 },
+    );
+    expect(restored.state.milestones[0].archivedAt).toBeNull();
+
+    const trashOperation: AgentOperation = {
+      ...operationBase('milestone-trash'),
+      type: 'milestone.trash',
+      milestoneId: 'launch',
+    };
+    expectCommandError(
+      () =>
+        executeAgentProposal(
+          restored.state,
+          proposal([trashOperation], restored.state.revision, {
+            risk: 'low',
+          }),
+          { confirmed: true, now: 300 },
+        ),
+      'risk-understated',
+    );
+    const trashed = executeAgentProposal(
+      restored.state,
+      proposal([trashOperation], restored.state.revision, {
+        risk: 'high',
+      }),
+      { confirmed: true, now: 300 },
+    );
+    expect(trashed.state.milestones[0].trashedAt).toBe(300);
+  });
+
+  it('rejects malformed milestone dates without changing task state', () => {
+    const source = createTodoCommandState([todo('task')], [], null, []);
+    const snapshot = JSON.stringify(source);
+    const invalid = {
+      ...operationBase('invalid-milestone'),
+      type: 'milestone.create',
+      milestoneId: 'invalid',
+      title: 'Invalid',
+      milestoneType: 'custom',
+      dateRule: {
+        calendar: 'solar',
+        year: 2026,
+        month: 2,
+        day: 31,
+        leapDayPolicy: 'feb-28',
+      },
+    } as AgentOperation;
+
+    expectCommandError(
+      () =>
+        executeAgentProposal(
+          source,
+          proposal([invalid], source.revision),
+          { confirmed: true, now: 100 },
+        ),
+      'invalid-operation',
+    );
+    expect(JSON.stringify(source)).toBe(snapshot);
   });
 });

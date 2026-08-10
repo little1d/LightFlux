@@ -12,7 +12,12 @@ import {
   AgentUndoToken,
 } from './types';
 import { useTodoStore } from '../store/todoStore';
-import { TodoPriority } from '../types/todo';
+import {
+  MilestoneDateRule,
+  MilestoneType,
+  TodoPriority,
+} from '../types/todo';
+import { milestoneState } from '../store/milestoneDomain';
 
 const MAX_AUDIT_RECORDS = 100;
 
@@ -32,12 +37,29 @@ export interface AgentGroupContext {
   name: string;
 }
 
+export interface AgentMilestoneContext {
+  id: string;
+  title: string;
+  type: MilestoneType;
+  dateRule: MilestoneDateRule;
+  startYear: number | null;
+  reminderOffsets: number[];
+  notes: string;
+  icon: string;
+  color: string;
+  pinned: boolean;
+  archived: boolean;
+  trashed: boolean;
+  revision: number;
+}
+
 export interface AgentContextSnapshot {
   revision: number;
   language: 'zh' | 'en';
   ungroupedName: string | null;
   tasks: AgentTaskContext[];
   groups: AgentGroupContext[];
+  milestones: AgentMilestoneContext[];
 }
 
 export interface AgentTaskSearchInput {
@@ -48,6 +70,15 @@ export interface AgentTaskSearchInput {
   scheduledTo?: string;
   priority?: TodoPriority;
   completed?: boolean;
+  trashed?: boolean;
+  limit?: number;
+}
+
+export interface AgentMilestoneSearchInput {
+  query?: string;
+  type?: MilestoneType;
+  calendar?: 'solar' | 'lunar';
+  archived?: boolean;
   trashed?: boolean;
   limit?: number;
 }
@@ -72,6 +103,7 @@ const currentCommandState = () => {
     state.allTodos,
     state.groups,
     state.ungroupedName,
+    state.allMilestones,
   );
 };
 
@@ -81,6 +113,7 @@ const applyCommandState = (
   useTodoStore.setState({
     ...deriveTodoCommandCollections(state.todos),
     groups: state.groups,
+    ...milestoneState(state.milestones),
     ungroupedName: state.ungroupedName,
   });
 };
@@ -105,6 +138,21 @@ export const getAgentContextSnapshot = (): AgentContextSnapshot => {
     groups: state.groups.map((group) => ({
       id: group.id,
       name: group.name,
+    })),
+    milestones: state.allMilestones.map((milestone) => ({
+      id: milestone.id,
+      title: milestone.title,
+      type: milestone.type,
+      dateRule: { ...milestone.dateRule },
+      startYear: milestone.startYear,
+      reminderOffsets: [...milestone.reminderOffsets],
+      notes: milestone.notes,
+      icon: milestone.icon,
+      color: milestone.color,
+      pinned: milestone.pinned,
+      archived: milestone.archivedAt !== null,
+      trashed: milestone.trashedAt !== null,
+      revision: milestone.revision,
     })),
   };
 };
@@ -161,6 +209,46 @@ export const searchAgentGroups = (query: string): AgentGroupContext[] => {
       !normalizedQuery ||
       group.name.toLocaleLowerCase().includes(normalizedQuery),
   );
+};
+
+export const searchAgentMilestones = (
+  input: AgentMilestoneSearchInput,
+): AgentMilestoneContext[] => {
+  const query = input.query?.trim().toLocaleLowerCase() ?? '';
+  const limit = Math.max(1, Math.min(input.limit ?? 20, 50));
+  return getAgentContextSnapshot()
+    .milestones.filter((milestone) => {
+      if (!input.trashed && milestone.trashed) {
+        return false;
+      }
+      if (input.trashed === true && !milestone.trashed) {
+        return false;
+      }
+      if (
+        input.archived !== undefined &&
+        milestone.archived !== input.archived
+      ) {
+        return false;
+      }
+      if (
+        query &&
+        !milestone.title.toLocaleLowerCase().includes(query) &&
+        !milestone.notes.toLocaleLowerCase().includes(query)
+      ) {
+        return false;
+      }
+      if (input.type && milestone.type !== input.type) {
+        return false;
+      }
+      if (
+        input.calendar &&
+        milestone.dateRule.calendar !== input.calendar
+      ) {
+        return false;
+      }
+      return true;
+    })
+    .slice(0, limit);
 };
 
 export const executeConfirmedAgentProposal = (

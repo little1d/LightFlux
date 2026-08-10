@@ -23,6 +23,7 @@ import { useShallow } from 'zustand/react/shallow';
 import CalendarScreen from './components/CalendarScreen';
 import CompletedScreen from './components/CompletedScreen';
 import GroupsScreen from './components/GroupsScreen';
+import MilestonesScreen from './components/MilestonesScreen';
 import SearchScreen from './components/SearchScreen';
 import SettingsScreen from './components/SettingsScreen';
 import SignedOutScreen from './components/SignedOutScreen';
@@ -77,6 +78,7 @@ const NAV_ICONS: Record<
   today: 'sunny-outline',
   completed: 'checkmark-done-outline',
   calendar: 'calendar-outline',
+  milestones: 'hourglass-outline',
   groups: 'albums-outline',
   trash: 'trash-outline',
 };
@@ -115,8 +117,9 @@ const AppContent = () => {
     const source = selectedTask.readOnly ? state.trashedTodos : state.todos;
     return source.some((todo) => todo.id === selectedTask.id);
   });
-  const trashedTodoCount = useTodoStore(
-    (state) => state.trashedTodos.length,
+  const trashItemCount = useTodoStore(
+    (state) =>
+      state.trashedTodos.length + state.trashedMilestones.length,
   );
   const { width } = useWindowDimensions();
   const labels = translations[language];
@@ -306,6 +309,10 @@ const AppContent = () => {
       <TodoScreen
         onOpenTaskMenu={openTaskMenu}
         onEditTask={openActiveTask}
+        onNotify={(message) =>
+          setToast({ id: Date.now(), message, variant: 'success' })
+        }
+        onOpenMilestones={() => changeView('milestones')}
         selectedTaskId={selectedTaskId}
       />
     ) : activeView === 'completed' ? (
@@ -320,6 +327,8 @@ const AppContent = () => {
         onEditTask={openActiveTask}
         selectedTaskId={selectedTaskId}
       />
+    ) : activeView === 'milestones' ? (
+      <MilestonesScreen />
     ) : activeView === 'groups' ? (
       <GroupsScreen
         onOpenTaskMenu={openTaskMenu}
@@ -382,10 +391,10 @@ const AppContent = () => {
                       name={item.icon}
                       size={22}
                     />
-                    {item.id === 'trash' && trashedTodoCount > 0 ? (
+                    {item.id === 'trash' && trashItemCount > 0 ? (
                       <View className="absolute right-0 top-0 min-w-[17px] items-center rounded-[9px] bg-[#D85B6B] px-1 py-0.5">
                         <Text className="text-[8px] font-extrabold text-white">
-                          {trashedTodoCount}
+                          {trashItemCount}
                         </Text>
                       </View>
                     ) : null}

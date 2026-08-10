@@ -9,6 +9,7 @@ export interface Translation {
     today: string;
     completed: string;
     calendar: string;
+    milestones: string;
     groups: string;
     trash: string;
   };
@@ -174,6 +175,80 @@ export interface Translation {
     risk: Record<AgentRisk, string>;
     operations: Record<AgentOperation['type'], string>;
   };
+  milestones: {
+    title: string;
+    add: string;
+    addTemplate: string;
+    templates: {
+      anniversary: string;
+      countdown: string;
+      birthday: string;
+      holiday: string;
+      custom: string;
+    };
+    filters: {
+      all: string;
+      anniversary: string;
+      countdown: string;
+      birthday: string;
+      holiday: string;
+      custom: string;
+      archived: string;
+    };
+    emptyTitle: string;
+    emptyArchived: string;
+    titlePlaceholder: string;
+    calendar: string;
+    repeat: string;
+    solar: string;
+    lunar: string;
+    repeatYearly: string;
+    oneTime: string;
+    year: string;
+    month: string;
+    day: string;
+    startYear: string;
+    notes: string;
+    notesPlaceholder: string;
+    reminders: string;
+    reminderDay: (days: number) => string;
+    leapMonth: string;
+    leapMonthFallback: string;
+    leapMonthSkip: string;
+    februaryFallback: string;
+    february28: string;
+    march1: string;
+    style: string;
+    save: string;
+    cancel: string;
+    today: string;
+    tomorrow: string;
+    remainingDays: (days: number) => string;
+    pastDays: (days: number) => string;
+    anniversaryYears: (years: number) => string;
+    birthdayYears: (years: number) => string;
+    lunarDate: string;
+    pinned: string;
+    archived: string;
+    edit: string;
+    pin: string;
+    unpin: string;
+    editStyle: string;
+    editNotes: string;
+    createTask: string;
+    archive: string;
+    unarchive: string;
+    moveToTrash: string;
+    restored: string;
+    trashed: string;
+    created: string;
+    updated: string;
+    relatedTaskCreated: string;
+    invalidDate: string;
+    moreActions: string;
+    todaySection: string;
+    openMilestones: string;
+  };
   taskMenu: {
     addSubtask: string;
     rename: string;
@@ -195,6 +270,10 @@ export interface Translation {
     emptyTrashTitle: string;
     emptyTrashMessage: string;
     preview: string;
+    tasksSection: string;
+    milestonesSection: string;
+    deleteMilestoneForeverTitle: string;
+    deleteMilestoneForeverMessage: string;
   };
 }
 
@@ -207,6 +286,7 @@ export const translations: Record<Language, Translation> = {
       today: '今天',
       completed: '已完成',
       calendar: '日历',
+      milestones: '倒数纪念日',
       groups: '分组',
       trash: '垃圾桶',
     },
@@ -396,7 +476,86 @@ export const translations: Record<Language, Translation> = {
         'task.restore': '恢复任务',
         'group.create': '新增分组',
         'group.update': '修改分组',
+        'milestone.create': '新增节点',
+        'milestone.update': '修改节点',
+        'milestone.archive': '归档节点',
+        'milestone.restore': '恢复节点',
+        'milestone.trash': '移至垃圾桶',
       },
+    },
+    milestones: {
+      title: '倒数纪念日',
+      add: '新增节点',
+      addTemplate: '选择节点类型',
+      templates: {
+        anniversary: '纪念日',
+        countdown: '倒数日',
+        birthday: '生日',
+        holiday: '节日',
+        custom: '自定义',
+      },
+      filters: {
+        all: '全部',
+        anniversary: '纪念日',
+        countdown: '倒数日',
+        birthday: '生日',
+        holiday: '节日',
+        custom: '自定义',
+        archived: '已归档',
+      },
+      emptyTitle: '还没有倒数或纪念日',
+      emptyArchived: '没有已归档节点',
+      titlePlaceholder: '节点名称',
+      calendar: '历法',
+      repeat: '重复',
+      solar: '公历',
+      lunar: '农历',
+      repeatYearly: '每年重复',
+      oneTime: '仅一次',
+      year: '年份',
+      month: '月份',
+      day: '日期',
+      startYear: '起始年份（可选）',
+      notes: '备注',
+      notesPlaceholder: '添加简短备注…',
+      reminders: '提前提醒',
+      reminderDay: (days) => (days === 0 ? '当天' : `提前 ${days} 天`),
+      leapMonth: '闰月',
+      leapMonthFallback: '无闰月时按普通月份',
+      leapMonthSkip: '无闰月时跳过该年',
+      februaryFallback: '非闰年规则',
+      february28: '按 2 月 28 日',
+      march1: '按 3 月 1 日',
+      style: '主题颜色',
+      save: '保存节点',
+      cancel: '取消',
+      today: '今天',
+      tomorrow: '明天',
+      remainingDays: (days) => `还有 ${days} 天`,
+      pastDays: (days) => `已过去 ${days} 天`,
+      anniversaryYears: (years) => `第 ${years} 周年`,
+      birthdayYears: (years) => `${years} 岁生日`,
+      lunarDate: '农历',
+      pinned: '置顶',
+      archived: '已归档',
+      edit: '编辑',
+      pin: '置顶',
+      unpin: '取消置顶',
+      editStyle: '修改样式',
+      editNotes: '编辑备注',
+      createTask: '创建相关任务',
+      archive: '归档',
+      unarchive: '取消归档',
+      moveToTrash: '移至垃圾桶',
+      restored: '节点已恢复',
+      trashed: '节点已移至垃圾桶',
+      created: '节点已创建',
+      updated: '节点已更新',
+      relatedTaskCreated: '相关任务已创建',
+      invalidDate: '请填写有效日期',
+      moreActions: '更多节点操作',
+      todaySection: '今天的节点',
+      openMilestones: '查看倒数纪念日',
     },
     taskMenu: {
       addSubtask: '添加子任务',
@@ -422,8 +581,13 @@ export const translations: Record<Language, Translation> = {
       deleteForeverMessage: '任务及其子任务将无法恢复。',
       emptyTrash: '清空垃圾桶',
       emptyTrashTitle: '清空垃圾桶？',
-      emptyTrashMessage: '所有任务都将被永久删除。',
+      emptyTrashMessage: '所有任务和节点都将被永久删除。',
       preview: '预览任务',
+      tasksSection: '任务',
+      milestonesSection: '倒数纪念日',
+      deleteMilestoneForeverTitle: '永久删除节点？',
+      deleteMilestoneForeverMessage:
+        '节点将无法恢复，已有相关任务会保留但解除关联。',
     },
   },
   en: {
@@ -434,6 +598,7 @@ export const translations: Record<Language, Translation> = {
       today: 'Today',
       completed: 'Completed',
       calendar: 'Calendar',
+      milestones: 'Milestones',
       groups: 'Groups',
       trash: 'Trash',
     },
@@ -631,7 +796,86 @@ export const translations: Record<Language, Translation> = {
         'task.restore': 'Restore task',
         'group.create': 'Create group',
         'group.update': 'Update group',
+        'milestone.create': 'Create milestone',
+        'milestone.update': 'Update milestone',
+        'milestone.archive': 'Archive milestone',
+        'milestone.restore': 'Restore milestone',
+        'milestone.trash': 'Move milestone to trash',
       },
+    },
+    milestones: {
+      title: 'Milestones',
+      add: 'Add milestone',
+      addTemplate: 'Choose milestone type',
+      templates: {
+        anniversary: 'Anniversary',
+        countdown: 'Countdown',
+        birthday: 'Birthday',
+        holiday: 'Holiday',
+        custom: 'Custom',
+      },
+      filters: {
+        all: 'All',
+        anniversary: 'Anniversary',
+        countdown: 'Countdown',
+        birthday: 'Birthday',
+        holiday: 'Holiday',
+        custom: 'Custom',
+        archived: 'Archived',
+      },
+      emptyTitle: 'No milestones yet',
+      emptyArchived: 'No archived milestones',
+      titlePlaceholder: 'Milestone name',
+      calendar: 'Calendar',
+      repeat: 'Repeat',
+      solar: 'Solar',
+      lunar: 'Lunar',
+      repeatYearly: 'Repeat yearly',
+      oneTime: 'One time',
+      year: 'Year',
+      month: 'Month',
+      day: 'Day',
+      startYear: 'Start year (optional)',
+      notes: 'Notes',
+      notesPlaceholder: 'Add a short note…',
+      reminders: 'Reminders',
+      reminderDay: (days) => (days === 0 ? 'On the day' : `${days} days before`),
+      leapMonth: 'Leap month',
+      leapMonthFallback: 'Use regular month when unavailable',
+      leapMonthSkip: 'Skip years without this leap month',
+      februaryFallback: 'Non-leap-year rule',
+      february28: 'Use February 28',
+      march1: 'Use March 1',
+      style: 'Theme color',
+      save: 'Save milestone',
+      cancel: 'Cancel',
+      today: 'Today',
+      tomorrow: 'Tomorrow',
+      remainingDays: (days) => `${days} days left`,
+      pastDays: (days) => `${days} days ago`,
+      anniversaryYears: (years) => `${years} year anniversary`,
+      birthdayYears: (years) => `Age ${years}`,
+      lunarDate: 'Lunar',
+      pinned: 'Pinned',
+      archived: 'Archived',
+      edit: 'Edit',
+      pin: 'Pin',
+      unpin: 'Unpin',
+      editStyle: 'Change style',
+      editNotes: 'Edit notes',
+      createTask: 'Create related task',
+      archive: 'Archive',
+      unarchive: 'Unarchive',
+      moveToTrash: 'Move to trash',
+      restored: 'Milestone restored',
+      trashed: 'Milestone moved to trash',
+      created: 'Milestone created',
+      updated: 'Milestone updated',
+      relatedTaskCreated: 'Related task created',
+      invalidDate: 'Enter a valid date',
+      moreActions: 'More milestone actions',
+      todaySection: "Today's milestones",
+      openMilestones: 'Open milestones',
     },
     taskMenu: {
       addSubtask: 'Add subtask',
@@ -657,8 +901,13 @@ export const translations: Record<Language, Translation> = {
       deleteForeverMessage: 'The task and its subtasks cannot be restored.',
       emptyTrash: 'Empty trash',
       emptyTrashTitle: 'Empty trash?',
-      emptyTrashMessage: 'All tasks will be permanently deleted.',
+      emptyTrashMessage: 'All tasks and milestones will be permanently deleted.',
       preview: 'Preview task',
+      tasksSection: 'Tasks',
+      milestonesSection: 'Milestones',
+      deleteMilestoneForeverTitle: 'Delete milestone forever?',
+      deleteMilestoneForeverMessage:
+        'The milestone cannot be restored. Related tasks will remain but be unlinked.',
     },
   },
 };

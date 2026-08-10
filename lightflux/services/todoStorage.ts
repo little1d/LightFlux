@@ -3,12 +3,21 @@ import { Platform } from 'react-native';
 
 import {
   NAVIGATION_ITEM_IDS,
+  Milestone,
+  MilestoneDateRule,
+  MilestoneType,
   NavigationItemId,
   PersistedAppState,
   Todo,
   TodoGroup,
+  SolarMilestoneDateRule,
 } from '../types/todo';
 import { todayKey } from '../utils/date';
+import {
+  isValidMilestoneDateRule,
+  isValidMilestoneStartYear,
+  normalizeReminderOffsets,
+} from '../utils/milestoneDate';
 import {
   emptyRichTextDocument,
   isRichTextDocument,
@@ -77,6 +86,8 @@ const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
         ? todo.scheduledDate
         : todayKey(),
     groupId: typeof todo.groupId === 'string' ? todo.groupId : null,
+    milestoneId:
+      typeof todo.milestoneId === 'string' ? todo.milestoneId : null,
     parentId: typeof todo.parentId === 'string' ? todo.parentId : null,
     priority:
       todo.priority === 'high' ||
@@ -91,6 +102,120 @@ const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
     content: isRichTextDocument(todo.content)
       ? todo.content
       : emptyRichTextDocument(),
+  };
+};
+
+const MILESTONE_TYPES = new Set<MilestoneType>([
+  'anniversary',
+  'countdown',
+  'birthday',
+  'holiday',
+  'custom',
+]);
+
+const normalizeDateRule = (value: unknown): MilestoneDateRule | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const rule = value as Partial<MilestoneDateRule>;
+  if (rule.calendar !== 'solar' && rule.calendar !== 'lunar') {
+    return null;
+  }
+  const year =
+    rule.year === null
+      ? null
+      : typeof rule.year === 'number'
+        ? rule.year
+        : null;
+  const month = typeof rule.month === 'number' ? rule.month : 1;
+  const day = typeof rule.day === 'number' ? rule.day : 1;
+  const normalized: MilestoneDateRule =
+    rule.calendar === 'lunar'
+      ? {
+          calendar: 'lunar',
+          year,
+          month,
+          day,
+          isLeapMonth: rule.isLeapMonth === true,
+          missingLeapMonthPolicy:
+            rule.missingLeapMonthPolicy === 'skip-year'
+              ? 'skip-year'
+              : 'regular-month',
+        }
+      : {
+          calendar: 'solar',
+          year,
+          month,
+          day,
+          leapDayPolicy:
+            (rule as Partial<SolarMilestoneDateRule>).leapDayPolicy ===
+            'mar-1'
+              ? 'mar-1'
+              : 'feb-28',
+        };
+  return isValidMilestoneDateRule(normalized) ? normalized : null;
+};
+
+const normalizeMilestone = (value: unknown): Milestone | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const milestone = value as Partial<Milestone>;
+  const dateRule = normalizeDateRule(milestone.dateRule);
+  if (
+    typeof milestone.id !== 'string' ||
+    typeof milestone.title !== 'string' ||
+    !milestone.title.trim() ||
+    !dateRule ||
+    typeof milestone.createdAt !== 'number'
+  ) {
+    return null;
+  }
+  return {
+    id: milestone.id,
+    title: milestone.title.trim(),
+    type: MILESTONE_TYPES.has(milestone.type as MilestoneType)
+      ? (milestone.type as MilestoneType)
+      : 'custom',
+    dateRule,
+    startYear:
+      typeof milestone.startYear === 'number' &&
+      isValidMilestoneStartYear(milestone.startYear)
+        ? milestone.startYear
+        : null,
+    reminderOffsets: normalizeReminderOffsets(
+      Array.isArray(milestone.reminderOffsets)
+        ? milestone.reminderOffsets
+        : [],
+    ),
+    notes: typeof milestone.notes === 'string' ? milestone.notes : '',
+    icon:
+      typeof milestone.icon === 'string'
+        ? milestone.icon
+        : 'sparkles-outline',
+    color:
+      typeof milestone.color === 'string' &&
+      /^#[0-9a-f]{6}$/i.test(milestone.color)
+        ? milestone.color
+        : '#8B7EFF',
+    pinned: milestone.pinned === true,
+    archivedAt:
+      typeof milestone.archivedAt === 'number'
+        ? milestone.archivedAt
+        : null,
+    trashedAt:
+      typeof milestone.trashedAt === 'number' ? milestone.trashedAt : null,
+    createdAt: milestone.createdAt,
+    updatedAt:
+      typeof milestone.updatedAt === 'number'
+        ? milestone.updatedAt
+        : milestone.createdAt,
+    revision:
+      typeof milestone.revision === 'number' &&
+      Number.isInteger(milestone.revision) &&
+      milestone.revision > 0
+        ? milestone.revision
+        : 1,
   };
 };
 
@@ -124,7 +249,9 @@ const normalizeGroup = (
   return null;
 };
 
-const parseState = (rawState: string): PersistedAppState | null => {
+export const parsePersistedAppState = (
+  rawState: string,
+): PersistedAppState | null => {
   try {
     const parsed = JSON.parse(rawState) as Partial<PersistedAppState>;
     if (!Array.isArray(parsed.todos)) {
@@ -139,10 +266,22 @@ const parseState = (rawState: string): PersistedAppState | null => {
           .map((group, index) => normalizeGroup(group, index + 1))
           .filter((group): group is TodoGroup => group !== null)
       : [];
+    const milestones = Array.isArray(parsed.milestones)
+      ? parsed.milestones
+          .map(normalizeMilestone)
+          .filter(
+            (milestone): milestone is Milestone => milestone !== null,
+          )
+      : [];
 
     return {
-      schemaVersion: 7,
-      updatedAt: deriveStateUpdatedAt(todos, groups, parsed.updatedAt),
+      schemaVersion: 8,
+      updatedAt: deriveStateUpdatedAt(
+        todos,
+        groups,
+        milestones,
+        parsed.updatedAt,
+      ),
       language: parsed.language === 'en' ? 'en' : 'zh',
       navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
       ungroupedName:
@@ -152,6 +291,7 @@ const parseState = (rawState: string): PersistedAppState | null => {
           : null,
       todos,
       groups,
+      milestones,
     };
   } catch {
     return null;
@@ -161,7 +301,7 @@ const parseState = (rawState: string): PersistedAppState | null => {
 const loadDeviceState = async (): Promise<PersistedAppState | null> => {
   if (Platform.OS === 'web') {
     const rawState = await loadWebState(STORAGE_KEY);
-    return rawState ? parseState(rawState) : null;
+    return rawState ? parsePersistedAppState(rawState) : null;
   }
 
   const file = stateFile();
@@ -169,7 +309,7 @@ const loadDeviceState = async (): Promise<PersistedAppState | null> => {
     return null;
   }
 
-  return parseState(await file.text());
+  return parsePersistedAppState(await file.text());
 };
 
 const saveDeviceState = async (
@@ -197,7 +337,9 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
       return deviceState;
     }
 
-    const normalizedRemoteState = parseState(JSON.stringify(remoteState));
+    const normalizedRemoteState = parsePersistedAppState(
+      JSON.stringify(remoteState),
+    );
     if (normalizedRemoteState) {
       const latestState = selectLatestAppState(
         deviceState,

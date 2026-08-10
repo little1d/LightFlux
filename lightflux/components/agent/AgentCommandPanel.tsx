@@ -377,13 +377,25 @@ const OperationRow = ({
   const taskTitle = taskId
     ? context.tasks.find((task) => task.id === taskId)?.title
     : null;
+  const milestoneId =
+    'milestoneId' in operation ? operation.milestoneId : null;
+  const milestoneTitle = milestoneId
+    ? context.milestones.find(
+        (milestone) => milestone.id === milestoneId,
+      )?.title
+    : null;
   const detail =
-    operation.type === 'task.create'
+    operation.type === 'task.create' ||
+    operation.type === 'milestone.create'
       ? operation.title
       : operation.type === 'group.create' ||
           operation.type === 'group.update'
         ? operation.name
-        : taskTitle ?? taskId ?? '';
+        : taskTitle ??
+          taskId ??
+          milestoneTitle ??
+          milestoneId ??
+          '';
 
   return (
     <View style={styles.operationRow}>

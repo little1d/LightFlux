@@ -1,4 +1,11 @@
-import { Todo, TodoGroup, TodoPriority } from '../types/todo';
+import {
+  Milestone,
+  MilestoneDateRule,
+  MilestoneType,
+  Todo,
+  TodoGroup,
+  TodoPriority,
+} from '../types/todo';
 
 export type AgentRisk = 'low' | 'medium' | 'high';
 
@@ -68,6 +75,51 @@ export interface AgentGroupUpdateOperation extends AgentOperationBase {
   name: string;
 }
 
+export interface AgentMilestoneCreateOperation extends AgentOperationBase {
+  type: 'milestone.create';
+  milestoneId: string;
+  title: string;
+  milestoneType: MilestoneType;
+  dateRule: MilestoneDateRule;
+  startYear?: number | null;
+  reminderOffsets?: number[];
+  notes?: string;
+  icon?: string;
+  color?: string;
+  pinned?: boolean;
+}
+
+export interface AgentMilestoneUpdateOperation extends AgentOperationBase {
+  type: 'milestone.update';
+  milestoneId: string;
+  changes: {
+    title?: string;
+    type?: MilestoneType;
+    dateRule?: MilestoneDateRule;
+    startYear?: number | null;
+    reminderOffsets?: number[];
+    notes?: string;
+    icon?: string;
+    color?: string;
+    pinned?: boolean;
+  };
+}
+
+export interface AgentMilestoneArchiveOperation extends AgentOperationBase {
+  type: 'milestone.archive';
+  milestoneId: string;
+}
+
+export interface AgentMilestoneRestoreOperation extends AgentOperationBase {
+  type: 'milestone.restore';
+  milestoneId: string;
+}
+
+export interface AgentMilestoneTrashOperation extends AgentOperationBase {
+  type: 'milestone.trash';
+  milestoneId: string;
+}
+
 export type AgentOperation =
   | AgentTaskCreateOperation
   | AgentTaskUpdateOperation
@@ -76,7 +128,12 @@ export type AgentOperation =
   | AgentTaskTrashOperation
   | AgentTaskRestoreOperation
   | AgentGroupCreateOperation
-  | AgentGroupUpdateOperation;
+  | AgentGroupUpdateOperation
+  | AgentMilestoneCreateOperation
+  | AgentMilestoneUpdateOperation
+  | AgentMilestoneArchiveOperation
+  | AgentMilestoneRestoreOperation
+  | AgentMilestoneTrashOperation;
 
 export interface AgentProposal {
   id: string;
@@ -92,6 +149,7 @@ export interface TodoCommandState {
   revision: number;
   todos: Todo[];
   groups: TodoGroup[];
+  milestones: Milestone[];
   ungroupedName: string | null;
 }
 

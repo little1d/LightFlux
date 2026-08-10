@@ -18,13 +18,15 @@ import {
   executeConfirmedAgentProposal,
   getAgentAuditRecords,
   getAgentContextSnapshot,
+  searchAgentMilestones,
   searchAgentTasks,
   undoLastAgentProposal,
 } from '../agent/todoCommandStoreAdapter';
 import { deriveTodoCommandCollections } from '../agent/todoCommandExecutor';
 import { AgentProposal } from '../agent/types';
-import { Todo } from '../types/todo';
+import { Milestone, Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
+import { milestoneState } from '../store/milestoneDomain';
 
 const todo = (id: string): Todo => ({
   id,
@@ -42,6 +44,7 @@ const todo = (id: string): Todo => ({
   },
   createdAt: 1,
   groupId: null,
+  milestoneId: null,
   parentId: null,
   priority: 'none',
   scheduledDate: '2026-08-10',
@@ -50,9 +53,34 @@ const todo = (id: string): Todo => ({
   updatedAt: 1,
 });
 
+const milestone = (id: string): Milestone => ({
+  id,
+  title: id,
+  type: 'anniversary',
+  dateRule: {
+    calendar: 'solar',
+    year: null,
+    month: 8,
+    day: 10,
+    leapDayPolicy: 'feb-28',
+  },
+  startYear: 2020,
+  reminderOffsets: [0, 7],
+  notes: 'private milestone note',
+  icon: 'heart-outline',
+  color: '#F28B82',
+  pinned: false,
+  archivedAt: null,
+  trashedAt: null,
+  createdAt: 1,
+  updatedAt: 1,
+  revision: 1,
+});
+
 beforeEach(() => {
   mockStore.state = {
     ...deriveTodoCommandCollections([todo('existing')]),
+    ...milestoneState([]),
     groups: [],
     language: 'zh',
     navigationOrder: [
@@ -60,6 +88,7 @@ beforeEach(() => {
       'today',
       'completed',
       'calendar',
+      'milestones',
       'groups',
       'trash',
     ],
@@ -92,6 +121,34 @@ describe('agent Zustand adapter', () => {
     ]);
     expect(searchAgentTasks({ query: 'trashed' })).toEqual([]);
     expect(searchAgentTasks({ query: 'trashed', trashed: true })).toEqual([
+      expect.objectContaining({ id: 'trashed', trashed: true }),
+    ]);
+  });
+
+  it('searches milestone metadata and excludes trashed milestones by default', () => {
+    mockStore.state = {
+      ...mockStore.state,
+      ...milestoneState([
+        milestone('anniversary'),
+        {
+          ...milestone('trashed'),
+          notes: 'find this note',
+          trashedAt: 10,
+        },
+      ]),
+    };
+
+    expect(searchAgentMilestones({ query: 'anniversary' })).toEqual([
+      expect.objectContaining({
+        id: 'anniversary',
+        archived: false,
+        trashed: false,
+      }),
+    ]);
+    expect(searchAgentMilestones({ query: 'find this' })).toEqual([]);
+    expect(
+      searchAgentMilestones({ query: 'find this', trashed: true }),
+    ).toEqual([
       expect.objectContaining({ id: 'trashed', trashed: true }),
     ]);
   });
@@ -137,5 +194,42 @@ describe('agent Zustand adapter', () => {
     ).toBe(false);
     expect(getAgentAuditRecords()[0].undoneAt).toBe(200);
     expect(undoLastAgentProposal()).toBe(false);
+  });
+
+  it('applies and undoes milestone proposals through the shared state', () => {
+    const context = getAgentContextSnapshot();
+    const proposal: AgentProposal = {
+      id: 'milestone-proposal',
+      assumptions: [],
+      baseRevision: context.revision,
+      operations: [
+        {
+          idempotencyKey: 'milestone-create-key',
+          operationId: 'milestone-create',
+          type: 'milestone.create',
+          milestoneId: 'launch',
+          title: '产品上线',
+          milestoneType: 'countdown',
+          dateRule: {
+            calendar: 'solar',
+            year: 2026,
+            month: 9,
+            day: 7,
+            leapDayPolicy: 'feb-28',
+          },
+        },
+      ],
+      requiresConfirmation: true,
+      risk: 'low',
+      summary: 'Create one milestone',
+    };
+
+    executeConfirmedAgentProposal(proposal, 100);
+    expect(mockStore.state.allMilestones).toEqual([
+      expect.objectContaining({ id: 'launch', title: '产品上线' }),
+    ]);
+
+    expect(undoLastAgentProposal(200)).toBe(true);
+    expect(mockStore.state.allMilestones).toEqual([]);
   });
 });

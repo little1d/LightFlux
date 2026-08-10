@@ -1,8 +1,14 @@
-import { PersistedAppState, Todo, TodoGroup } from '../types/todo';
+import {
+  Milestone,
+  PersistedAppState,
+  Todo,
+  TodoGroup,
+} from '../types/todo';
 
 export const deriveStateUpdatedAt = (
   todos: Todo[],
   groups: TodoGroup[],
+  milestones: Milestone[],
   value: unknown,
 ): number => {
   if (typeof value === 'number' && Number.isFinite(value) && value >= 0) {
@@ -13,6 +19,7 @@ export const deriveStateUpdatedAt = (
     0,
     ...todos.map((todo) => todo.updatedAt),
     ...groups.map((group) => group.createdAt),
+    ...milestones.map((milestone) => milestone.updatedAt),
   );
 };
 

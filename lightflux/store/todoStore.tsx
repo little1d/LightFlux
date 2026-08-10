@@ -6,7 +6,10 @@ import {
   NAVIGATION_ITEM_IDS,
   GroupPlacement,
   Language,
+  Milestone,
+  MilestoneUpdate,
   NavigationItemId,
+  NewMilestone,
   NewTodo,
   PersistedAppState,
   Todo,
@@ -14,6 +17,15 @@ import {
   TodoUpdate,
 } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
+import {
+  isValidMilestoneDateRule,
+  isValidMilestoneStartYear,
+  normalizeReminderOffsets,
+} from '../utils/milestoneDate';
+import {
+  MILESTONE_TYPE_THEME,
+  milestoneState,
+} from './milestoneDomain';
 import {
   byTodoOrder,
   collectTodoFamily,
@@ -37,6 +49,10 @@ interface TodoStore {
   todos: Todo[];
   trashedTodos: Todo[];
   groups: TodoGroup[];
+  allMilestones: Milestone[];
+  milestones: Milestone[];
+  archivedMilestones: Milestone[];
+  trashedMilestones: Milestone[];
   navigationOrder: NavigationItemId[];
   ungroupedName: string | null;
   isHydrated: boolean;
@@ -62,6 +78,13 @@ interface TodoStore {
   ) => void;
   renameGroup: (id: string | null, name: string) => void;
   deleteGroup: (id: string) => void;
+  addMilestone: (milestone: NewMilestone) => string | null;
+  updateMilestone: (id: string, changes: MilestoneUpdate) => void;
+  archiveMilestone: (id: string) => void;
+  unarchiveMilestone: (id: string) => void;
+  trashMilestone: (id: string) => void;
+  restoreMilestone: (id: string) => void;
+  deleteMilestonePermanently: (id: string) => void;
 }
 
 const makeId = (): string =>
@@ -71,6 +94,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   language: 'zh',
   ...todoState([]),
   groups: [],
+  ...milestoneState([]),
   navigationOrder: [...NAVIGATION_ITEM_IDS],
   ungroupedName: null,
   isHydrated: false,
@@ -91,6 +115,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
           language: state.language,
           ...todoState(state.todos),
           groups: state.groups,
+          ...milestoneState(state.milestones),
           navigationOrder: state.navigationOrder,
           ungroupedName: state.ungroupedName,
         });
@@ -131,6 +156,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         updatedAt: timestamp,
         scheduledDate: todo.scheduledDate,
         groupId: todo.groupId ?? null,
+        milestoneId: todo.milestoneId ?? null,
         parentId: todo.parentId ?? null,
         priority: 'none',
         sortOrder: 0,
@@ -280,9 +306,26 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     ),
 
   emptyTrash: () =>
-    set((state) =>
-      todoState(emptyTrashTodos(state.allTodos, Date.now())),
-    ),
+    set((state) => {
+      const trashedMilestoneIds = new Set(
+        state.trashedMilestones.map((milestone) => milestone.id),
+      );
+      return {
+        ...todoState(
+          emptyTrashTodos(state.allTodos, Date.now()).map((todo) =>
+            todo.milestoneId &&
+            trashedMilestoneIds.has(todo.milestoneId)
+              ? { ...todo, milestoneId: null, updatedAt: Date.now() }
+              : todo,
+          ),
+        ),
+        ...milestoneState(
+          state.allMilestones.filter(
+            (milestone) => milestone.trashedAt === null,
+          ),
+        ),
+      };
+    }),
 
   addGroup: (name, placement) => {
     const id = makeId();
@@ -376,16 +419,181 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         ),
       ),
     })),
+
+  addMilestone: (milestone) => {
+    const title = milestone.title.trim();
+    const startYear = milestone.startYear ?? null;
+    if (
+      !title ||
+      !isValidMilestoneDateRule(milestone.dateRule) ||
+      !isValidMilestoneStartYear(startYear)
+    ) {
+      return null;
+    }
+    const id = makeId();
+    const timestamp = Date.now();
+    const theme = MILESTONE_TYPE_THEME[milestone.type];
+    const nextMilestone: Milestone = {
+      id,
+      title,
+      type: milestone.type,
+      dateRule: milestone.dateRule,
+      startYear,
+      reminderOffsets: normalizeReminderOffsets(
+        milestone.reminderOffsets ?? [],
+      ),
+      notes: milestone.notes?.trim() ?? '',
+      icon: milestone.icon ?? theme.icon,
+      color: milestone.color ?? theme.color,
+      pinned: milestone.pinned ?? false,
+      archivedAt: null,
+      trashedAt: null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      revision: 1,
+    };
+    set((state) =>
+      milestoneState([...state.allMilestones, nextMilestone]),
+    );
+    return id;
+  },
+
+  updateMilestone: (id, changes) =>
+    set((state) =>
+      milestoneState(
+        state.allMilestones.map((milestone) => {
+          if (milestone.id !== id || milestone.trashedAt !== null) {
+            return milestone;
+          }
+          if (
+            changes.dateRule &&
+            !isValidMilestoneDateRule(changes.dateRule)
+          ) {
+            return milestone;
+          }
+          if (
+            changes.startYear !== undefined &&
+            !isValidMilestoneStartYear(changes.startYear)
+          ) {
+            return milestone;
+          }
+          const title =
+            changes.title === undefined
+              ? milestone.title
+              : changes.title.trim();
+          if (!title) {
+            return milestone;
+          }
+          return {
+            ...milestone,
+            ...changes,
+            title,
+            notes:
+              changes.notes === undefined
+                ? milestone.notes
+                : changes.notes.trim(),
+            reminderOffsets:
+              changes.reminderOffsets === undefined
+                ? milestone.reminderOffsets
+                : normalizeReminderOffsets(changes.reminderOffsets),
+            updatedAt: Date.now(),
+            revision: milestone.revision + 1,
+          };
+        }),
+      ),
+    ),
+
+  archiveMilestone: (id) =>
+    set((state) =>
+      milestoneState(
+        state.allMilestones.map((milestone) =>
+          milestone.id === id && milestone.trashedAt === null
+            ? {
+                ...milestone,
+                archivedAt: Date.now(),
+                updatedAt: Date.now(),
+                revision: milestone.revision + 1,
+              }
+            : milestone,
+        ),
+      ),
+    ),
+
+  unarchiveMilestone: (id) =>
+    set((state) =>
+      milestoneState(
+        state.allMilestones.map((milestone) =>
+          milestone.id === id && milestone.trashedAt === null
+            ? {
+                ...milestone,
+                archivedAt: null,
+                updatedAt: Date.now(),
+                revision: milestone.revision + 1,
+              }
+            : milestone,
+        ),
+      ),
+    ),
+
+  trashMilestone: (id) =>
+    set((state) =>
+      milestoneState(
+        state.allMilestones.map((milestone) =>
+          milestone.id === id && milestone.trashedAt === null
+            ? {
+                ...milestone,
+                trashedAt: Date.now(),
+                updatedAt: Date.now(),
+                revision: milestone.revision + 1,
+              }
+            : milestone,
+        ),
+      ),
+    ),
+
+  restoreMilestone: (id) =>
+    set((state) =>
+      milestoneState(
+        state.allMilestones.map((milestone) =>
+          milestone.id === id && milestone.trashedAt !== null
+            ? {
+                ...milestone,
+                trashedAt: null,
+                updatedAt: Date.now(),
+                revision: milestone.revision + 1,
+              }
+            : milestone,
+        ),
+      ),
+    ),
+
+  deleteMilestonePermanently: (id) =>
+    set((state) => ({
+      ...milestoneState(
+        state.allMilestones.filter(
+          (milestone) =>
+            milestone.id !== id || milestone.trashedAt === null,
+        ),
+      ),
+      ...todoState(
+        state.allTodos.map((todo) =>
+          todo.milestoneId === id
+            ? { ...todo, milestoneId: null, updatedAt: Date.now() }
+            : todo,
+        ),
+      ),
+    })),
 }));
 
 const persistedState = (state: TodoStore): PersistedAppState => ({
-  schemaVersion: 7,
+  schemaVersion: 8,
   updatedAt: Date.now(),
   language: state.language,
   navigationOrder: state.navigationOrder,
   ungroupedName: state.ungroupedName,
   todos: state.allTodos,
   groups: state.groups,
+  milestones: state.allMilestones,
 });
 
 export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
@@ -393,6 +601,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const language = useTodoStore((state) => state.language);
   const allTodos = useTodoStore((state) => state.allTodos);
   const groups = useTodoStore((state) => state.groups);
+  const allMilestones = useTodoStore((state) => state.allMilestones);
   const navigationOrder = useTodoStore((state) => state.navigationOrder);
   const ungroupedName = useTodoStore((state) => state.ungroupedName);
   const isHydrated = useTodoStore((state) => state.isHydrated);
@@ -419,6 +628,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     return () => clearTimeout(timer);
   }, [
     allTodos,
+    allMilestones,
     groups,
     isHydrated,
     language,

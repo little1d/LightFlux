@@ -10,6 +10,11 @@ import {
 } from './types';
 import { Todo, TodoGroup, TodoPriority } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
+import {
+  applyMilestoneOperation,
+  isMilestoneOperation,
+  milestoneOperationRisk,
+} from './milestoneCommandExecutor';
 
 const MAX_OPERATIONS = 50;
 const MAX_TITLE_LENGTH = 160;
@@ -205,6 +210,11 @@ const cloneCommandState = (state: TodoCommandState): TodoCommandState => ({
   revision: state.revision,
   todos: state.todos.map((todo) => ({ ...todo })),
   groups: state.groups.map((group) => ({ ...group })),
+  milestones: state.milestones.map((milestone) => ({
+    ...milestone,
+    dateRule: { ...milestone.dateRule },
+    reminderOffsets: [...milestone.reminderOffsets],
+  })),
   ungroupedName: state.ungroupedName,
 });
 
@@ -212,6 +222,7 @@ export const calculateTodoCommandRevision = (
   todos: Todo[],
   groups: TodoGroup[],
   ungroupedName: string | null,
+  milestones: TodoCommandState['milestones'] = [],
 ): number => {
   const value = JSON.stringify({
     todos: [...todos]
@@ -232,6 +243,15 @@ export const calculateTodoCommandRevision = (
         group.color,
         group.sortOrder,
       ]),
+    milestones: [...milestones]
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((milestone) => [
+        milestone.id,
+        milestone.updatedAt,
+        milestone.revision,
+        milestone.archivedAt,
+        milestone.trashedAt,
+      ]),
     ungroupedName,
   });
   let hash = 2166136261;
@@ -246,14 +266,24 @@ export const createTodoCommandState = (
   todos: Todo[],
   groups: TodoGroup[],
   ungroupedName: string | null,
+  milestones: TodoCommandState['milestones'] = [],
 ): TodoCommandState => ({
-  revision: calculateTodoCommandRevision(todos, groups, ungroupedName),
+  revision: calculateTodoCommandRevision(
+    todos,
+    groups,
+    ungroupedName,
+    milestones,
+  ),
   todos,
   groups,
+  milestones,
   ungroupedName,
 });
 
 const operationRisk = (operation: AgentOperation): AgentRisk => {
+  if (isMilestoneOperation(operation)) {
+    return milestoneOperationRisk(operation);
+  }
   switch (operation.type) {
     case 'task.trash':
       return 'high';
@@ -420,6 +450,7 @@ const applyCreate = (
       operation.operationId,
     ),
     groupId,
+    milestoneId: null,
     parentId: parent?.id ?? null,
     priority: assertPriority(
       operation.priority ?? 'none',
@@ -769,6 +800,9 @@ const applyOperation = (
   operation: AgentOperation,
   timestamp: number,
 ): AgentOperationResult => {
+  if (isMilestoneOperation(operation)) {
+    return applyMilestoneOperation(state, operation, timestamp);
+  }
   switch (operation.type) {
     case 'task.create':
       return applyCreate(state, operation, timestamp);
@@ -810,6 +844,7 @@ const validateProposal = (
     state.todos,
     state.groups,
     state.ungroupedName,
+    state.milestones,
   );
   if (
     state.revision !== currentRevision ||
@@ -871,6 +906,7 @@ export const executeAgentProposal = (
     working.todos,
     working.groups,
     working.ungroupedName,
+    working.milestones,
   );
   const undoToken: AgentUndoToken = {
     proposalId: proposal.id,
@@ -897,6 +933,7 @@ export const undoAgentExecution = (
     currentState.todos,
     currentState.groups,
     currentState.ungroupedName,
+    currentState.milestones,
   );
   if (
     currentState.revision !== currentRevision ||

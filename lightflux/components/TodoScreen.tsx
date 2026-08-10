@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
 import {
@@ -20,8 +21,10 @@ import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { Translation, translations } from '../i18n/translations';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
-import { Todo, TodoFilter } from '../types/todo';
+import { Milestone, Todo, TodoFilter } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
+import { fromDateKey } from '../utils/date';
+import { getMilestoneOccurrence, milestoneOccursOn } from '../utils/milestoneDate';
 import TaskIndicators from './tasks/TaskIndicators';
 import TaskPriorityIndicator, {
   TASK_PRIORITY_THEME,
@@ -40,6 +43,92 @@ import {
 } from './tasks/useTaskContextMenu';
 
 const FILTERS: TodoFilter[] = ['all', 'active', 'completed'];
+
+interface TodayMilestoneRowProps {
+  labels: Translation['milestones'];
+  milestone: Milestone;
+  onCreateTask: (milestone: Milestone) => void;
+  onOpen: () => void;
+  sequenceNumber: number | null;
+}
+
+const TodayMilestoneRow = ({
+  labels,
+  milestone,
+  onCreateTask,
+  onOpen,
+  sequenceNumber,
+}: TodayMilestoneRowProps) => {
+  const sequence =
+    sequenceNumber && sequenceNumber > 0
+      ? milestone.type === 'birthday'
+        ? labels.birthdayYears(sequenceNumber)
+        : labels.anniversaryYears(sequenceNumber)
+      : null;
+
+  return (
+    <View
+      className="mb-1.5 min-h-[52px] flex-row items-center overflow-hidden rounded-[14px] border border-[#E8E5EF] bg-white px-2.5"
+      style={styles.todayMilestoneShadow}
+    >
+      <Pressable
+        accessibilityLabel={`${labels.openMilestones}: ${milestone.title}`}
+        accessibilityRole="button"
+        className="flex-1 flex-row items-center py-2"
+        onPress={onOpen}
+        style={({ pressed }) => pressed && styles.buttonPressed}
+      >
+        <View
+          className="h-8 w-8 items-center justify-center rounded-[10px]"
+          style={{ backgroundColor: `${milestone.color}20` }}
+        >
+          <Ionicons
+            color={milestone.color}
+            name={
+              milestone.icon as React.ComponentProps<typeof Ionicons>['name']
+            }
+            size={16}
+          />
+        </View>
+        <View className="ml-2.5 flex-1">
+          <Text
+            className="text-[13px] font-bold text-[#343548]"
+            numberOfLines={1}
+          >
+            {milestone.title}
+          </Text>
+          <Text className="mt-0.5 text-[10px] font-medium text-[#898A99]">
+            {labels.templates[milestone.type]}
+            {sequence ? ` · ${sequence}` : ''}
+            {milestone.dateRule.calendar === 'lunar'
+              ? ` · ${labels.lunarDate}`
+              : ''}
+          </Text>
+        </View>
+        <View
+          className="mr-2 rounded-full px-2 py-1"
+          style={{ backgroundColor: `${milestone.color}18` }}
+        >
+          <Text
+            className="text-[10px] font-extrabold"
+            style={{ color: milestone.color }}
+          >
+            {labels.today}
+          </Text>
+        </View>
+      </Pressable>
+      <Pressable
+        accessibilityLabel={`${labels.createTask}: ${milestone.title}`}
+        accessibilityRole="button"
+        className="h-8 w-8 items-center justify-center rounded-[10px] bg-[#F0EEFF]"
+        onPress={() => onCreateTask(milestone)}
+        style={({ pressed }) => pressed && styles.addButtonPressed}
+      >
+        <Ionicons color="#6759E8" name="checkbox-outline" size={16} />
+      </Pressable>
+    </View>
+  );
+};
 
 interface TodoRowProps {
   labels: Translation;
@@ -129,10 +218,14 @@ const TodoRow = ({
 const TodoScreen = ({
   onEditTask,
   onOpenTaskMenu,
+  onOpenMilestones,
+  onNotify,
   selectedTaskId,
 }: {
   onEditTask: (id: string) => void;
   onOpenTaskMenu: OpenTaskMenu;
+  onOpenMilestones: () => void;
+  onNotify: (message: string) => void;
   selectedTaskId: string | null;
 }) => {
   const [filter, setFilter] = useState<TodoFilter>('all');
@@ -140,6 +233,7 @@ const TodoScreen = ({
   const {
     language,
     todos: allTodos,
+    milestones,
     addTodo: createTodo,
     toggleTodo,
     trashTodos,
@@ -147,6 +241,7 @@ const TodoScreen = ({
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
+      milestones: state.milestones,
       addTodo: state.addTodo,
       toggleTodo: state.toggleTodo,
       trashTodos: state.trashTodos,
@@ -157,6 +252,17 @@ const TodoScreen = ({
     () => allTodos.filter((todo) => todo.scheduledDate === dateKey),
     [allTodos, dateKey],
   );
+  const todayMilestones = useMemo(() => {
+    const referenceDate = fromDateKey(dateKey);
+    return milestones
+      .filter((milestone) => milestoneOccursOn(milestone, dateKey))
+      .map((milestone) => ({
+        milestone,
+        sequenceNumber:
+          getMilestoneOccurrence(milestone, referenceDate)?.sequenceNumber ??
+          null,
+      }));
+  }, [dateKey, milestones]);
   const childCountByParent = useMemo(
     () => buildChildCountByParent(allTodos),
     [allTodos],
@@ -191,6 +297,15 @@ const TodoScreen = ({
     setDraft('');
     setFilter('all');
     Keyboard.dismiss();
+  };
+
+  const createMilestoneTask = (milestone: Milestone) => {
+    createTodo({
+      title: milestone.title,
+      scheduledDate: dateKey,
+      milestoneId: milestone.id,
+    });
+    onNotify(labels.milestones.relatedTaskCreated);
   };
 
   const requestClearCompleted = () => {
@@ -264,6 +379,33 @@ const TodoScreen = ({
           <Text className="mt-[9px] text-xs text-[#ABA7C3]">
             {labels.progress(completedCount, todos.length)}
           </Text>
+        </View>
+      ) : null}
+
+      {todayMilestones.length > 0 ? (
+        <View className="mb-[18px]">
+          <Pressable
+            accessibilityLabel={labels.milestones.openMilestones}
+            accessibilityRole="button"
+            className="mb-2 flex-row items-center justify-between px-0.5"
+            onPress={onOpenMilestones}
+            style={({ pressed }) => pressed && styles.buttonPressed}
+          >
+            <Text className="text-[12px] font-extrabold text-[#515264]">
+              {labels.milestones.todaySection}
+            </Text>
+            <Ionicons color="#898A99" name="chevron-forward" size={15} />
+          </Pressable>
+          {todayMilestones.map(({ milestone, sequenceNumber }) => (
+            <TodayMilestoneRow
+              key={milestone.id}
+              labels={labels.milestones}
+              milestone={milestone}
+              onCreateTask={createMilestoneTask}
+              onOpen={onOpenMilestones}
+              sequenceNumber={sequenceNumber}
+            />
+          ))}
         </View>
       ) : null}
 
@@ -470,6 +612,12 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.07,
     shadowRadius: 13,
+  },
+  todayMilestoneShadow: {
+    shadowColor: '#45435F',
+    shadowOffset: { height: 3, width: 0 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
   },
   addButtonPressed: {
     backgroundColor: '#574ACD',

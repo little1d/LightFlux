@@ -9,6 +9,7 @@ export const NAVIGATION_ITEM_IDS = [
   'today',
   'completed',
   'calendar',
+  'milestones',
   'groups',
   'trash',
 ] as const;
@@ -42,6 +43,7 @@ export interface Todo {
   updatedAt: number;
   scheduledDate: string;
   groupId: string | null;
+  milestoneId: string | null;
   parentId: string | null;
   priority: TodoPriority;
   sortOrder: number;
@@ -57,14 +59,61 @@ export interface TodoGroup {
   sortOrder: number;
 }
 
+export type MilestoneType =
+  | 'anniversary'
+  | 'countdown'
+  | 'birthday'
+  | 'holiday'
+  | 'custom';
+
+export interface SolarMilestoneDateRule {
+  calendar: 'solar';
+  year: number | null;
+  month: number;
+  day: number;
+  leapDayPolicy: 'feb-28' | 'mar-1';
+}
+
+export interface LunarMilestoneDateRule {
+  calendar: 'lunar';
+  year: number | null;
+  month: number;
+  day: number;
+  isLeapMonth: boolean;
+  missingLeapMonthPolicy: 'regular-month' | 'skip-year';
+}
+
+export type MilestoneDateRule =
+  | SolarMilestoneDateRule
+  | LunarMilestoneDateRule;
+
+export interface Milestone {
+  id: string;
+  title: string;
+  type: MilestoneType;
+  dateRule: MilestoneDateRule;
+  startYear: number | null;
+  reminderOffsets: number[];
+  notes: string;
+  icon: string;
+  color: string;
+  pinned: boolean;
+  archivedAt: number | null;
+  trashedAt: number | null;
+  createdAt: number;
+  updatedAt: number;
+  revision: number;
+}
+
 export interface PersistedAppState {
-  schemaVersion: 7;
+  schemaVersion: 8;
   updatedAt: number;
   language: Language;
   navigationOrder: NavigationItemId[];
   ungroupedName: string | null;
   todos: Todo[];
   groups: TodoGroup[];
+  milestones: Milestone[];
 }
 
 export interface GroupPlacement {
@@ -76,10 +125,38 @@ export interface NewTodo {
   title: string;
   scheduledDate: string;
   groupId?: string | null;
+  milestoneId?: string | null;
   parentId?: string | null;
   insertAfterId?: string;
   content?: RichTextDocument;
 }
+
+export interface NewMilestone {
+  title: string;
+  type: MilestoneType;
+  dateRule: MilestoneDateRule;
+  startYear?: number | null;
+  reminderOffsets?: number[];
+  notes?: string;
+  icon?: string;
+  color?: string;
+  pinned?: boolean;
+}
+
+export type MilestoneUpdate = Partial<
+  Pick<
+    Milestone,
+    | 'title'
+    | 'type'
+    | 'dateRule'
+    | 'startYear'
+    | 'reminderOffsets'
+    | 'notes'
+    | 'icon'
+    | 'color'
+    | 'pinned'
+  >
+>;
 
 export type TodoUpdate = Partial<
   Pick<

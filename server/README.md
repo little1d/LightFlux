@@ -19,6 +19,16 @@ For local image-paste development without WeChat authentication, set
 `UPLOAD_ALLOW_ANONYMOUS=true`. Keep it disabled in any shared or production
 environment. Uploaded files are written beneath `UPLOAD_DIR`.
 
+The text Agent uses an OpenAI-compatible chat-completions endpoint. Configure
+`AI_BASE_URL` at the API root before `/chat/completions`, plus `AI_API_KEY` and
+`AI_MODEL`. For example, DeepSeek uses `https://api.deepseek.com`, while OpenAI
+typically uses a base ending in `/v1`. Anonymous Agent access is disabled by
+default because every request consumes paid model quota;
+`AI_ALLOW_ANONYMOUS=true` is only intended for isolated local development.
+Provider requests time out after `AI_REQUEST_TIMEOUT_MS` (30 seconds by
+default). `AI_RATE_LIMIT_MAX_REQUESTS` limits each authenticated user or
+anonymous IP within `AI_RATE_LIMIT_WINDOW_MS`.
+
 ## WeChat applications
 
 - Web: approved Website Application, callback domain and
@@ -41,6 +51,8 @@ environment. Uploaded files are written beneath `UPLOAD_DIR`.
 - `PUT /api/app-state`
 - `POST /api/uploads`
 - `GET /uploads/:filename`
+- `POST /api/ai/turns`
+- `POST /api/ai/proposals/:id/result`
 
 The first successful WeChat authorization creates a user automatically.
 When WeChat returns a `UnionID`, identities from the website and mobile
@@ -58,3 +70,8 @@ running multiple API instances.
 The included upload repository is also for local development. The client
 stores only the returned image URL, so `/api/uploads` can later be replaced
 with an object-storage adapter without migrating rich-text documents.
+
+The Agent service only interprets text and returns validated proposals. It
+never mutates app state on the server. Confirmed proposals execute through the
+client command layer, then the client reports operation IDs and revisions back
+to the Agent conversation.

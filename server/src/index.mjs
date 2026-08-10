@@ -9,6 +9,8 @@ import { createServer } from 'node:http';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 
+import { createAgentService } from './agent.mjs';
+
 const config = {
   port: Number(process.env.PORT ?? 8787),
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:8787',
@@ -19,6 +21,19 @@ const config = {
   uploadDir: resolve(process.env.UPLOAD_DIR ?? './data/uploads'),
   uploadAllowAnonymous: process.env.UPLOAD_ALLOW_ANONYMOUS === 'true',
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 8 * 1024 * 1024),
+  ai: {
+    baseUrl: process.env.AI_BASE_URL ?? '',
+    apiKey: process.env.AI_API_KEY ?? '',
+    model: process.env.AI_MODEL ?? '',
+    allowAnonymous: process.env.AI_ALLOW_ANONYMOUS === 'true',
+    requestTimeoutMs: Number(process.env.AI_REQUEST_TIMEOUT_MS ?? 30_000),
+    rateLimitWindowMs: Number(
+      process.env.AI_RATE_LIMIT_WINDOW_MS ?? 60_000,
+    ),
+    rateLimitMaxRequests: Number(
+      process.env.AI_RATE_LIMIT_MAX_REQUESTS ?? 20,
+    ),
+  },
   web: {
     appId: process.env.WECHAT_WEB_APP_ID ?? '',
     appSecret: process.env.WECHAT_WEB_APP_SECRET ?? '',
@@ -35,6 +50,17 @@ const config = {
 if (!Number.isFinite(config.maxUploadBytes) || config.maxUploadBytes <= 0) {
   throw new Error('MAX_UPLOAD_BYTES must be a positive number.');
 }
+for (const [name, value] of [
+  ['AI_REQUEST_TIMEOUT_MS', config.ai.requestTimeoutMs],
+  ['AI_RATE_LIMIT_WINDOW_MS', config.ai.rateLimitWindowMs],
+  ['AI_RATE_LIMIT_MAX_REQUESTS', config.ai.rateLimitMaxRequests],
+]) {
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`${name} must be a positive number.`);
+  }
+}
+
+const agentService = createAgentService(config.ai);
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -394,6 +420,10 @@ const publicUser = (user) => ({
   avatarUrl: user.avatarUrl,
 });
 
+const agentOwnerId = (request, auth) =>
+  auth?.user.id ??
+  `anonymous:${request.socket.remoteAddress ?? 'unknown'}`;
+
 const handleRequest = async (request, response) => {
   const url = new URL(request.url, config.publicBaseUrl);
   const corsHeaders = {
@@ -415,6 +445,7 @@ const handleRequest = async (request, response) => {
   if (url.pathname === '/health' && request.method === 'GET') {
     json(response, 200, {
       status: 'ok',
+      aiConfigured: agentService.isConfigured(),
       wechat: {
         webConfigured: Boolean(config.web.appId && config.web.appSecret),
         mobileConfigured: Boolean(
@@ -598,6 +629,62 @@ const handleRequest = async (request, response) => {
     return;
   }
 
+  if (url.pathname === '/api/ai/turns' && request.method === 'POST') {
+    const auth = currentSession(request);
+    if (!auth && !config.ai.allowAnonymous) {
+      json(response, 401, { error: 'Authentication required.' }, corsHeaders);
+      return;
+    }
+    const body = await parseBody(request);
+    const abortController = new AbortController();
+    const abortProviderRequest = () => abortController.abort();
+    request.once('aborted', abortProviderRequest);
+    let result;
+    try {
+      result = await agentService.turn({
+        ownerId: agentOwnerId(request, auth),
+        request: body,
+        signal: abortController.signal,
+      });
+    } finally {
+      request.removeListener('aborted', abortProviderRequest);
+    }
+    json(response, 200, result, corsHeaders);
+    return;
+  }
+
+  const proposalResultMatch = url.pathname.match(
+    /^\/api\/ai\/proposals\/([^/]+)\/result$/,
+  );
+  if (proposalResultMatch && request.method === 'POST') {
+    const auth = currentSession(request);
+    if (!auth && !config.ai.allowAnonymous) {
+      json(response, 401, { error: 'Authentication required.' }, corsHeaders);
+      return;
+    }
+    const body = await parseBody(request);
+    if (
+      typeof body.beforeRevision !== 'number' ||
+      typeof body.afterRevision !== 'number' ||
+      !Array.isArray(body.operations)
+    ) {
+      json(
+        response,
+        400,
+        { error: 'Invalid proposal execution result.' },
+        corsHeaders,
+      );
+      return;
+    }
+    await agentService.proposalResult({
+      ownerId: agentOwnerId(request, auth),
+      proposalId: decodeURIComponent(proposalResultMatch[1]),
+      result: body,
+    });
+    json(response, 200, { ok: true }, corsHeaders);
+    return;
+  }
+
   if (url.pathname === '/api/app-state' && request.method === 'GET') {
     const auth = currentSession(request);
     if (!auth) {
@@ -642,6 +729,9 @@ await loadDatabase();
 
 createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
+    if (response.destroyed || response.writableEnded) {
+      return;
+    }
     if (!error.status || error.status >= 500) {
       console.error(error);
     }

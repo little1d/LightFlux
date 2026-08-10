@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Keyboard,
+  StyleSheet,
   TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -16,7 +18,8 @@ import MenuSurface from '../ui/MenuSurface';
 import TaskPrioritySelector from './TaskPrioritySelector';
 import { TaskMenuPosition } from './useTaskContextMenu';
 
-const MENU_WIDTH = 220;
+const MENU_WIDTH = 240;
+const EDIT_MENU_WIDTH = 300;
 type EditMode = 'subtask' | 'rename' | null;
 
 interface TaskActionMenuProps {
@@ -45,6 +48,8 @@ const TaskActionMenu = ({
   const todo = todos.find((item) => item.id === todoId);
   const [mode, setMode] = useState<EditMode>(null);
   const [draft, setDraft] = useState('');
+  const viewport = useWindowDimensions();
+  const compactEdit = viewport.width < 360;
 
   if (!todo) {
     return null;
@@ -89,19 +94,22 @@ const TaskActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={mode ? 110 : 195}
+      estimatedHeight={mode ? (compactEdit ? 164 : 118) : 195}
       onClose={onClose}
       position={position}
-      width={MENU_WIDTH}
+      width={mode ? EDIT_MENU_WIDTH : MENU_WIDTH}
     >
       {mode ? (
         <View
-          className="m-2 flex-row rounded-[9px] border border-[#D8D4F0] bg-[#F7F6FA] p-1 pl-2.5"
           nativeID={
             mode === 'rename'
               ? 'context-task-name-composer'
               : 'context-subtask-composer'
           }
+          style={[
+            styles.composer,
+            compactEdit && styles.composerCompact,
+          ]}
         >
           <TextInput
             {...inputAccentProps}
@@ -111,7 +119,6 @@ const TaskActionMenu = ({
                 : labels.taskMenu.subtaskPlaceholder
             }
             autoFocus
-            className="h-8 flex-1 text-[12px] text-[#303145]"
             onChangeText={setDraft}
             onSubmitEditing={submit}
             placeholder={
@@ -121,18 +128,29 @@ const TaskActionMenu = ({
             }
             placeholderTextColor="#9A9BA8"
             returnKeyType="done"
+            style={[
+              styles.input,
+              compactEdit && styles.inputCompact,
+            ]}
             value={draft}
           />
-          <ActionButton
-            disabled={!draft.trim()}
-            label={
-              mode === 'rename'
-                ? labels.groups.confirmRename
-                : labels.taskMenu.createSubtask
-            }
-            onPress={submit}
-            size="small"
-          />
+          <View
+            style={[
+              styles.submitButton,
+              compactEdit && styles.submitButtonCompact,
+            ]}
+          >
+            <ActionButton
+              disabled={!draft.trim()}
+              label={
+                mode === 'rename'
+                  ? labels.groups.confirmRename
+                  : labels.taskMenu.createSubtask
+              }
+              onPress={submit}
+              size="small"
+            />
+          </View>
         </View>
       ) : (
         <>
@@ -161,5 +179,46 @@ const TaskActionMenu = ({
     </MenuSurface>
   );
 };
+
+const styles = StyleSheet.create({
+  composer: {
+    alignItems: 'center',
+    backgroundColor: '#F7F6FA',
+    borderColor: '#D8D4F0',
+    borderRadius: 9,
+    borderWidth: 1,
+    flexDirection: 'row',
+    margin: 8,
+    padding: 4,
+    paddingLeft: 10,
+  },
+  composerCompact: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+    padding: 8,
+  },
+  input: {
+    color: '#303145',
+    flex: 1,
+    fontSize: 12,
+    height: 32,
+    minWidth: 0,
+    paddingHorizontal: 0,
+  },
+  inputCompact: {
+    flex: 0,
+    paddingHorizontal: 3,
+    width: '100%',
+  },
+  submitButton: {
+    flexShrink: 0,
+    marginLeft: 6,
+  },
+  submitButtonCompact: {
+    alignSelf: 'flex-end',
+    marginLeft: 0,
+    marginTop: 8,
+  },
+});
 
 export default TaskActionMenu;

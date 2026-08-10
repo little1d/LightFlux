@@ -68,10 +68,20 @@ const MenuSurface = ({
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [onClose]);
 
+  const resolvedWebWidth = Math.min(
+    width,
+    Math.max(0, viewport.width - 24),
+  );
   const surfacePosition =
     Platform.OS === 'web' && position
       ? {
-          left: Math.max(12, Math.min(position.x, viewport.width - width - 12)),
+          left: Math.max(
+            12,
+            Math.min(
+              position.x,
+              viewport.width - resolvedWebWidth - 12,
+            ),
+          ),
           top: Math.max(
             12,
             Math.min(position.y, viewport.height - estimatedHeight - 12),
@@ -92,7 +102,10 @@ const MenuSurface = ({
           position && Platform.OS === 'web'
             ? styles.webPosition
             : styles.mobilePosition,
-          { width: Platform.OS === 'web' ? width : undefined },
+          {
+            width:
+              Platform.OS === 'web' ? resolvedWebWidth : undefined,
+          },
           surfacePosition,
         ]}
       >

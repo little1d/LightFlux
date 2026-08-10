@@ -473,7 +473,10 @@ const AppContent = () => {
       }
     >
       {usesDesktopLayout ? (
-        <SafeAreaView className="w-[78px] border-r border-[#E2E1E8] bg-[#F7F6F9]">
+        <SafeAreaView
+          className="w-[78px] border-r border-[#E2E1E8] bg-[#F7F6F9]"
+          style={styles.desktopSidebar}
+        >
           <View className="flex-1 items-center pt-5">
             <View style={styles.desktopAccountPosition}>
               <AccountTrigger
@@ -709,6 +712,11 @@ const styles = StyleSheet.create({
   },
   desktopAccountPosition: {
     marginBottom: 28,
+  },
+  desktopSidebar: {
+    overflow: 'visible',
+    position: 'relative',
+    zIndex: 100,
   },
   fullPane: {
     flex: 1,

@@ -110,6 +110,11 @@ export interface AgentMilestoneArchiveOperation extends AgentOperationBase {
   milestoneId: string;
 }
 
+export interface AgentMilestoneUnarchiveOperation extends AgentOperationBase {
+  type: 'milestone.unarchive';
+  milestoneId: string;
+}
+
 export interface AgentMilestoneRestoreOperation extends AgentOperationBase {
   type: 'milestone.restore';
   milestoneId: string;
@@ -132,6 +137,7 @@ export type AgentOperation =
   | AgentMilestoneCreateOperation
   | AgentMilestoneUpdateOperation
   | AgentMilestoneArchiveOperation
+  | AgentMilestoneUnarchiveOperation
   | AgentMilestoneRestoreOperation
   | AgentMilestoneTrashOperation;
 

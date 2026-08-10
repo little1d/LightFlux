@@ -1,6 +1,11 @@
 import React, { useEffect } from 'react';
+import { AppState, Platform } from 'react-native';
 import { create } from 'zustand';
 
+import {
+  clearRuntimeMilestoneNotifications,
+  reconcileMilestoneNotifications,
+} from '../services/milestoneNotifications';
 import { loadAppState, saveAppState } from '../services/todoStorage';
 import {
   NAVIGATION_ITEM_IDS,
@@ -610,6 +615,51 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return undefined;
+    }
+
+    const reconcile = () => {
+      reconcileMilestoneNotifications(
+        useTodoStore.getState().allMilestones,
+        useTodoStore.getState().language,
+      ).catch((error: unknown) => {
+        console.warn('Unable to schedule milestone reminders.', error);
+      });
+    };
+    reconcile();
+    const interval = setInterval(reconcile, 6 * 60 * 60 * 1000);
+    const appStateSubscription = AppState.addEventListener(
+      'change',
+      (state) => {
+        if (state === 'active') {
+          reconcile();
+        }
+      },
+    );
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        reconcile();
+      }
+    };
+    if (Platform.OS === 'web') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      clearInterval(interval);
+      appStateSubscription.remove();
+      clearRuntimeMilestoneNotifications();
+      if (Platform.OS === 'web') {
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      }
+    };
+  }, [allMilestones, isHydrated, language]);
 
   useEffect(() => {
     if (!isHydrated || !persistenceReady) {

@@ -71,7 +71,11 @@ describe('persisted state V8 migration', () => {
         schemaVersion: 8,
         updatedAt: 1,
         language: 'en',
-        todos: [],
+        todos: [
+          { ...legacyTodo, id: 'linked-valid', milestoneId: 'valid' },
+          { ...legacyTodo, id: 'linked-invalid', milestoneId: 'invalid' },
+          { ...legacyTodo, id: 'linked-missing', milestoneId: 'missing' },
+        ],
         groups: [],
         milestones: [
           {
@@ -129,6 +133,20 @@ describe('persisted state V8 migration', () => {
         id: 'valid',
         reminderOffsets: [0, 7],
         revision: 2,
+      }),
+    ]);
+    expect(result?.todos).toEqual([
+      expect.objectContaining({
+        id: 'linked-valid',
+        milestoneId: 'valid',
+      }),
+      expect.objectContaining({
+        id: 'linked-invalid',
+        milestoneId: null,
+      }),
+      expect.objectContaining({
+        id: 'linked-missing',
+        milestoneId: null,
       }),
     ]);
   });

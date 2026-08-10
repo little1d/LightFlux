@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { Milestone } from '../types/todo';
 import {
   getMilestoneOccurrence,
+  getUpcomingMilestoneOccurrences,
+  isValidMilestoneDateRule,
   milestoneOccursOn,
 } from '../utils/milestoneDate';
 
@@ -99,6 +101,70 @@ describe('milestone date calculation', () => {
     expect(
       getMilestoneOccurrence(leapMonth, new Date(2026, 0, 1)),
     ).not.toBeNull();
+  });
+
+  it('accepts recurring leap months outside 2025 and searches the full range', () => {
+    const leapFebruary = milestone({
+      dateRule: {
+        calendar: 'lunar',
+        year: null,
+        month: 2,
+        day: 1,
+        isLeapMonth: true,
+        missingLeapMonthPolicy: 'skip-year',
+      },
+    });
+
+    expect(isValidMilestoneDateRule(leapFebruary.dateRule)).toBe(true);
+    expect(
+      getMilestoneOccurrence(leapFebruary, new Date(2043, 0, 1))?.daysFrom,
+    ).toBeGreaterThan(20 * 365);
+  });
+
+  it('uses startYear as the lower bound for recurring milestones', () => {
+    const future = milestone({ startYear: 2030 });
+
+    expect(
+      getMilestoneOccurrence(future, new Date(2026, 7, 10)),
+    ).toMatchObject({
+      dateKey: '2030-08-10',
+      sequenceNumber: 0,
+    });
+    expect(milestoneOccursOn(future, '2026-08-10')).toBe(false);
+  });
+
+  it('skips lunar years where day thirty does not exist', () => {
+    const recurring = milestone({
+      dateRule: {
+        calendar: 'lunar',
+        year: null,
+        month: 2,
+        day: 30,
+        isLeapMonth: false,
+        missingLeapMonthPolicy: 'regular-month',
+      },
+    });
+    const oneTime = milestone({
+      dateRule: {
+        ...recurring.dateRule,
+        year: 2025,
+      },
+    });
+
+    expect(isValidMilestoneDateRule(oneTime.dateRule)).toBe(false);
+    expect(
+      getMilestoneOccurrence(recurring, new Date(2025, 0, 1))?.date.getFullYear(),
+    ).toBeGreaterThan(2025);
+  });
+
+  it('returns consecutive upcoming occurrences for reminder scheduling', () => {
+    const recurring = milestone();
+
+    expect(
+      getUpcomingMilestoneOccurrences(recurring, new Date(2026, 0, 1), 2).map(
+        (occurrence) => occurrence.dateKey,
+      ),
+    ).toEqual(['2026-08-10', '2027-08-10']);
   });
 
   it('keeps one-time past milestones and calculates sequence numbers', () => {

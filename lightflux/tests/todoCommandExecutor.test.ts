@@ -477,7 +477,7 @@ describe('agent task commands', () => {
     expect(undoAgentExecution(result.state, result.undoToken)).toEqual(source);
   });
 
-  it('archives, restores, and trashes milestones with enforced risk', () => {
+  it('archives, unarchives, and trashes milestones with enforced risk', () => {
     const source = createTodoCommandState(
       [],
       [],
@@ -501,13 +501,13 @@ describe('agent task commands', () => {
     );
     expect(archived.state.milestones[0].archivedAt).toBe(100);
 
-    const restored = executeAgentProposal(
+    const unarchived = executeAgentProposal(
       archived.state,
       proposal(
         [
           {
-            ...operationBase('restore'),
-            type: 'milestone.restore',
+            ...operationBase('unarchive'),
+            type: 'milestone.unarchive',
             milestoneId: 'launch',
           },
         ],
@@ -516,7 +516,7 @@ describe('agent task commands', () => {
       ),
       { confirmed: true, now: 200 },
     );
-    expect(restored.state.milestones[0].archivedAt).toBeNull();
+    expect(unarchived.state.milestones[0].archivedAt).toBeNull();
 
     const trashOperation: AgentOperation = {
       ...operationBase('milestone-trash'),
@@ -526,8 +526,8 @@ describe('agent task commands', () => {
     expectCommandError(
       () =>
         executeAgentProposal(
-          restored.state,
-          proposal([trashOperation], restored.state.revision, {
+          unarchived.state,
+          proposal([trashOperation], unarchived.state.revision, {
             risk: 'low',
           }),
           { confirmed: true, now: 300 },
@@ -535,13 +535,42 @@ describe('agent task commands', () => {
       'risk-understated',
     );
     const trashed = executeAgentProposal(
-      restored.state,
-      proposal([trashOperation], restored.state.revision, {
+      unarchived.state,
+      proposal([trashOperation], unarchived.state.revision, {
         risk: 'high',
       }),
       { confirmed: true, now: 300 },
     );
     expect(trashed.state.milestones[0].trashedAt).toBe(300);
+  });
+
+  it('restores a trashed milestone without changing its archive state', () => {
+    const source = createTodoCommandState(
+      [],
+      [],
+      null,
+      [milestone('launch', { archivedAt: 50, trashedAt: 60 })],
+    );
+    const restored = executeAgentProposal(
+      source,
+      proposal(
+        [
+          {
+            ...operationBase('restore'),
+            type: 'milestone.restore',
+            milestoneId: 'launch',
+          },
+        ],
+        source.revision,
+        { risk: 'medium' },
+      ),
+      { confirmed: true, now: 100 },
+    );
+
+    expect(restored.state.milestones[0]).toMatchObject({
+      archivedAt: 50,
+      trashedAt: null,
+    });
   });
 
   it('rejects malformed milestone dates without changing task state', () => {

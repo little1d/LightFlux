@@ -258,7 +258,7 @@ export const parsePersistedAppState = (
       return null;
     }
 
-    const todos = parsed.todos
+    const normalizedTodos = parsed.todos
       .map((todo, index) => normalizeTodo(todo, index))
       .filter((todo): todo is Todo => todo !== null);
     const groups = Array.isArray(parsed.groups)
@@ -273,6 +273,14 @@ export const parsePersistedAppState = (
             (milestone): milestone is Milestone => milestone !== null,
           )
       : [];
+    const milestoneIds = new Set(
+      milestones.map((milestone) => milestone.id),
+    );
+    const todos = normalizedTodos.map((todo) =>
+      todo.milestoneId !== null && !milestoneIds.has(todo.milestoneId)
+        ? { ...todo, milestoneId: null }
+        : todo,
+    );
 
     return {
       schemaVersion: 8,

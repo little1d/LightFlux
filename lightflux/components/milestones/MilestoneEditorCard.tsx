@@ -11,6 +11,9 @@ import {
 
 import { inputAccentProps } from '../../config/input';
 import { Translation } from '../../i18n/translations';
+import {
+  requestMilestoneNotificationPermission,
+} from '../../services/milestoneNotifications';
 import { MILESTONE_TYPE_THEME } from '../../store/milestoneDomain';
 import {
   Milestone,
@@ -95,6 +98,8 @@ const MilestoneEditorCard = ({
     initial?.color ?? MILESTONE_TYPE_THEME[initialType].color,
   );
   const [error, setError] = useState('');
+  const [isRequestingPermission, setIsRequestingPermission] =
+    useState(false);
 
   const dateRule = (): MilestoneDateRule => {
     const base = {
@@ -116,7 +121,11 @@ const MilestoneEditorCard = ({
         };
   };
 
-  const save = () => {
+  const save = async () => {
+    if (isRequestingPermission) {
+      return;
+    }
+    setError('');
     const normalizedTitle = title.trim();
     const rule = dateRule();
     const normalizedStartYear = startYear.trim()
@@ -129,6 +138,16 @@ const MilestoneEditorCard = ({
     ) {
       setError(labels.invalidDate);
       return;
+    }
+    if (reminderOffsets.length > 0) {
+      setIsRequestingPermission(true);
+      const permissionGranted =
+        await requestMilestoneNotificationPermission();
+      setIsRequestingPermission(false);
+      if (!permissionGranted) {
+        setError(labels.notificationPermissionDenied);
+        return;
+      }
     }
     onSave({
       title: normalizedTitle,
@@ -261,6 +280,9 @@ const MilestoneEditorCard = ({
 
       {calendar === 'lunar' ? (
         <View style={styles.policyRow}>
+          {Number(day) === 30 ? (
+            <Text style={styles.policyHint}>{labels.lunarDayThirtySkip}</Text>
+          ) : null}
           <ToggleChip
             label={labels.leapMonth}
             onPress={() => setIsLeapMonth((current) => !current)}
@@ -356,7 +378,7 @@ const MilestoneEditorCard = ({
         />
         <View style={styles.actionGap} />
         <ActionButton
-          disabled={!title.trim()}
+          disabled={!title.trim() || isRequestingPermission}
           label={labels.save}
           onPress={save}
         />
@@ -549,6 +571,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 11,
+  },
+  policyHint: {
+    color: '#8A6B32',
+    fontSize: 10,
+    fontWeight: '600',
+    marginBottom: 5,
+    marginRight: 10,
   },
   section: {
     marginTop: 12,

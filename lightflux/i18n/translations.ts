@@ -215,6 +215,7 @@ export interface Translation {
     leapMonth: string;
     leapMonthFallback: string;
     leapMonthSkip: string;
+    lunarDayThirtySkip: string;
     februaryFallback: string;
     february28: string;
     march1: string;
@@ -245,6 +246,7 @@ export interface Translation {
     updated: string;
     relatedTaskCreated: string;
     invalidDate: string;
+    notificationPermissionDenied: string;
     moreActions: string;
     todaySection: string;
     openMilestones: string;
@@ -479,6 +481,7 @@ export const translations: Record<Language, Translation> = {
         'milestone.create': '新增节点',
         'milestone.update': '修改节点',
         'milestone.archive': '归档节点',
+        'milestone.unarchive': '取消归档节点',
         'milestone.restore': '恢复节点',
         'milestone.trash': '移至垃圾桶',
       },
@@ -523,6 +526,7 @@ export const translations: Record<Language, Translation> = {
       leapMonth: '闰月',
       leapMonthFallback: '无闰月时按普通月份',
       leapMonthSkip: '无闰月时跳过该年',
+      lunarDayThirtySkip: '农历小月没有三十时跳过该年',
       februaryFallback: '非闰年规则',
       february28: '按 2 月 28 日',
       march1: '按 3 月 1 日',
@@ -553,6 +557,7 @@ export const translations: Record<Language, Translation> = {
       updated: '节点已更新',
       relatedTaskCreated: '相关任务已创建',
       invalidDate: '请填写有效日期',
+      notificationPermissionDenied: '需要允许系统通知才能启用提前提醒',
       moreActions: '更多节点操作',
       todaySection: '今天的节点',
       openMilestones: '查看倒数纪念日',
@@ -799,6 +804,7 @@ export const translations: Record<Language, Translation> = {
         'milestone.create': 'Create milestone',
         'milestone.update': 'Update milestone',
         'milestone.archive': 'Archive milestone',
+        'milestone.unarchive': 'Unarchive milestone',
         'milestone.restore': 'Restore milestone',
         'milestone.trash': 'Move milestone to trash',
       },
@@ -843,6 +849,7 @@ export const translations: Record<Language, Translation> = {
       leapMonth: 'Leap month',
       leapMonthFallback: 'Use regular month when unavailable',
       leapMonthSkip: 'Skip years without this leap month',
+      lunarDayThirtySkip: 'Skip lunar years where this month has no day 30',
       februaryFallback: 'Non-leap-year rule',
       february28: 'Use February 28',
       march1: 'Use March 1',
@@ -873,6 +880,8 @@ export const translations: Record<Language, Translation> = {
       updated: 'Milestone updated',
       relatedTaskCreated: 'Related task created',
       invalidDate: 'Enter a valid date',
+      notificationPermissionDenied:
+        'Allow system notifications to enable reminders',
       moreActions: 'More milestone actions',
       todaySection: "Today's milestones",
       openMilestones: 'Open milestones',

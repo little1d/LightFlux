@@ -23,6 +23,7 @@ type AgentMilestoneOperation = Extract<
       | 'milestone.create'
       | 'milestone.update'
       | 'milestone.archive'
+      | 'milestone.unarchive'
       | 'milestone.restore'
       | 'milestone.trash';
   }
@@ -41,6 +42,7 @@ const MILESTONE_OPERATION_TYPES = new Set<AgentMilestoneOperation['type']>([
   'milestone.create',
   'milestone.update',
   'milestone.archive',
+  'milestone.unarchive',
   'milestone.restore',
   'milestone.trash',
 ]);
@@ -252,6 +254,22 @@ const activeMilestone = (
     return fail(
       'target-not-found',
       'Active milestone was not found.',
+      operationId,
+    );
+  }
+  return milestone;
+};
+
+const trashedMilestone = (
+  milestones: Milestone[],
+  milestoneId: string,
+  operationId: string,
+): Milestone => {
+  const milestone = milestoneById(milestones, milestoneId, operationId);
+  if (milestone.trashedAt === null) {
+    return fail(
+      'target-not-found',
+      'Trashed milestone was not found.',
       operationId,
     );
   }
@@ -481,18 +499,43 @@ const applyRestore = (
   >,
   timestamp: number,
 ): AgentOperationResult => {
-  const milestone = milestoneById(
+  const milestone = trashedMilestone(
     state.milestones,
     operation.milestoneId,
     operation.operationId,
   );
-  if (milestone.archivedAt !== null || milestone.trashedAt !== null) {
+  state.milestones = state.milestones.map((item) =>
+    item.id === milestone.id
+      ? {
+          ...item,
+          trashedAt: null,
+          updatedAt: timestamp,
+          revision: item.revision + 1,
+        }
+      : item,
+  );
+  return result(operation, [milestone.id]);
+};
+
+const applyUnarchive = (
+  state: TodoCommandState,
+  operation: Extract<
+    AgentMilestoneOperation,
+    { type: 'milestone.unarchive' }
+  >,
+  timestamp: number,
+): AgentOperationResult => {
+  const milestone = activeMilestone(
+    state.milestones,
+    operation.milestoneId,
+    operation.operationId,
+  );
+  if (milestone.archivedAt !== null) {
     state.milestones = state.milestones.map((item) =>
       item.id === milestone.id
         ? {
             ...item,
             archivedAt: null,
-            trashedAt: null,
             updatedAt: timestamp,
             revision: item.revision + 1,
           }
@@ -542,6 +585,7 @@ export const milestoneOperationRisk = (
     case 'milestone.trash':
       return 'high';
     case 'milestone.archive':
+    case 'milestone.unarchive':
     case 'milestone.restore':
       return 'medium';
     default:
@@ -561,6 +605,8 @@ export const applyMilestoneOperation = (
       return applyUpdate(state, operation, timestamp);
     case 'milestone.archive':
       return applyArchive(state, operation, timestamp);
+    case 'milestone.unarchive':
+      return applyUnarchive(state, operation, timestamp);
     case 'milestone.restore':
       return applyRestore(state, operation, timestamp);
     case 'milestone.trash':

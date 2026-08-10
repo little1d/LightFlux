@@ -262,6 +262,35 @@ test('normalizes milestone operations and rejects hallucinated milestone IDs', a
   );
 
   responseWith({
+    message: '准备取消归档节点。',
+    clarification: null,
+    proposal: {
+      summary: '取消归档节点',
+      assumptions: [],
+      operations: [
+        {
+          type: 'milestone.unarchive',
+          milestoneId: 'anniversary',
+        },
+      ],
+    },
+  });
+  const unarchive = await service.turn({
+    ownerId: 'user',
+    request: {
+      message: '取消归档节点',
+      currentTime: '2026-08-10T01:00:30.000Z',
+      timeZone: 'Asia/Shanghai',
+      context,
+    },
+  });
+  assert.equal(unarchive.proposal.risk, 'medium');
+  assert.equal(
+    unarchive.proposal.operations[0].type,
+    'milestone.unarchive',
+  );
+
+  responseWith({
     message: '准备归档节点。',
     clarification: null,
     proposal: {

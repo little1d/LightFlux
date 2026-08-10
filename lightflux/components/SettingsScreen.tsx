@@ -10,8 +10,8 @@ import {
   View,
 } from 'react-native';
 
-import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { Language } from '../types/todo';
 import MenuItem from './ui/MenuItem';
 import MenuSurface, {
@@ -35,7 +35,8 @@ const ShortcutRow = ({ description, keys }: ShortcutRowProps) => (
 );
 
 const SettingsScreen = () => {
-  const { language, setLanguage } = useTodos();
+  const language = useTodoStore((state) => state.language);
+  const setLanguage = useTodoStore((state) => state.setLanguage);
   const labels = translations[language];
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [languageMenuPosition, setLanguageMenuPosition] =

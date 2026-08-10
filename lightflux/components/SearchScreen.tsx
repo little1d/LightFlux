@@ -11,10 +11,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
-import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
 import { fromDateKey } from '../utils/date';
 import { richTextPreview } from '../utils/richText';
@@ -86,7 +87,7 @@ const SearchTaskRow = ({
   selected,
   todo,
 }: SearchTaskRowProps) => {
-  const { language } = useTodos();
+  const language = useTodoStore((state) => state.language);
   const labels = translations[language];
   const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
     todo.id,
@@ -191,7 +192,14 @@ const SearchScreen = ({
     todos,
     groups,
     toggleTodo,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      groups: state.groups,
+      toggleTodo: state.toggleTodo,
+    })),
+  );
   const labels = translations[language];
   const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLocaleLowerCase();

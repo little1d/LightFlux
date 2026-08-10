@@ -8,9 +8,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
-import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
 import { toDateKey } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
@@ -46,7 +47,7 @@ const CompletedTaskRow = ({
   selected: boolean;
   todo: Todo;
 }) => {
-  const { language } = useTodos();
+  const language = useTodoStore((state) => state.language);
   const labels = translations[language];
   const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
     todo.id,
@@ -116,7 +117,13 @@ const CompletedScreen = ({
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
-  const { language, todos, toggleTodo } = useTodos();
+  const { language, todos, toggleTodo } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      toggleTodo: state.toggleTodo,
+    })),
+  );
   const labels = translations[language];
   const completedTodos = useMemo(
     () =>

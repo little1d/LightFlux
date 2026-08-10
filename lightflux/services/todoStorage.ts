@@ -18,24 +18,12 @@ import {
   loadRemoteAppState,
   saveRemoteAppState,
 } from './authApi';
+import { loadWebState, saveWebState } from './indexedDbStorage';
 
 const STORAGE_KEY = 'lightflux.app-state.v1';
 const FILE_URI = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}lightflux-state.json`
   : null;
-
-interface WebStorage {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-}
-
-const getWebStorage = (): WebStorage | null => {
-  const runtime = globalThis as typeof globalThis & {
-    localStorage?: WebStorage;
-  };
-
-  return runtime.localStorage ?? null;
-};
 
 const normalizeNavigationOrder = (value: unknown): NavigationItemId[] => {
   const saved = Array.isArray(value)
@@ -166,14 +154,9 @@ const parseState = (rawState: string): PersistedAppState | null => {
   }
 };
 
-export const loadAppState = async (): Promise<PersistedAppState | null> => {
-  if (isRemoteAuthConfigured) {
-    const remoteState = await loadRemoteAppState();
-    return remoteState ? parseState(JSON.stringify(remoteState)) : null;
-  }
-
+const loadDeviceState = async (): Promise<PersistedAppState | null> => {
   if (Platform.OS === 'web') {
-    const rawState = getWebStorage()?.getItem(STORAGE_KEY);
+    const rawState = await loadWebState(STORAGE_KEY);
     return rawState ? parseState(rawState) : null;
   }
 
@@ -189,22 +172,53 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
   return parseState(await FileSystem.readAsStringAsync(FILE_URI));
 };
 
-export const saveAppState = async (
+const saveDeviceState = async (
   state: PersistedAppState,
 ): Promise<void> => {
-  if (isRemoteAuthConfigured) {
-    await saveRemoteAppState(state);
-    return;
-  }
-
   const serializedState = JSON.stringify(state);
 
   if (Platform.OS === 'web') {
-    getWebStorage()?.setItem(STORAGE_KEY, serializedState);
+    await saveWebState(STORAGE_KEY, serializedState);
     return;
   }
 
   if (FILE_URI) {
     await FileSystem.writeAsStringAsync(FILE_URI, serializedState);
+  }
+};
+
+export const loadAppState = async (): Promise<PersistedAppState | null> => {
+  const deviceState = await loadDeviceState();
+  if (!isRemoteAuthConfigured) {
+    return deviceState;
+  }
+
+  try {
+    const remoteState = await loadRemoteAppState();
+    if (!remoteState) {
+      return deviceState;
+    }
+
+    const normalizedRemoteState = parseState(JSON.stringify(remoteState));
+    if (normalizedRemoteState) {
+      await saveDeviceState(normalizedRemoteState);
+      return normalizedRemoteState;
+    }
+    return deviceState;
+  } catch (error) {
+    if (deviceState) {
+      console.warn('Unable to load cloud data; using the local cache.', error);
+      return deviceState;
+    }
+    throw error;
+  }
+};
+
+export const saveAppState = async (
+  state: PersistedAppState,
+): Promise<void> => {
+  await saveDeviceState(state);
+  if (isRemoteAuthConfigured) {
+    await saveRemoteAppState(state);
   }
 };

@@ -2,8 +2,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Text, View } from 'react-native';
 
-import { useTodos } from '../../context/TodoContext';
 import { translations } from '../../i18n/translations';
+import { useTodoStore } from '../../store/todoStore';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface from '../ui/MenuSurface';
 
@@ -37,7 +37,7 @@ const AccountMenu = ({
   onOpenSettings: () => void;
   onSignOut: () => void;
 }) => {
-  const { language } = useTodos();
+  const language = useTodoStore((state) => state.language);
   const labels = translations[language];
 
   return (

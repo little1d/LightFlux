@@ -4,10 +4,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
-import { useTodos } from '../../context/TodoContext';
 import { translations } from '../../i18n/translations';
+import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
 import ActionButton from '../ui/ActionButton';
 import MenuItem from '../ui/MenuItem';
@@ -31,7 +32,15 @@ const TaskActionMenu = ({
   onClose,
   onTrash,
 }: TaskActionMenuProps) => {
-  const { language, todos, addTodo, trashTodo, updateTodo } = useTodos();
+  const { language, todos, addTodo, trashTodo, updateTodo } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      addTodo: state.addTodo,
+      trashTodo: state.trashTodo,
+      updateTodo: state.updateTodo,
+    })),
+  );
   const labels = translations[language];
   const todo = todos.find((item) => item.id === todoId);
   const [mode, setMode] = useState<EditMode>(null);

@@ -16,11 +16,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
-import { useTodos } from '../../context/TodoContext';
 import { editorHtml } from '../../editor-web/build/editorHtml';
 import { translations } from '../../i18n/translations';
+import { useTodoStore } from '../../store/todoStore';
 import { RichTextDocument } from '../../types/todo';
 import IconButton from '../ui/IconButton';
 import { CodeBlockBridge } from './CodeBlockBridge';
@@ -36,7 +37,14 @@ const TaskEditorScreen = ({
     todos,
     trashedTodos,
     updateTodo,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      trashedTodos: state.trashedTodos,
+      updateTodo: state.updateTodo,
+    })),
+  );
   const labels = translations[language];
   const todo = (readOnly ? trashedTodos : todos).find(
     (item) => item.id === todoId,

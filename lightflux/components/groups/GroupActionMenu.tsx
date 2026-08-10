@@ -7,8 +7,8 @@ import {
 } from 'react-native';
 
 import { inputAccentProps } from '../../config/input';
-import { useTodos } from '../../context/TodoContext';
 import { translations } from '../../i18n/translations';
+import { useTodoStore } from '../../store/todoStore';
 import ActionButton from '../ui/ActionButton';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface from '../ui/MenuSurface';
@@ -37,7 +37,7 @@ const GroupActionMenu = ({
   onRename,
   position,
 }: GroupActionMenuProps) => {
-  const { language } = useTodos();
+  const language = useTodoStore((state) => state.language);
   const labels = translations[language];
   const [mode, setMode] = useState<EditMode>(null);
   const [draft, setDraft] = useState('');

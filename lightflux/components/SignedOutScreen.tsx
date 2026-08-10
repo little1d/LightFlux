@@ -3,15 +3,15 @@ import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { Pressable, SafeAreaView, Text, View } from 'react-native';
 
-import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import {
   beginWechatLogin,
   isRemoteAuthConfigured,
 } from '../services/authApi';
 
 const SignedOutScreen = ({ onContinue }: { onContinue: () => void }) => {
-  const { language } = useTodos();
+  const language = useTodoStore((state) => state.language);
   const labels = translations[language];
   const [loginError, setLoginError] = useState('');
 

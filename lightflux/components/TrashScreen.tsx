@@ -8,9 +8,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
-import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { requestConfirmation } from '../utils/confirm';
 import { fromDateKey } from '../utils/date';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
@@ -28,7 +29,15 @@ const TrashScreen = ({
     restoreTodo,
     deleteTodoPermanently,
     emptyTrash,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      trashedTodos: state.trashedTodos,
+      restoreTodo: state.restoreTodo,
+      deleteTodoPermanently: state.deleteTodoPermanently,
+      emptyTrash: state.emptyTrash,
+    })),
+  );
   const labels = translations[language];
 
   const requestPermanentDelete = (id: string) => {

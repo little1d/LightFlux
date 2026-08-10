@@ -10,10 +10,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
-import { useTodos } from '../context/TodoContext';
 import { translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { Language, Todo } from '../types/todo';
 import {
   addMonths,
@@ -250,7 +251,15 @@ const CalendarScreen = ({
     groups,
     addTodo,
     toggleTodo,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      groups: state.groups,
+      addTodo: state.addTodo,
+      toggleTodo: state.toggleTodo,
+    })),
+  );
   const labels = translations[language];
   const today = useMemo(todayKey, []);
   const [contentWidth, setContentWidth] = useState(0);

@@ -14,6 +14,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import CalendarScreen from './components/CalendarScreen';
 import CompletedScreen from './components/CompletedScreen';
@@ -35,7 +36,7 @@ import {
   TaskMenuPosition,
 } from './components/tasks/useTaskContextMenu';
 import Toast from './components/ui/Toast';
-import { TodoProvider, useTodos } from './context/TodoContext';
+import { TodoProvider, useTodoStore } from './store/todoStore';
 import { translations } from './i18n/translations';
 import { isRemoteAuthConfigured } from './services/authApi';
 import {
@@ -89,9 +90,23 @@ const AppContent = () => {
     language,
     navigationOrder,
     reorderNavigationItem,
-    todos,
-    trashedTodos,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      navigationOrder: state.navigationOrder,
+      reorderNavigationItem: state.reorderNavigationItem,
+    })),
+  );
+  const selectedTaskExists = useTodoStore((state) => {
+    if (!selectedTask) {
+      return true;
+    }
+    const source = selectedTask.readOnly ? state.trashedTodos : state.todos;
+    return source.some((todo) => todo.id === selectedTask.id);
+  });
+  const trashedTodoCount = useTodoStore(
+    (state) => state.trashedTodos.length,
+  );
   const { width } = useWindowDimensions();
   const labels = translations[language];
   const usesDesktopLayout = width >= 900;
@@ -210,11 +225,10 @@ const AppContent = () => {
       return;
     }
 
-    const source = selectedTask.readOnly ? trashedTodos : todos;
-    if (!source.some((todo) => todo.id === selectedTask.id)) {
+    if (!selectedTaskExists) {
       setSelectedTask(null);
     }
-  }, [selectedTask, todos, trashedTodos]);
+  }, [selectedTask, selectedTaskExists]);
 
   const signOut = () => {
     setAccountMenuOpen(false);
@@ -337,10 +351,10 @@ const AppContent = () => {
                       name={item.icon}
                       size={22}
                     />
-                    {item.id === 'trash' && trashedTodos.length > 0 ? (
+                    {item.id === 'trash' && trashedTodoCount > 0 ? (
                       <View className="absolute right-0 top-0 min-w-[17px] items-center rounded-[9px] bg-[#D85B6B] px-1 py-0.5">
                         <Text className="text-[8px] font-extrabold text-white">
-                          {trashedTodos.length}
+                          {trashedTodoCount}
                         </Text>
                       </View>
                     ) : null}

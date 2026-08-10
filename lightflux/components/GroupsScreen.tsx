@@ -19,10 +19,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
-import { useTodos } from '../context/TodoContext';
 import { Translation, translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
 import { todayKey } from '../utils/date';
@@ -495,7 +496,21 @@ const GroupsScreen = ({
     reorderTask,
     toggleTodo,
     updateTodo,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      groups: state.groups,
+      ungroupedName: state.ungroupedName,
+      addGroup: state.addGroup,
+      deleteGroup: state.deleteGroup,
+      addTodo: state.addTodo,
+      renameGroup: state.renameGroup,
+      reorderTask: state.reorderTask,
+      toggleTodo: state.toggleTodo,
+      updateTodo: state.updateTodo,
+    })),
+  );
   const labels = translations[language];
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     [UNGROUPED_ID]: true,

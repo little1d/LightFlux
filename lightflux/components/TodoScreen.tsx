@@ -13,10 +13,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
-import { useTodos } from '../context/TodoContext';
 import { Translation, translations } from '../i18n/translations';
+import { useTodoStore } from '../store/todoStore';
 import { Todo, TodoFilter } from '../types/todo';
 import { requestConfirmation } from '../utils/confirm';
 import { todayKey } from '../utils/date';
@@ -160,7 +161,15 @@ const TodoScreen = ({
     addTodo: createTodo,
     toggleTodo,
     trashTodos,
-  } = useTodos();
+  } = useTodoStore(
+    useShallow((state) => ({
+      language: state.language,
+      todos: state.todos,
+      addTodo: state.addTodo,
+      toggleTodo: state.toggleTodo,
+      trashTodos: state.trashTodos,
+    })),
+  );
   const dateKey = useMemo(todayKey, []);
   const todos = useMemo(
     () => allTodos.filter((todo) => todo.scheduledDate === dateKey),

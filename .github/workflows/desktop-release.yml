@@ -1,0 +1,101 @@
+name: Desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify web build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lightflux
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lightflux/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run TypeScript checks
+        run: npm run typecheck
+
+      - name: Export desktop web assets
+        run: npm run desktop:web
+
+  release:
+    name: Build ${{ matrix.name }}
+    needs: verify
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS Apple Silicon
+            platform: macos-latest
+            rustTargets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles dmg
+          - name: macOS Intel
+            platform: macos-latest
+            rustTargets: aarch64-apple-darwin,x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles dmg
+          - name: Windows x64
+            platform: windows-latest
+            rustTargets: ""
+            args: --bundles nsis
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lightflux/package-lock.json
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rustTargets }}
+
+      - name: Cache Rust build artifacts
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: lightflux/src-tauri -> target
+
+      - name: Install frontend dependencies
+        working-directory: lightflux
+        run: npm ci
+
+      - name: Build and publish desktop bundle
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: lightflux
+          tagName: desktop-v__VERSION__
+          releaseName: LightFlux Desktop v__VERSION__
+          releaseBody: Download the installer for your desktop platform from the assets below.
+          releaseDraft: false
+          prerelease: false
+          generateReleaseNotes: true
+          uploadUpdaterJson: false
+          args: ${{ matrix.args }}

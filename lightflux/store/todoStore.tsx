@@ -37,6 +37,7 @@ import {
   collectTodoFamily,
   deleteTrashedTodoBranch,
   emptyTrashTodos,
+  moveTodoBranchToGroup,
   restoreTodoBranch,
   todoState,
 } from './todoDomain';
@@ -81,6 +82,7 @@ interface TodoStore {
   trashTodos: (ids: string[]) => void;
   restoreTodo: (id: string) => void;
   reorderTask: (id: string, targetIndex: number) => void;
+  moveTodoToGroup: (id: string, groupId: string | null) => void;
   deleteTodoPermanently: (id: string) => void;
   emptyTrash: () => void;
   addGroup: (name: string, placement?: GroupPlacement) => string;
@@ -383,6 +385,18 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         ),
       );
     }),
+
+  moveTodoToGroup: (id, groupId) =>
+    set((state) =>
+      todoState(
+        moveTodoBranchToGroup(
+          state.allTodos,
+          id,
+          groupId,
+          Date.now(),
+        ),
+      ),
+    ),
 
   deleteTodoPermanently: (id) =>
     set((state) => {

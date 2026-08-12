@@ -91,6 +91,67 @@ export const buildSiblingIndexById = (
   );
 };
 
+export const selectActiveTodos = (todos: Todo[]): Todo[] =>
+  todos.filter(
+    (todo) => !todo.completed && todo.trashedAt === null,
+  );
+
+export const moveTodoBranchToGroup = (
+  todos: Todo[],
+  id: string,
+  groupId: string | null,
+  timestamp: number,
+): Todo[] => {
+  const nonTrashedTodos = todos.filter((todo) => todo.trashedAt === null);
+  const root = nonTrashedTodos.find((todo) => todo.id === id);
+  if (!root) {
+    return todos;
+  }
+
+  const branchIds = collectTodoFamily(nonTrashedTodos, [id]);
+  const todoById = new Map(nonTrashedTodos.map((todo) => [todo.id, todo]));
+  const groupChanged = Array.from(branchIds).some(
+    (branchId) =>
+      todoById.get(branchId)?.groupId !== groupId,
+  );
+  if (!groupChanged) {
+    return todos;
+  }
+
+  const shouldDetachRoot =
+    root.parentId !== null && root.groupId !== groupId;
+  const nextRootOrder =
+    Math.max(
+      -1,
+      ...nonTrashedTodos
+        .filter(
+          (todo) =>
+            todo.groupId === groupId &&
+            todo.parentId === null &&
+            !branchIds.has(todo.id),
+        )
+        .map((todo) => todo.sortOrder),
+    ) + 1;
+
+  return todos.map((todo) => {
+    if (!branchIds.has(todo.id)) {
+      return todo;
+    }
+
+    return {
+      ...todo,
+      groupId,
+      parentId:
+        todo.id === id && shouldDetachRoot ? null : todo.parentId,
+      sortOrder:
+        todo.id === id && (root.parentId === null || shouldDetachRoot)
+          ? nextRootOrder
+          : todo.sortOrder,
+      updatedAt: timestamp,
+    };
+  });
+};
+
 export const todoState = (allTodos: Todo[]) => ({
   allTodos,
   todos: orderWithSubtasks(

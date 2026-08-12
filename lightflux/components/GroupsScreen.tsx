@@ -26,6 +26,7 @@ import { Translation, translations } from '../i18n/translations';
 import {
   buildChildCountByParent,
   buildSiblingIndexById,
+  selectActiveTodos,
 } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
@@ -169,6 +170,7 @@ const GroupHeader = ({
   onAddTask,
   onOpenMenu,
   onToggle,
+  selected,
   section,
 }: {
   isExpanded: boolean;
@@ -176,6 +178,7 @@ const GroupHeader = ({
   onAddTask: () => void;
   onOpenMenu: OpenGroupMenu;
   onToggle: () => void;
+  selected: boolean;
   section: GroupSection;
 }) => {
   const { targetRef, openFromLongPress } = useGroupContextMenu(
@@ -194,7 +197,13 @@ const GroupHeader = ({
   }, [expansion, isExpanded]);
 
   return (
-    <View className="flex-row items-center px-4 py-4" ref={targetRef}>
+    <View
+      accessibilityState={{ selected }}
+      className="flex-row items-center px-4 py-4"
+      ref={targetRef}
+      style={selected && styles.groupHeaderSelected}
+    >
+      {selected ? <View style={styles.groupSelectionMarker} /> : null}
       <Pressable
         accessibilityLabel={
           isExpanded ? labels.groups.collapse : labels.groups.expand
@@ -253,14 +262,16 @@ const GroupHeader = ({
   );
 };
 
-const InlineSubtaskTitle = ({
+const InlineTaskTitle = ({
   editLabel,
+  nested,
   onCreateNext,
   onOpenDetails,
   onRename,
   todo,
 }: {
   editLabel: string;
+  nested: boolean;
   onCreateNext: () => void;
   onOpenDetails: () => void;
   onRename: (title: string) => void;
@@ -299,11 +310,11 @@ const InlineSubtaskTitle = ({
     <TextInput
       {...inputAccentProps}
       accessibilityLabel={`${editLabel}: ${todo.title}`}
-      className={`ml-3 h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
+      className={`${nested ? 'ml-2.5' : 'ml-3'} h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
         todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
       }`}
       maxLength={160}
-      nativeID={`subtask-title-${todo.id}`}
+      nativeID={`task-title-${todo.id}`}
       onBlur={commit}
       onChangeText={(value) => {
         openDetails();
@@ -377,6 +388,7 @@ const GroupTask = ({
   language,
   markActive,
   markComplete,
+  nested,
   editLabel,
   onCreateNext,
   onEdit,
@@ -390,6 +402,7 @@ const GroupTask = ({
   language: 'zh' | 'en';
   markActive: string;
   markComplete: string;
+  nested: boolean;
   editLabel: string;
   onCreateNext: () => void;
   onEdit: (id: string) => void;
@@ -399,7 +412,7 @@ const GroupTask = ({
   selected: boolean;
   childCount: number;
 }) => {
-  const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
+  const { targetRef, openFromButton } = useTaskContextMenu(
     todo.id,
     onOpenMenu,
   );
@@ -407,9 +420,9 @@ const GroupTask = ({
   return (
     <View
       accessibilityState={{ selected }}
-      className={`${todo.parentId ? 'ml-6 min-h-[40px] px-2' : 'min-h-[48px] px-2'} my-0.5 flex-row items-center border-b ${
+      className={`${nested ? 'ml-6 min-h-[40px] px-2' : 'min-h-[48px] px-2'} my-0.5 flex-row items-center border-b ${
         selected
-          ? todo.parentId
+          ? nested
             ? 'rounded-[8px] border-transparent bg-[#F6F4FF]'
             : 'rounded-[12px] border-transparent bg-[#EEECFF]'
           : 'border-[#ECECF1]'
@@ -426,7 +439,7 @@ const GroupTask = ({
       ]}
     >
       <TaskSelectionMarker visible={selected} />
-      {todo.parentId ? <TaskNestingIndicator /> : null}
+      {nested ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed={todo.completed}
         markActive={markActive}
@@ -434,32 +447,14 @@ const GroupTask = ({
         onPress={() => onToggle(todo.id)}
         uncheckedBorderColor="#BFC1CB"
       />
-      {todo.parentId ? (
-        <InlineSubtaskTitle
-          editLabel={editLabel}
-          onCreateNext={onCreateNext}
-          onOpenDetails={() => onEdit(todo.id)}
-          onRename={(title) => onRename(todo.id, title)}
-          todo={todo}
-        />
-      ) : (
-        <Pressable
-          accessibilityLabel={`${editLabel}: ${todo.title}`}
-          accessibilityRole="button"
-          className="ml-3 flex-1 py-2"
-          delayLongPress={350}
-          onLongPress={openFromLongPress}
-          onPress={() => onEdit(todo.id)}
-        >
-          <Text
-            className={`text-[13px] font-semibold leading-[18px] ${
-              todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
-            }`}
-          >
-            {todo.title}
-          </Text>
-        </Pressable>
-      )}
+      <InlineTaskTitle
+        editLabel={editLabel}
+        nested={nested}
+        onCreateNext={onCreateNext}
+        onOpenDetails={() => onEdit(todo.id)}
+        onRename={(title) => onRename(todo.id, title)}
+        todo={todo}
+      />
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
       <TaskMoreButton
@@ -525,15 +520,16 @@ const GroupsScreen = ({
     message: string;
   } | null>(null);
 
+  const activeTodos = useMemo(() => selectActiveTodos(todos), [todos]);
   const todosByGroup = useMemo(() => {
     const grouped = new Map<string | null, Todo[]>();
-    todos.forEach((todo) => {
+    activeTodos.forEach((todo) => {
       const groupTodos = grouped.get(todo.groupId) ?? [];
       groupTodos.push(todo);
       grouped.set(todo.groupId, groupTodos);
     });
     return grouped;
-  }, [todos]);
+  }, [activeTodos]);
   const sections = useMemo<GroupSection[]>(
     () =>
       [
@@ -556,12 +552,12 @@ const GroupsScreen = ({
     [groups, labels.groups.ungrouped, language, todosByGroup, ungroupedName],
   );
   const childCountByParent = useMemo(
-    () => buildChildCountByParent(todos),
-    [todos],
+    () => buildChildCountByParent(activeTodos),
+    [activeTodos],
   );
   const siblingIndexById = useMemo(
-    () => buildSiblingIndexById(todos),
-    [todos],
+    () => buildSiblingIndexById(activeTodos),
+    [activeTodos],
   );
   const openGroupMenu = useCallback<OpenGroupMenu>(
     (sectionId, position) => {
@@ -593,12 +589,12 @@ const GroupsScreen = ({
   );
   const moveTask = useCallback(
     (id: string, targetIndex: number) => {
-      const dragged = todos.find((todo) => todo.id === id);
+      const dragged = activeTodos.find((todo) => todo.id === id);
       if (!dragged) {
         return;
       }
 
-      const siblings = todos.filter(
+      const siblings = activeTodos.filter(
         (todo) =>
           todo.parentId === dragged.parentId &&
           todo.groupId === dragged.groupId,
@@ -612,13 +608,32 @@ const GroupsScreen = ({
         return;
       }
 
-      reorderTask(id, boundedTarget);
+      const target = siblings[boundedTarget];
+      const persistedSiblings = todos.filter(
+        (todo) =>
+          todo.parentId === dragged.parentId &&
+          todo.groupId === dragged.groupId,
+      );
+      const persistedTargetIndex = persistedSiblings.findIndex(
+        (todo) => todo.id === target.id,
+      );
+      reorderTask(
+        id,
+        persistedTargetIndex >= 0
+          ? persistedTargetIndex
+          : boundedTarget,
+      );
       setToast({
         id: Date.now(),
         message: labels.notifications.orderUpdated,
       });
     },
-    [labels.notifications.orderUpdated, reorderTask, todos],
+    [
+      activeTodos,
+      labels.notifications.orderUpdated,
+      reorderTask,
+      todos,
+    ],
   );
 
   useEffect(() => {
@@ -644,7 +659,9 @@ const GroupsScreen = ({
       ) {
         return;
       }
-      const selectedTodo = todos.find((todo) => todo.id === selectedTaskId);
+      const selectedTodo = activeTodos.find(
+        (todo) => todo.id === selectedTaskId,
+      );
       if (!selectedTodo) {
         return;
       }
@@ -656,7 +673,12 @@ const GroupsScreen = ({
     document.addEventListener('keydown', createAfterSelection);
     return () =>
       document.removeEventListener('keydown', createAfterSelection);
-  }, [inlineComposer, openInlineComposer, selectedTaskId, todos]);
+  }, [
+    activeTodos,
+    inlineComposer,
+    openInlineComposer,
+    selectedTaskId,
+  ]);
 
   const toggleGroup = (id: string) => {
     setExpanded((current) => ({ ...current, [id]: !current[id] }));
@@ -807,12 +829,16 @@ const GroupsScreen = ({
 
           {sections.map((section) => {
             const isExpanded = expanded[section.id] ?? false;
+            const selected = groupMenu?.sectionId === section.id;
 
             return (
               <View
                 className="mb-3 overflow-hidden rounded-[20px] border border-[#E8E7EE] bg-white"
                 key={section.id}
-                style={styles.cardShadow}
+                style={[
+                  styles.cardShadow,
+                  selected && styles.groupCardSelected,
+                ]}
               >
                 <GroupHeader
                   isExpanded={isExpanded}
@@ -820,6 +846,7 @@ const GroupsScreen = ({
                   onAddTask={() => openComposer(section.id)}
                   onOpenMenu={openGroupMenu}
                   onToggle={() => toggleGroup(section.id)}
+                  selected={selected}
                   section={section}
                 />
 
@@ -885,6 +912,7 @@ const GroupsScreen = ({
                             language={language}
                             markActive={labels.markActive}
                             markComplete={labels.markComplete}
+                            nested={nested}
                             onCreateNext={() => openInlineComposer(todo)}
                             onEdit={onEditTask}
                             onOpenMenu={onOpenTaskMenu}
@@ -990,6 +1018,24 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
+  },
+  groupCardSelected: {
+    borderColor: '#CFC9FA',
+    shadowColor: '#6759E8',
+    shadowOpacity: 0.12,
+  },
+  groupHeaderSelected: {
+    backgroundColor: '#F3F1FF',
+    position: 'relative',
+  },
+  groupSelectionMarker: {
+    backgroundColor: '#7768EE',
+    borderRadius: 2,
+    bottom: 10,
+    left: 0,
+    position: 'absolute',
+    top: 10,
+    width: 3,
   },
 });
 

@@ -5,8 +5,10 @@ import {
   buildSiblingIndexById,
   deleteTrashedTodoBranch,
   emptyTrashTodos,
+  moveTodoBranchToGroup,
   orderWithSubtasks,
   restoreTodoBranch,
+  selectActiveTodos,
 } from '../store/todoDomain';
 import { Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
@@ -96,5 +98,96 @@ describe('todo indexes', () => {
     ]);
 
     expect(ordered.map((item) => item.id).sort()).toEqual(['a', 'b']);
+  });
+});
+
+describe('active task views', () => {
+  it('excludes completed tasks without deleting them', () => {
+    const source = [
+      todo('active'),
+      todo('completed', { completed: true, completedAt: 10 }),
+      todo('trashed', { trashedAt: 10 }),
+    ];
+
+    expect(selectActiveTodos(source).map((item) => item.id)).toEqual([
+      'active',
+    ]);
+    expect(source).toHaveLength(3);
+  });
+});
+
+describe('moving tasks between groups', () => {
+  it('moves a root task and its descendants as one branch', () => {
+    const source = [
+      todo('target-root', { groupId: 'target', sortOrder: 3 }),
+      todo('parent', { groupId: 'source', sortOrder: 0 }),
+      todo('child', {
+        groupId: 'source',
+        parentId: 'parent',
+        sortOrder: 0,
+      }),
+    ];
+
+    const moved = moveTodoBranchToGroup(
+      source,
+      'parent',
+      'target',
+      20,
+    );
+
+    expect(moved.find((item) => item.id === 'parent')).toMatchObject({
+      groupId: 'target',
+      parentId: null,
+      sortOrder: 4,
+      updatedAt: 20,
+    });
+    expect(moved.find((item) => item.id === 'child')).toMatchObject({
+      groupId: 'target',
+      parentId: 'parent',
+      updatedAt: 20,
+    });
+  });
+
+  it('detaches a moved subtask from a parent in another group', () => {
+    const source = [
+      todo('parent', { groupId: 'source' }),
+      todo('child', {
+        groupId: 'source',
+        parentId: 'parent',
+      }),
+      todo('grandchild', {
+        groupId: 'source',
+        parentId: 'child',
+      }),
+    ];
+
+    const moved = moveTodoBranchToGroup(
+      source,
+      'child',
+      'target',
+      20,
+    );
+
+    expect(moved.find((item) => item.id === 'child')).toMatchObject({
+      groupId: 'target',
+      parentId: null,
+    });
+    expect(moved.find((item) => item.id === 'grandchild')).toMatchObject({
+      groupId: 'target',
+      parentId: 'child',
+    });
+    expect(moved.find((item) => item.id === 'parent')).toMatchObject({
+      groupId: 'source',
+    });
+  });
+
+  it('does not move a task that is already in trash', () => {
+    const source = [
+      todo('trashed', { groupId: 'source', trashedAt: 10 }),
+    ];
+
+    expect(
+      moveTodoBranchToGroup(source, 'trashed', 'target', 20),
+    ).toBe(source);
   });
 });

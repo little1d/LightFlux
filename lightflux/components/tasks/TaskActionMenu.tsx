@@ -1,6 +1,8 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useState } from 'react';
 import {
   Keyboard,
+  ScrollView,
   StyleSheet,
   TextInput,
   View,
@@ -20,7 +22,7 @@ import { TaskMenuPosition } from './useTaskContextMenu';
 
 const MENU_WIDTH = 240;
 const EDIT_MENU_WIDTH = 300;
-type EditMode = 'subtask' | 'rename' | null;
+type MenuMode = 'subtask' | 'rename' | 'group' | null;
 
 interface TaskActionMenuProps {
   todoId: string;
@@ -35,34 +37,51 @@ const TaskActionMenu = ({
   onClose,
   onTrash,
 }: TaskActionMenuProps) => {
-  const { language, todos, addTodo, trashTodo, updateTodo } = useTodoStore(
+  const {
+    language,
+    todos,
+    groups,
+    ungroupedName,
+    addTodo,
+    moveTodoToGroup,
+    trashTodo,
+    updateTodo,
+  } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
+      groups: state.groups,
+      ungroupedName: state.ungroupedName,
       addTodo: state.addTodo,
+      moveTodoToGroup: state.moveTodoToGroup,
       trashTodo: state.trashTodo,
       updateTodo: state.updateTodo,
     })),
   );
   const labels = translations[language];
   const todo = todos.find((item) => item.id === todoId);
-  const [mode, setMode] = useState<EditMode>(null);
+  const [mode, setMode] = useState<MenuMode>(null);
   const [draft, setDraft] = useState('');
   const viewport = useWindowDimensions();
   const compactEdit = viewport.width < 360;
+  const orderedGroups = [...groups].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
+  );
 
   if (!todo) {
     return null;
   }
 
-  const beginEdit = (nextMode: Exclude<EditMode, null>) => {
+  const beginEdit = (
+    nextMode: Exclude<MenuMode, 'group' | null>,
+  ) => {
     setMode(nextMode);
     setDraft(nextMode === 'rename' ? todo.title : '');
   };
 
   const submit = () => {
     const title = draft.trim();
-    if (!title || !mode) {
+    if (!title || !mode || mode === 'group') {
       return;
     }
 
@@ -80,6 +99,11 @@ const TaskActionMenu = ({
     onClose();
   };
 
+  const moveToGroup = (groupId: string | null) => {
+    moveTodoToGroup(todo.id, groupId);
+    onClose();
+  };
+
   const moveToTrash = () => {
     trashTodo(todo.id);
     onTrash(todo.id);
@@ -94,12 +118,74 @@ const TaskActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={mode ? (compactEdit ? 164 : 118) : 195}
+      estimatedHeight={
+        mode === 'group'
+          ? Math.min(370, 62 + (orderedGroups.length + 1) * 44)
+          : mode
+            ? compactEdit
+              ? 164
+              : 118
+            : 240
+      }
       onClose={onClose}
       position={position}
-      width={mode ? EDIT_MENU_WIDTH : MENU_WIDTH}
+      width={
+        mode && mode !== 'group' ? EDIT_MENU_WIDTH : MENU_WIDTH
+      }
     >
-      {mode ? (
+      {mode === 'group' ? (
+        <View style={styles.groupPicker}>
+          <MenuItem
+            icon={
+              <Ionicons
+                color="#696A7A"
+                name="chevron-back"
+                size={17}
+              />
+            }
+            label={labels.taskMenu.backToActions}
+            onPress={() => setMode(null)}
+          />
+          <View style={styles.divider} />
+          <ScrollView
+            contentContainerStyle={styles.groupListContent}
+            showsVerticalScrollIndicator={false}
+            style={styles.groupList}
+          >
+            <MenuItem
+              label={ungroupedName ?? labels.groups.ungrouped}
+              onPress={() => moveToGroup(null)}
+              selected={todo.groupId === null}
+              trailing={
+                todo.groupId === null ? (
+                  <Ionicons
+                    color="#6759E8"
+                    name="checkmark"
+                    size={17}
+                  />
+                ) : null
+              }
+            />
+            {orderedGroups.map((group) => (
+              <MenuItem
+                key={group.id}
+                label={group.name}
+                onPress={() => moveToGroup(group.id)}
+                selected={todo.groupId === group.id}
+                trailing={
+                  todo.groupId === group.id ? (
+                    <Ionicons
+                      color="#6759E8"
+                      name="checkmark"
+                      size={17}
+                    />
+                  ) : null
+                }
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : mode ? (
         <View
           nativeID={
             mode === 'rename'
@@ -168,14 +254,34 @@ const TaskActionMenu = ({
             label={labels.taskMenu.addSubtask}
             onPress={() => beginEdit('subtask')}
           />
+          <MenuItem
+            icon={
+              <Ionicons
+                color="#6F7080"
+                name="folder-outline"
+                size={16}
+              />
+            }
+            label={labels.taskMenu.moveToGroup}
+            onPress={() => setMode('group')}
+            trailing={
+              <Ionicons
+                color="#A0A1AD"
+                name="chevron-forward"
+                size={15}
+              />
+            }
+          />
         </>
       )}
 
-      <MenuItem
-        danger
-        label={labels.taskMenu.moveToTrash}
-        onPress={moveToTrash}
-      />
+      {mode !== 'group' ? (
+        <MenuItem
+          danger
+          label={labels.taskMenu.moveToTrash}
+          onPress={moveToTrash}
+        />
+      ) : null}
     </MenuSurface>
   );
 };
@@ -196,6 +302,21 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     flexDirection: 'column',
     padding: 8,
+  },
+  divider: {
+    backgroundColor: '#ECEBF1',
+    height: 1,
+    marginHorizontal: 8,
+    marginVertical: 3,
+  },
+  groupList: {
+    maxHeight: 264,
+  },
+  groupListContent: {
+    paddingBottom: 2,
+  },
+  groupPicker: {
+    paddingBottom: 2,
   },
   input: {
     color: '#303145',

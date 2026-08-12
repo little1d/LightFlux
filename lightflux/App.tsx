@@ -259,12 +259,27 @@ const AppContent = () => {
           !todo.completed && todo.scheduledDate < currentDateKey,
       ).length,
   );
-  const selectedTaskExists = useTodoStore((state) => {
+  const selectedTaskVisible = useTodoStore((state) => {
     if (!selectedTask) {
       return true;
     }
-    const source = selectedTask.readOnly ? state.trashedTodos : state.todos;
-    return source.some((todo) => todo.id === selectedTask.id);
+    if (selectedTask.readOnly) {
+      return state.trashedTodos.some(
+        (todo) => todo.id === selectedTask.id,
+      );
+    }
+
+    const todo = state.todos.find((item) => item.id === selectedTask.id);
+    if (!todo) {
+      return false;
+    }
+    if (activeView === 'today' || activeView === 'groups') {
+      return !todo.completed;
+    }
+    if (activeView === 'completed') {
+      return todo.completed;
+    }
+    return true;
   });
   const trashItemCount = useTodoStore(
     (state) =>
@@ -273,7 +288,7 @@ const AppContent = () => {
   const { height, width } = useWindowDimensions();
   const labels = translations[language];
   const usesDesktopLayout = width >= 900;
-  const selectedTaskId = selectedTask?.id ?? null;
+  const selectedTaskId = taskMenu?.todoId ?? selectedTask?.id ?? null;
   const availableDesktopWidth = width - DESKTOP_NAV_WIDTH;
   const maximumListWidth = Math.max(
     MIN_LIST_WIDTH,
@@ -538,10 +553,10 @@ const AppContent = () => {
       return;
     }
 
-    if (!selectedTaskExists) {
+    if (!selectedTaskVisible) {
       setSelectedTask(null);
     }
-  }, [selectedTask, selectedTaskExists]);
+  }, [selectedTask, selectedTaskVisible]);
 
   useEffect(() => {
     if (persistenceErrorAt) {

@@ -19,10 +19,12 @@ import { useShallow } from 'zustand/react/shallow';
 import { inputAccentProps } from '../config/input';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { Translation, translations } from '../i18n/translations';
-import { buildChildCountByParent } from '../store/todoDomain';
+import {
+  buildChildCountByParent,
+  selectActiveTodos,
+} from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
-import { Milestone, Todo, TodoFilter } from '../types/todo';
-import { requestConfirmation } from '../utils/confirm';
+import { Milestone, Todo } from '../types/todo';
 import { fromDateKey } from '../utils/date';
 import { getMilestoneOccurrence, milestoneOccursOn } from '../utils/milestoneDate';
 import TaskIndicators from './tasks/TaskIndicators';
@@ -41,8 +43,6 @@ import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
-
-const FILTERS: TodoFilter[] = ['all', 'active', 'completed'];
 
 interface TodayMilestoneRowProps {
   labels: Translation['milestones'];
@@ -133,6 +133,7 @@ const TodayMilestoneRow = ({
 interface TodoRowProps {
   labels: Translation;
   childCount: number;
+  nested: boolean;
   selected: boolean;
   todo: Todo;
   onEdit: (id: string) => void;
@@ -143,6 +144,7 @@ interface TodoRowProps {
 const TodoRow = ({
   labels,
   childCount,
+  nested,
   selected,
   todo,
   onEdit,
@@ -157,7 +159,7 @@ const TodoRow = ({
   return (
     <View
       accessibilityState={{ selected }}
-      className={`${todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} my-0.5 flex-row items-center rounded-[10px] border-b px-2 ${
+      className={`${nested ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} my-0.5 flex-row items-center rounded-[10px] border-b px-2 ${
         selected
           ? 'border-[#D6D2EF] bg-[#EEECFF]'
           : todo.completed
@@ -177,7 +179,7 @@ const TodoRow = ({
       ]}
     >
       <TaskSelectionMarker visible={selected} />
-      {todo.parentId ? <TaskNestingIndicator /> : null}
+      {nested ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed={todo.completed}
         markActive={labels.markActive}
@@ -230,7 +232,6 @@ const TodoScreen = ({
   onNotify: (message: string) => void;
   selectedTaskId: string | null;
 }) => {
-  const [filter, setFilter] = useState<TodoFilter>('all');
   const [draft, setDraft] = useState('');
   const composerRef = useRef<TextInput>(null);
   const {
@@ -239,7 +240,6 @@ const TodoScreen = ({
     milestones,
     addTodo: createTodo,
     toggleTodo,
-    trashTodos,
   } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
@@ -247,13 +247,17 @@ const TodoScreen = ({
       milestones: state.milestones,
       addTodo: state.addTodo,
       toggleTodo: state.toggleTodo,
-      trashTodos: state.trashTodos,
     })),
   );
   const dateKey = useCurrentDateKey();
   const todos = useMemo(
     () => allTodos.filter((todo) => todo.scheduledDate === dateKey),
     [allTodos, dateKey],
+  );
+  const activeTodos = useMemo(() => selectActiveTodos(todos), [todos]);
+  const activeTodoIds = useMemo(
+    () => new Set(activeTodos.map((todo) => todo.id)),
+    [activeTodos],
   );
   const todayMilestones = useMemo(() => {
     const referenceDate = fromDateKey(dateKey);
@@ -267,8 +271,8 @@ const TodoScreen = ({
       }));
   }, [dateKey, milestones]);
   const childCountByParent = useMemo(
-    () => buildChildCountByParent(allTodos),
-    [allTodos],
+    () => buildChildCountByParent(activeTodos),
+    [activeTodos],
   );
 
   const labels = translations[language];
@@ -286,18 +290,6 @@ const TodoScreen = ({
     return () => clearTimeout(timer);
   }, [focusComposerRequestId]);
 
-  const visibleTodos = useMemo(() => {
-    if (filter === 'active') {
-      return todos.filter((todo) => !todo.completed);
-    }
-
-    if (filter === 'completed') {
-      return todos.filter((todo) => todo.completed);
-    }
-
-    return todos;
-  }, [filter, todos]);
-
   const addTodo = () => {
     const title = draft.trim();
     if (!title) {
@@ -306,7 +298,6 @@ const TodoScreen = ({
 
     createTodo({ title, scheduledDate: dateKey });
     setDraft('');
-    setFilter('all');
     Keyboard.dismiss();
   };
 
@@ -317,19 +308,6 @@ const TodoScreen = ({
       milestoneId: milestone.id,
     });
     onNotify(labels.milestones.relatedTaskCreated);
-  };
-
-  const requestClearCompleted = () => {
-    requestConfirmation({
-      cancelText: labels.cancel,
-      confirmText: labels.clear,
-      message: labels.clearMessage,
-      onConfirm: () =>
-        trashTodos(
-          todos.filter((todo) => todo.completed).map((todo) => todo.id),
-        ),
-      title: labels.clearTitle,
-    });
   };
 
   const listHeader = (
@@ -458,52 +436,6 @@ const TodoScreen = ({
         </Pressable>
       </View>
 
-      {todos.length > 0 ? (
-        <View className="mb-3.5 min-h-[34px] flex-row items-center justify-between">
-          <View className="flex-row rounded-[17px] bg-[#EAE9F1] p-[3px]">
-            {FILTERS.map((item) => {
-              const isSelected = item === filter;
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  className={`rounded-[14px] px-[13px] py-[7px] ${
-                    isSelected ? 'bg-white' : ''
-                  }`}
-                  key={item}
-                  onPress={() => setFilter(item)}
-                  style={({ pressed }) => [
-                    isSelected && styles.selectedFilterShadow,
-                    pressed && styles.buttonPressed,
-                  ]}
-                >
-                  <Text
-                    className={`text-xs ${
-                      isSelected
-                        ? 'font-extrabold text-[#39374F]'
-                        : 'font-semibold text-[#777A8B]'
-                    }`}
-                  >
-                    {labels.filters[item]}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {completedCount > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={requestClearCompleted}
-              style={({ pressed }) => pressed && styles.buttonPressed}
-            >
-              <Text className="py-2 pl-2.5 text-xs font-bold text-[#7772AD]">
-                {labels.clearCompleted}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
     </>
   );
 
@@ -519,7 +451,7 @@ const TodoScreen = ({
         >
           <FlatList
             contentContainerStyle={styles.listContent}
-            data={visibleTodos}
+            data={activeTodos}
             keyboardShouldPersistTaps="handled"
             keyExtractor={(todo) => todo.id}
             ListEmptyComponent={
@@ -530,10 +462,10 @@ const TodoScreen = ({
                   </Text>
                 </View>
                 <Text className="mb-[7px] text-center text-[17px] font-extrabold text-[#3B3B50]">
-                  {labels.emptyTitle[filter]}
+                  {labels.emptyTitle.active}
                 </Text>
                 <Text className="max-w-[310px] text-center text-[13px] leading-5 text-[#898B9A]">
-                  {labels.emptyDescription[filter]}
+                  {labels.emptyDescription.active}
                 </Text>
               </View>
             }
@@ -542,6 +474,9 @@ const TodoScreen = ({
               <TodoRow
                 childCount={childCountByParent.get(item.id) ?? 0}
                 labels={labels}
+                nested={Boolean(
+                  item.parentId && activeTodoIds.has(item.parentId),
+                )}
                 onEdit={onEditTask}
                 onOpenMenu={onOpenTaskMenu}
                 onToggle={toggleTodo}
@@ -634,12 +569,6 @@ const styles = StyleSheet.create({
   addButtonPressed: {
     backgroundColor: '#574ACD',
     transform: [{ scale: 0.98 }],
-  },
-  selectedFilterShadow: {
-    shadowColor: '#4E4B69',
-    shadowOffset: { height: 2, width: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
   },
   buttonPressed: {
     opacity: 0.68,

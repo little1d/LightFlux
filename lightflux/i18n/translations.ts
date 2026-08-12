@@ -1,5 +1,9 @@
 import { Language, TodoFilter, TodoPriority } from '../types/todo';
-import type { AgentOperation, AgentRisk } from '../agent/types';
+import type {
+  AgentOperation,
+  AgentPreviewField,
+  AgentRisk,
+} from '../agent/types';
 
 export interface Translation {
   appName: string;
@@ -223,6 +227,16 @@ export interface Translation {
     requestFailed: string;
     resultReportFailed: string;
     undoFailed: string;
+    previewFields: Record<AgentPreviewField, string>;
+    valueYes: string;
+    valueNo: string;
+    valueEmpty: string;
+    affectedTasks: (count: number) => string;
+    historyPending: string;
+    historyExecuted: string;
+    historyUndone: string;
+    historyRejected: string;
+    historyInvalid: string;
     risk: Record<AgentRisk, string>;
     operations: Record<AgentOperation['type'], string>;
   };
@@ -310,6 +324,8 @@ export interface Translation {
     priorityOptions: Record<TodoPriority, string>;
     subtaskPlaceholder: string;
     createSubtask: string;
+    moveToGroup: string;
+    backToActions: string;
     moveToTrash: string;
     moreActions: string;
   };
@@ -574,6 +590,34 @@ export const translations: Record<Language, Translation> = {
       requestFailed: 'AI 请求失败，请稍后重试。',
       resultReportFailed: '操作已执行，但未能回传结果。',
       undoFailed: '数据已变化，无法安全撤销。',
+      previewFields: {
+        title: '标题',
+        scheduledDate: '日期',
+        priority: '优先级',
+        group: '分组',
+        parent: '父任务',
+        completed: '完成状态',
+        position: '位置',
+        type: '类型',
+        dateRule: '日期规则',
+        startYear: '起始年份',
+        reminders: '提醒',
+        notes: '备注',
+        icon: '图标',
+        color: '颜色',
+        pinned: '置顶',
+        archived: '归档',
+        trashed: '垃圾桶',
+      },
+      valueYes: '是',
+      valueNo: '否',
+      valueEmpty: '未设置',
+      affectedTasks: (count) => `影响 ${count} 项任务`,
+      historyPending: '等待确认',
+      historyExecuted: '已执行',
+      historyUndone: '已撤销',
+      historyRejected: '已取消',
+      historyInvalid: '已失效',
       risk: {
         low: '低风险',
         medium: '中风险',
@@ -685,6 +729,8 @@ export const translations: Record<Language, Translation> = {
       },
       subtaskPlaceholder: '输入子任务名称…',
       createSubtask: '创建',
+      moveToGroup: '移动到分组',
+      backToActions: '返回任务操作',
       moveToTrash: '移至垃圾桶',
       moreActions: '更多任务操作',
     },
@@ -969,6 +1015,35 @@ export const translations: Record<Language, Translation> = {
       requestFailed: 'Unable to reach the AI assistant. Try again.',
       resultReportFailed: 'Changes were applied, but the result was not reported.',
       undoFailed: 'Task data changed, so this operation cannot be safely undone.',
+      previewFields: {
+        title: 'Title',
+        scheduledDate: 'Date',
+        priority: 'Priority',
+        group: 'Group',
+        parent: 'Parent task',
+        completed: 'Completion',
+        position: 'Position',
+        type: 'Type',
+        dateRule: 'Date rule',
+        startYear: 'Start year',
+        reminders: 'Reminders',
+        notes: 'Notes',
+        icon: 'Icon',
+        color: 'Color',
+        pinned: 'Pinned',
+        archived: 'Archived',
+        trashed: 'Trash',
+      },
+      valueYes: 'Yes',
+      valueNo: 'No',
+      valueEmpty: 'Not set',
+      affectedTasks: (count) =>
+        `${count} ${count === 1 ? 'task' : 'tasks'} affected`,
+      historyPending: 'Awaiting confirmation',
+      historyExecuted: 'Executed',
+      historyUndone: 'Undone',
+      historyRejected: 'Cancelled',
+      historyInvalid: 'No longer valid',
       risk: {
         low: 'Low risk',
         medium: 'Medium risk',
@@ -1081,6 +1156,8 @@ export const translations: Record<Language, Translation> = {
       },
       subtaskPlaceholder: 'Subtask name…',
       createSubtask: 'Create',
+      moveToGroup: 'Move to group',
+      backToActions: 'Back to task actions',
       moveToTrash: 'Move to trash',
       moreActions: 'More task actions',
     },

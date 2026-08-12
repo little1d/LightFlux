@@ -29,6 +29,53 @@ desktop targets, creates a public GitHub Release, and uploads the installers.
 It can also be started manually from the repository's Actions page; manual
 runs use the version from `tauri.conf.json`.
 
+## Enable Signed Updates
+
+Desktop updates are disabled at build time until signing is configured. This
+keeps local and existing release builds working without embedding a fake key.
+
+Generate the updater key pair on a trusted machine:
+
+```bash
+cd lightflux
+mkdir -p ../.tauri-keys
+npx tauri signer generate \
+  --password "use-a-password-manager-generated-value" \
+  --write-keys "../.tauri-keys/lightflux.key"
+```
+
+Configure the repository with:
+
+- Actions variable `LIGHTFLUX_UPDATER_ENABLED`: `true`
+- Actions variable `LIGHTFLUX_UPDATER_PUBLIC_KEY`: contents of
+  `.tauri-keys/lightflux.key.pub`
+- Actions secret `RELEASES_TOKEN`: a token with write access to the public
+  `little1d/lightflux-releases` repository
+- Actions secret `TAURI_SIGNING_PRIVATE_KEY`: contents of
+  `.tauri-keys/lightflux.key`
+- Actions secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the key password
+
+The `.tauri-keys` directory is gitignored. Never commit the private key or its
+password. Back them up in the same secret
+manager used for the Apple and Windows signing credentials. Losing the private
+key prevents existing installations from trusting future updates.
+
+When enabled, `tauri-action` creates signed updater artifacts and publishes
+`latest.json` to the GitHub Release. LightFlux checks:
+
+```text
+https://github.com/little1d/lightflux-releases/releases/latest/download/latest.json
+```
+
+The source repository remains private. Installers, signatures, and
+`latest.json` are published to the dedicated public
+`little1d/lightflux-releases` repository so installed apps can download them
+without a GitHub account.
+
+The updater can optionally enforce a minimum supported version by adding
+`minimumSupportedVersion` to the update manifest. Ordinary releases remain
+dismissible; only clients older than that value show a required update.
+
 ## Local Build
 
 The Tauri CLI is installed with the frontend dependencies. The shared Rust
@@ -61,6 +108,33 @@ For desktop development:
 cd lightflux
 npx tauri dev
 ```
+
+To exercise updater checks in a local release build, expose the public key
+while compiling:
+
+```bash
+LIGHTFLUX_UPDATER_PUBLIC_KEY="$(cat "../.tauri-keys/lightflux.key.pub")" \
+  npx tauri build
+```
+
+The updater does not run in the regular Expo web application.
+
+## macOS Menu Bar And Dock
+
+The macOS build creates a monochrome Template Icon in the menu bar. Left click
+shows and focuses the main window. Right click exposes quick task creation, AI
+capture, Today, Milestones, conditional update, Settings, and Quit actions.
+
+Device-only preferences are stored separately from task data:
+
+- Dock icon: Flux, Paper, or Graphite
+- Dock visibility: always, while the window is open, or menu-bar-only
+- Dock badge: incomplete Today tasks, overdue tasks, or none
+- Last-window behavior: hide to the menu bar or quit
+
+Menu-bar-only mode always keeps the menu bar icon available so the main window
+can be reopened. Runtime Dock icon choices do not change the Finder or
+Launchpad icon.
 
 ## Signing
 

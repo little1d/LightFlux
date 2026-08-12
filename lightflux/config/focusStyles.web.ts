@@ -49,10 +49,10 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
     [role="checkbox"],
     [role="tab"] {
       transition:
-        border-color 150ms ease,
-        box-shadow 150ms ease,
-        outline-color 150ms ease,
-        background-color 150ms ease;
+        border-color 140ms ease,
+        box-shadow 140ms ease,
+        outline-color 140ms ease,
+        background-color 140ms ease;
     }
   `;
   document.head.appendChild(style);

@@ -3,5 +3,10 @@
   "identifier": "default",
   "description": "Default capabilities for the LightFlux desktop window.",
   "windows": ["main"],
-  "permissions": ["core:default", "notification:default"]
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "process:default",
+    "updater:default"
+  ]
 }

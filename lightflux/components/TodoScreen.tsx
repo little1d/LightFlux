@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Keyboard,
@@ -216,12 +216,14 @@ const TodoRow = ({
 };
 
 const TodoScreen = ({
+  focusComposerRequestId,
   onEditTask,
   onOpenTaskMenu,
   onOpenMilestones,
   onNotify,
   selectedTaskId,
 }: {
+  focusComposerRequestId?: number;
   onEditTask: (id: string) => void;
   onOpenTaskMenu: OpenTaskMenu;
   onOpenMilestones: () => void;
@@ -230,6 +232,7 @@ const TodoScreen = ({
 }) => {
   const [filter, setFilter] = useState<TodoFilter>('all');
   const [draft, setDraft] = useState('');
+  const composerRef = useRef<TextInput>(null);
   const {
     language,
     todos: allTodos,
@@ -274,6 +277,14 @@ const TodoScreen = ({
   const progress = todos.length === 0 ? 0 : completedCount / todos.length;
   const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`;
   const canAddTodo = draft.trim().length > 0;
+
+  useEffect(() => {
+    if (!focusComposerRequestId) {
+      return undefined;
+    }
+    const timer = setTimeout(() => composerRef.current?.focus(), 60);
+    return () => clearTimeout(timer);
+  }, [focusComposerRequestId]);
 
   const visibleTodos = useMemo(() => {
     if (filter === 'active') {
@@ -423,6 +434,7 @@ const TodoScreen = ({
           onSubmitEditing={addTodo}
           placeholder={labels.inputPlaceholder}
           placeholderTextColor="#9297A8"
+          ref={composerRef}
           returnKeyType="done"
           submitBehavior="blurAndSubmit"
           value={draft}

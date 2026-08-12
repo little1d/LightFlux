@@ -8,6 +8,7 @@ import {
 interface ActionButtonProps {
   disabled?: boolean;
   label: string;
+  onFocusChange?: (focused: boolean) => void;
   onPress: () => void;
   size?: 'small' | 'medium';
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
@@ -16,6 +17,7 @@ interface ActionButtonProps {
 const ActionButton = ({
   disabled = false,
   label,
+  onFocusChange,
   onPress,
   size = 'medium',
   variant = 'primary',
@@ -27,8 +29,14 @@ const ActionButton = ({
     <Pressable
       accessibilityRole="button"
       disabled={disabled}
-      onBlur={() => setFocused(false)}
-      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        onFocusChange?.(false);
+      }}
+      onFocus={() => {
+        setFocused(true);
+        onFocusChange?.(true);
+      }}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
       onPress={onPress}

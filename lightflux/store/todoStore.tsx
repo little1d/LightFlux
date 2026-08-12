@@ -701,6 +701,14 @@ const persistedState = (state: TodoStore): PersistedAppState => ({
   taskEvents: state.taskEvents,
 });
 
+export const flushAppState = async (): Promise<void> => {
+  const state = useTodoStore.getState();
+  if (!state.isHydrated || !state.persistenceReady) {
+    return;
+  }
+  await saveAppState(persistedState(state));
+};
+
 export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const hydrate = useTodoStore((state) => state.hydrate);
   const language = useTodoStore((state) => state.language);

@@ -3,6 +3,7 @@ import React, {
   ComponentProps,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -34,6 +35,7 @@ import AccountMenu, {
   AccountAvatar,
 } from './components/account/AccountMenu';
 import AgentCommandPanel from './components/agent/AgentCommandPanel';
+import DesktopUpdateMenu from './components/desktop/DesktopUpdateMenu';
 import TaskEditorScreen from './components/editor/TaskEditorScreen';
 import ResizableDivider from './components/layout/ResizableDivider';
 import DraggableNavigationItem from './components/navigation/DraggableNavigationItem';
@@ -45,7 +47,17 @@ import {
 import Toast from './components/ui/Toast';
 import IconButton from './components/ui/IconButton';
 import Tooltip from './components/ui/Tooltip';
-import { TodoProvider, useTodoStore } from './store/todoStore';
+import { useCurrentDateKey } from './hooks/useCurrentDateKey';
+import {
+  listenForTrayActions,
+  quitDesktop,
+} from './services/desktopRuntime';
+import { useDesktopStore } from './store/desktopStore';
+import {
+  flushAppState,
+  TodoProvider,
+  useTodoStore,
+} from './store/todoStore';
 import { translations } from './i18n/translations';
 import { isRemoteAuthConfigured } from './services/authApi';
 import {
@@ -191,6 +203,9 @@ const AppContent = () => {
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [quickCreateRequestId, setQuickCreateRequestId] = useState(0);
+  const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
+  const notifiedUpdateVersion = useRef<string | null>(null);
   const [taskMenu, setTaskMenu] = useState<{
     todoId: string;
     position?: TaskMenuPosition;
@@ -210,6 +225,40 @@ const AppContent = () => {
       reorderNavigationItem: state.reorderNavigationItem,
     })),
   );
+  const {
+    desktopEnvironment,
+    desktopPreferences,
+    initializeDesktop,
+    relaunchForUpdate,
+    syncDesktopStatus,
+    updateInfo,
+    updateStatus,
+  } = useDesktopStore(
+    useShallow((state) => ({
+      desktopEnvironment: state.environment,
+      desktopPreferences: state.preferences,
+      initializeDesktop: state.initialize,
+      relaunchForUpdate: state.relaunchForUpdate,
+      syncDesktopStatus: state.syncStatus,
+      updateInfo: state.updateInfo,
+      updateStatus: state.updateStatus,
+    })),
+  );
+  const currentDateKey = useCurrentDateKey();
+  const todayPendingCount = useTodoStore(
+    (state) =>
+      state.todos.filter(
+        (todo) =>
+          !todo.completed && todo.scheduledDate === currentDateKey,
+      ).length,
+  );
+  const overdueCount = useTodoStore(
+    (state) =>
+      state.todos.filter(
+        (todo) =>
+          !todo.completed && todo.scheduledDate < currentDateKey,
+      ).length,
+  );
   const selectedTaskExists = useTodoStore((state) => {
     if (!selectedTask) {
       return true;
@@ -221,7 +270,7 @@ const AppContent = () => {
     (state) =>
       state.trashedTodos.length + state.trashedMilestones.length,
   );
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const labels = translations[language];
   const usesDesktopLayout = width >= 900;
   const selectedTaskId = selectedTask?.id ?? null;
@@ -310,6 +359,116 @@ const AppContent = () => {
     setSelectedTask(null);
     setAgentOpen(true);
   }, []);
+  const relaunchWithFlush = useCallback(async () => {
+    await flushAppState().catch((error) => {
+      console.warn('Unable to flush data before relaunch.', error);
+    });
+    await relaunchForUpdate();
+  }, [relaunchForUpdate]);
+  const handleTrayAction = useCallback(
+    (action: string) => {
+      if (action === 'new-task') {
+        changeView('today');
+        setQuickCreateRequestId(Date.now());
+        return;
+      }
+      if (action === 'agent') {
+        openAgent();
+        return;
+      }
+      if (action === 'today' || action === 'milestones') {
+        changeView(action);
+        return;
+      }
+      if (action === 'settings') {
+        changeView('settings');
+        return;
+      }
+      if (action === 'update') {
+        setUpdateMenuOpen(true);
+        return;
+      }
+      if (action === 'quit') {
+        void flushAppState()
+          .catch((error) => {
+            console.warn('Unable to flush data before quitting.', error);
+          })
+          .finally(() => {
+            void quitDesktop();
+          });
+      }
+    },
+    [changeView, openAgent],
+  );
+
+  useEffect(() => {
+    void initializeDesktop();
+  }, [initializeDesktop]);
+
+  useEffect(() => {
+    if (!desktopEnvironment.isDesktop) {
+      return;
+    }
+    const badgeCount =
+      desktopPreferences.dockBadge === 'none'
+        ? null
+        : desktopPreferences.dockBadge === 'overdue'
+          ? overdueCount
+          : todayPendingCount;
+    void syncDesktopStatus({
+      badgeCount: badgeCount && badgeCount > 0 ? badgeCount : null,
+      language,
+      overdueCount,
+      todayCount: todayPendingCount,
+    });
+  }, [
+    desktopEnvironment.isDesktop,
+    desktopPreferences.dockBadge,
+    language,
+    overdueCount,
+    syncDesktopStatus,
+    todayPendingCount,
+    updateInfo?.version,
+    updateStatus,
+  ]);
+
+  useEffect(() => {
+    if (
+      !updateInfo ||
+      updateStatus !== 'available' ||
+      desktopPreferences.updateReminder !== 'sidebar-and-toast' ||
+      notifiedUpdateVersion.current === updateInfo.version
+    ) {
+      return;
+    }
+    notifiedUpdateVersion.current = updateInfo.version;
+    setToast({
+      id: Date.now(),
+      message:
+        language === 'zh'
+          ? `新版本 ${updateInfo.version} 可用`
+          : `Version ${updateInfo.version} is available`,
+    });
+  }, [
+    desktopPreferences.updateReminder,
+    language,
+    updateInfo,
+    updateStatus,
+  ]);
+
+  useEffect(() => {
+    if (updateInfo?.required) {
+      setUpdateMenuOpen(true);
+    }
+  }, [updateInfo]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void listenForTrayActions(handleTrayAction).then((listener) => {
+      unlisten = listener;
+    });
+    return () => unlisten?.();
+  }, [handleTrayAction]);
 
   useEffect(() => {
     let active = true;
@@ -336,6 +495,17 @@ const AppContent = () => {
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
+        event.preventDefault();
+        changeView('today');
+        setQuickCreateRequestId(Date.now());
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
+        event.preventDefault();
+        changeView('settings');
+        return;
+      }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'j') {
         event.preventDefault();
         openAgent();
@@ -361,7 +531,7 @@ const AppContent = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openAgent, openSearch, searchOpen]);
+  }, [changeView, openAgent, openSearch, searchOpen]);
 
   useEffect(() => {
     if (!selectedTask) {
@@ -425,6 +595,7 @@ const AppContent = () => {
       />
     ) : activeView === 'today' ? (
       <TodoScreen
+        focusComposerRequestId={quickCreateRequestId}
         onOpenTaskMenu={openTaskMenu}
         onEditTask={openActiveTask}
         onNotify={(message) =>
@@ -459,6 +630,11 @@ const AppContent = () => {
         selectedTaskId={selectedTaskId}
       />
     );
+  const showSidebarUpdate =
+    Boolean(updateInfo) &&
+    desktopPreferences.updateReminder !== 'settings-only' &&
+    updateStatus !== 'idle' &&
+    updateStatus !== 'unavailable';
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
   const mainContentHidden = mobileEditorOpen || searchOpen;
 
@@ -484,7 +660,7 @@ const AppContent = () => {
                   activeView === 'settings' || activeView === 'statistics'
                 }
                 label={labels.account.localAccount}
-              onPress={() => setAccountMenuOpen((current) => !current)}
+                onPress={() => setAccountMenuOpen((current) => !current)}
                 tooltipPosition="right"
               />
             </View>
@@ -512,6 +688,26 @@ const AppContent = () => {
             })}
           </View>
           <View style={styles.agentButtonPosition}>
+            {showSidebarUpdate ? (
+              <View style={styles.updateButtonPosition}>
+                <IconButton
+                  icon={
+                    updateStatus === 'ready'
+                      ? 'checkmark-circle'
+                      : 'download-outline'
+                  }
+                  label={
+                    language === 'zh'
+                      ? `更新到 ${updateInfo?.version ?? ''}`
+                      : `Update to ${updateInfo?.version ?? ''}`
+                  }
+                  onPress={() => setUpdateMenuOpen(true)}
+                  size="large"
+                  tooltipPosition="right"
+                  variant="primary"
+                />
+              </View>
+            ) : null}
             <IconButton
               icon="sparkles"
               label={labels.agent.title}
@@ -635,6 +831,15 @@ const AppContent = () => {
               : { x: Math.max(12, width - 252), y: 72 }
           }
           onSignOut={signOut}
+        />
+      ) : null}
+
+      {updateMenuOpen && updateInfo ? (
+        <DesktopUpdateMenu
+          language={language}
+          onClose={() => setUpdateMenuOpen(false)}
+          onRelaunch={relaunchWithFlush}
+          position={{ x: 90, y: Math.max(12, height - 290) }}
         />
       ) : null}
 
@@ -787,6 +992,9 @@ const styles = StyleSheet.create({
   },
   agentButtonPosition: {
     marginBottom: 14,
+  },
+  updateButtonPosition: {
+    marginBottom: 9,
   },
   mobileAgentButtonPosition: {
     marginRight: 10,

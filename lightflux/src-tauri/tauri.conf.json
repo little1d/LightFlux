@@ -40,5 +40,13 @@
     "macOS": {
       "signingIdentity": "-"
     }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/little1d/lightflux-releases/releases/latest/download/latest.json"
+      ],
+      "pubkey": ""
+    }
   }
 }

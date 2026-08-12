@@ -46,6 +46,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         include:
           - name: macOS Apple Silicon
@@ -100,8 +101,40 @@ jobs:
           tagName: desktop-v__VERSION__
           releaseName: LightFlux Desktop v__VERSION__
           releaseBody: Download the installer for your desktop platform from the assets below.
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
           generateReleaseNotes: false
           uploadUpdaterJson: ${{ vars.LIGHTFLUX_UPDATER_ENABLED == 'true' }}
           args: ${{ matrix.args }} --config src-tauri/tauri.updater.conf.json
+
+  publish:
+    name: Validate and publish release
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate updater manifest and publish
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+        run: |
+          VERSION="$(jq -r '.version' lightflux/src-tauri/tauri.conf.json)"
+          TAG="desktop-v${VERSION}"
+          RELEASE_DIR="${RUNNER_TEMP}/lightflux-release"
+          mkdir -p "${RELEASE_DIR}"
+          gh release download "${TAG}" \
+            --repo little1d/lightflux-releases \
+            --pattern latest.json \
+            --dir "${RELEASE_DIR}" \
+            --clobber
+          jq -e '
+            .version == "'"${VERSION}"'" and
+            (.platforms["windows-x86_64"].signature | length > 0) and
+            (.platforms["darwin-aarch64"].signature | length > 0) and
+            (.platforms["darwin-x86_64"].signature | length > 0)
+          ' "${RELEASE_DIR}/latest.json"
+          gh release edit "${TAG}" \
+            --repo little1d/lightflux-releases \
+            --draft=false \
+            --latest

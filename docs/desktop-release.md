@@ -72,6 +72,11 @@ The source repository remains private. Installers, signatures, and
 `little1d/lightflux-releases` repository so installed apps can download them
 without a GitHub account.
 
+Platform builds run serially against a draft Release so each updater target is
+merged into the same `latest.json`. A final job verifies the Windows x64,
+macOS Apple Silicon, and macOS Intel signatures before publishing the Release
+as Latest. Clients therefore never receive a partially built update manifest.
+
 The updater can optionally enforce a minimum supported version by adding
 `minimumSupportedVersion` to the update manifest. Ordinary releases remain
 dismissible; only clients older than that value show a required update.

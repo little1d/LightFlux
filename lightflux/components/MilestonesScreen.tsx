@@ -16,7 +16,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
-import { translations } from '../i18n/translations';
+import { translations } from '../content';
 import { useTodoStore } from '../store/todoStore';
 import { MilestoneType, NewMilestone } from '../types/todo';
 import { fromDateKey } from '../utils/date';

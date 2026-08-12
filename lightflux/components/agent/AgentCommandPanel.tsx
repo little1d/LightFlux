@@ -32,7 +32,7 @@ import {
   AgentProposal,
 } from '../../agent/types';
 import { inputAccentProps } from '../../config/input';
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import {
   AgentTurnResponse,
   reportAgentProposalResult,
@@ -594,9 +594,10 @@ const OperationRow = ({
     }
     if (field === 'position' && typeof value === 'string') {
       const [position, ...title] = value.split(':');
-      return language === 'zh'
-        ? `${title.join(':')} ${position === 'before' ? '之前' : '之后'}`
-        : `${position === 'before' ? 'Before' : 'After'} ${title.join(':')}`;
+      return agentLabels.relativePosition(
+        title.join(':'),
+        position === 'before' ? 'before' : 'after',
+      );
     }
     return String(value);
   };

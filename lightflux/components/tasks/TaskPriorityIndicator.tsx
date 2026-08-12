@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { ComponentProps, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
 import Tooltip from '../ui/Tooltip';

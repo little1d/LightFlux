@@ -1,16 +1,5 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
 import {
-  Animated,
-  Keyboard,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,451 +8,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
-import { Translation, translations } from '../i18n/translations';
-import {
-  buildChildCountByParent,
-  buildSiblingIndexById,
-  selectActiveTodos,
-} from '../store/todoDomain';
-import { useTodoStore } from '../store/todoStore';
-import { Todo } from '../types/todo';
-import { requestConfirmation } from '../utils/confirm';
-import { todayKey } from '../utils/date';
 import GroupActionMenu from './groups/GroupActionMenu';
-import {
-  GroupMenuPosition,
-  OpenGroupMenu,
-  useGroupContextMenu,
-} from './groups/useGroupContextMenu';
-import DraggableTaskRow from './tasks/DraggableTaskRow';
-import TaskIndicators from './tasks/TaskIndicators';
-import TaskPriorityIndicator, {
-  TASK_PRIORITY_THEME,
-} from './tasks/TaskPriorityIndicator';
-import {
-  TaskCheckbox,
-  TaskMoreButton,
-  TaskNestingIndicator,
-} from './tasks/TaskRowControls';
-import TaskSelectionMarker, {
-  TASK_SELECTED_ROW_STYLE,
-} from './tasks/TaskSelectionMarker';
-import ActionButton from './ui/ActionButton';
+import GroupSectionCard from './groups/GroupSectionCard';
+import { UNGROUPED_ID } from './groups/types';
+import { useGroupsController } from './groups/useGroupsController';
+import { OpenTaskMenu } from './tasks/useTaskContextMenu';
 import Toast from './ui/Toast';
-import {
-  OpenTaskMenu,
-  useTaskContextMenu,
-} from './tasks/useTaskContextMenu';
-
-const UNGROUPED_ID = '__ungrouped__';
-
-interface GroupSection {
-  id: string;
-  name: string;
-  color: string;
-  sortOrder: number;
-  todos: Todo[];
-}
-
-interface InlineComposerState {
-  anchorId: string;
-  groupId: string | null;
-  parentId: string | null;
-  renderAfterId: string;
-  scheduledDate: string;
-}
-
-const familyTailId = (todos: Todo[], rootId: string): string => {
-  const rootIndex = todos.findIndex((todo) => todo.id === rootId);
-  if (rootIndex < 0) {
-    return rootId;
-  }
-
-  const familyIds = new Set([rootId]);
-  let tailId = rootId;
-  for (let index = rootIndex + 1; index < todos.length; index += 1) {
-    const candidate = todos[index];
-    if (candidate.parentId && familyIds.has(candidate.parentId)) {
-      familyIds.add(candidate.id);
-      tailId = candidate.id;
-      continue;
-    }
-    break;
-  }
-  return tailId;
-};
-
-const CollapsibleGroupBody = ({
-  children,
-  expanded,
-}: {
-  children: React.ReactNode;
-  expanded: boolean;
-}) => {
-  const transition = useRef(new Animated.Value(expanded ? 1 : 0)).current;
-  const [visible, setVisible] = useState(expanded);
-
-  useEffect(() => {
-    transition.stopAnimation();
-    let frame: number | undefined;
-
-    if (expanded) {
-      setVisible(true);
-      transition.setValue(0);
-      frame = requestAnimationFrame(() => {
-        Animated.timing(transition, {
-          duration: 170,
-          toValue: 1,
-          useNativeDriver: Platform.OS !== 'web',
-        }).start();
-      });
-    } else {
-      Animated.timing(transition, {
-        duration: 130,
-        toValue: 0,
-        useNativeDriver: Platform.OS !== 'web',
-      }).start(({ finished }) => {
-        if (finished) {
-          setVisible(false);
-        }
-      });
-    }
-
-    return () => {
-      if (frame !== undefined) {
-        cancelAnimationFrame(frame);
-      }
-      transition.stopAnimation();
-    };
-  }, [expanded, transition]);
-
-  if (!visible) {
-    return null;
-  }
-
-  return (
-    <Animated.View
-      style={{
-        opacity: transition,
-        pointerEvents: expanded ? 'auto' : 'none',
-        transform: [
-          {
-            translateY: transition.interpolate({
-              inputRange: [0, 1],
-              outputRange: [-5, 0],
-            }),
-          },
-        ],
-      }}
-    >
-      {children}
-    </Animated.View>
-  );
-};
-
-const GroupHeader = ({
-  isExpanded,
-  labels,
-  onAddTask,
-  onOpenMenu,
-  onToggle,
-  selected,
-  section,
-}: {
-  isExpanded: boolean;
-  labels: Translation;
-  onAddTask: () => void;
-  onOpenMenu: OpenGroupMenu;
-  onToggle: () => void;
-  selected: boolean;
-  section: GroupSection;
-}) => {
-  const { targetRef, openFromLongPress } = useGroupContextMenu(
-    section.id,
-    onOpenMenu,
-  );
-  const longPressHandled = useRef(false);
-  const expansion = useRef(new Animated.Value(isExpanded ? 1 : 0)).current;
-
-  useEffect(() => {
-    Animated.timing(expansion, {
-      duration: 170,
-      toValue: isExpanded ? 1 : 0,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-  }, [expansion, isExpanded]);
-
-  return (
-    <View
-      accessibilityState={{ selected }}
-      className="flex-row items-center px-4 py-4"
-      ref={targetRef}
-      style={selected && styles.groupHeaderSelected}
-    >
-      {selected ? <View style={styles.groupSelectionMarker} /> : null}
-      <Pressable
-        accessibilityLabel={
-          isExpanded ? labels.groups.collapse : labels.groups.expand
-        }
-        accessibilityRole="button"
-        className="flex-1 flex-row items-center"
-        delayLongPress={350}
-        onLongPress={() => {
-          longPressHandled.current = true;
-          openFromLongPress();
-          setTimeout(() => {
-            longPressHandled.current = false;
-          }, 500);
-        }}
-        onPress={() => {
-          if (!longPressHandled.current) {
-            onToggle();
-          }
-        }}
-      >
-        <Animated.View
-          className="mr-2"
-          style={{
-            transform: [
-              {
-                rotate: expansion.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '90deg'],
-                }),
-              },
-            ],
-          }}
-        >
-          <Ionicons color="#777888" name="chevron-forward" size={17} />
-        </Animated.View>
-        <View
-          className="mr-3 h-3 w-3 rounded-[6px]"
-          style={{ backgroundColor: section.color }}
-        />
-        <Text className="text-[17px] font-extrabold text-[#292A3D]">
-          {section.name}
-        </Text>
-        <Text className="ml-2 text-xs font-semibold text-[#A0A1AC]">
-          {labels.groups.count(section.todos.length)}
-        </Text>
-      </Pressable>
-      <Pressable
-        accessibilityLabel={`${labels.addTask}: ${section.name}`}
-        accessibilityRole="button"
-        className="h-9 w-9 items-center justify-center rounded-[13px] bg-[#F0EEFF]"
-        onPress={onAddTask}
-      >
-        <Text className="text-xl font-medium text-primary">＋</Text>
-      </Pressable>
-    </View>
-  );
-};
-
-const InlineTaskTitle = ({
-  editLabel,
-  nested,
-  onCreateNext,
-  onOpenDetails,
-  onRename,
-  todo,
-}: {
-  editLabel: string;
-  nested: boolean;
-  onCreateNext: () => void;
-  onOpenDetails: () => void;
-  onRename: (title: string) => void;
-  todo: Todo;
-}) => {
-  const [draft, setDraft] = useState(todo.title);
-  const [focused, setFocused] = useState(false);
-  const detailsOpened = useRef(false);
-
-  useEffect(() => {
-    if (!focused) {
-      setDraft(todo.title);
-    }
-  }, [focused, todo.title]);
-
-  const commit = () => {
-    const title = draft.trim();
-    setFocused(false);
-    detailsOpened.current = false;
-    if (title) {
-      setDraft(title);
-      onRename(title);
-    } else {
-      setDraft(todo.title);
-    }
-  };
-
-  const openDetails = () => {
-    if (!detailsOpened.current) {
-      detailsOpened.current = true;
-      onOpenDetails();
-    }
-  };
-
-  return (
-    <TextInput
-      {...inputAccentProps}
-      accessibilityLabel={`${editLabel}: ${todo.title}`}
-      className={`${nested ? 'ml-2.5' : 'ml-3'} h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
-        todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
-      }`}
-      maxLength={160}
-      nativeID={`task-title-${todo.id}`}
-      onBlur={commit}
-      onChangeText={(value) => {
-        openDetails();
-        setDraft(value);
-        if (value.trim()) {
-          onRename(value);
-        }
-      }}
-      onFocus={() => {
-        setFocused(true);
-        openDetails();
-      }}
-      onPointerDown={openDetails}
-      onPressIn={() => requestAnimationFrame(openDetails)}
-      onSubmitEditing={() => {
-        commit();
-        requestAnimationFrame(onCreateNext);
-      }}
-      returnKeyType="done"
-      value={draft}
-    />
-  );
-};
-
-const InlineTaskComposer = ({
-  draft,
-  nested,
-  onCancel,
-  onChange,
-  onSubmit,
-  placeholder,
-}: {
-  draft: string;
-  nested: boolean;
-  onCancel: () => void;
-  onChange: (value: string) => void;
-  onSubmit: () => void;
-  placeholder: string;
-}) => (
-  <View
-    className={`${nested ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'} my-0.5 flex-row items-center rounded-[10px] border border-[#DDD9F0] bg-[#F8F7FF] px-2`}
-    nativeID="inline-task-composer"
-  >
-    {nested ? (
-      <Text className="mr-1.5 text-[12px] text-[#9D9AAB]">↳</Text>
-    ) : null}
-    <View className="h-5 w-5 rounded-[7px] border-[1.5px] border-[#C5C2D4]" />
-    <TextInput
-      {...inputAccentProps}
-      accessibilityLabel={placeholder}
-      autoFocus
-      className="ml-3 h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold text-[#303145]"
-      maxLength={160}
-      onChangeText={onChange}
-      onKeyPress={(event) => {
-        if (event.nativeEvent.key === 'Escape') {
-          onCancel();
-        }
-      }}
-      onSubmitEditing={onSubmit}
-      placeholder={placeholder}
-      placeholderTextColor="#9A98A8"
-      returnKeyType="done"
-      value={draft}
-    />
-  </View>
-);
-
-const GroupTask = ({
-  todo,
-  language,
-  markActive,
-  markComplete,
-  nested,
-  editLabel,
-  onCreateNext,
-  onEdit,
-  onOpenMenu,
-  onRename,
-  onToggle,
-  selected,
-  childCount,
-}: {
-  todo: Todo;
-  language: 'zh' | 'en';
-  markActive: string;
-  markComplete: string;
-  nested: boolean;
-  editLabel: string;
-  onCreateNext: () => void;
-  onEdit: (id: string) => void;
-  onOpenMenu: OpenTaskMenu;
-  onRename: (id: string, title: string) => void;
-  onToggle: (id: string) => void;
-  selected: boolean;
-  childCount: number;
-}) => {
-  const { targetRef, openFromButton } = useTaskContextMenu(
-    todo.id,
-    onOpenMenu,
-  );
-
-  return (
-    <View
-      accessibilityState={{ selected }}
-      className={`${nested ? 'ml-6 min-h-[40px] px-2' : 'min-h-[48px] px-2'} my-0.5 flex-row items-center border-b ${
-        selected
-          ? nested
-            ? 'rounded-[8px] border-transparent bg-[#F6F4FF]'
-            : 'rounded-[12px] border-transparent bg-[#EEECFF]'
-          : 'border-[#ECECF1]'
-      }`}
-      nativeID={`group-task-${todo.id}`}
-      ref={targetRef}
-      style={[
-        !selected &&
-          todo.priority !== 'none' && {
-            backgroundColor:
-              TASK_PRIORITY_THEME[todo.priority].rowBackground,
-          },
-        selected && TASK_SELECTED_ROW_STYLE,
-      ]}
-    >
-      <TaskSelectionMarker visible={selected} />
-      {nested ? <TaskNestingIndicator /> : null}
-      <TaskCheckbox
-        completed={todo.completed}
-        markActive={markActive}
-        markComplete={markComplete}
-        onPress={() => onToggle(todo.id)}
-        uncheckedBorderColor="#BFC1CB"
-      />
-      <InlineTaskTitle
-        editLabel={editLabel}
-        nested={nested}
-        onCreateNext={onCreateNext}
-        onOpenDetails={() => onEdit(todo.id)}
-        onRename={(title) => onRename(todo.id, title)}
-        todo={todo}
-      />
-      <TaskPriorityIndicator priority={todo.priority} />
-      <TaskIndicators childCount={childCount} todo={todo} />
-      <TaskMoreButton
-        label={translations[language].taskMenu.moreActions}
-        onPress={openFromButton}
-      />
-    </View>
-  );
-};
 
 const GroupsScreen = ({
   onEditTask,
@@ -474,309 +26,7 @@ const GroupsScreen = ({
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
-  const {
-    language,
-    todos,
-    groups,
-    ungroupedName,
-    addGroup,
-    deleteGroup,
-    addTodo,
-    renameGroup,
-    reorderTask,
-    toggleTodo,
-    updateTodo,
-  } = useTodoStore(
-    useShallow((state) => ({
-      language: state.language,
-      todos: state.todos,
-      groups: state.groups,
-      ungroupedName: state.ungroupedName,
-      addGroup: state.addGroup,
-      deleteGroup: state.deleteGroup,
-      addTodo: state.addTodo,
-      renameGroup: state.renameGroup,
-      reorderTask: state.reorderTask,
-      toggleTodo: state.toggleTodo,
-      updateTodo: state.updateTodo,
-    })),
-  );
-  const labels = translations[language];
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    [UNGROUPED_ID]: true,
-  });
-  const [activeComposer, setActiveComposer] = useState<string | null>(null);
-  const [taskDraft, setTaskDraft] = useState('');
-  const [inlineDraft, setInlineDraft] = useState('');
-  const [inlineComposer, setInlineComposer] =
-    useState<InlineComposerState | null>(null);
-  const [groupDraft, setGroupDraft] = useState('');
-  const [groupMenu, setGroupMenu] = useState<{
-    sectionId: string;
-    position?: GroupMenuPosition;
-  } | null>(null);
-  const [toast, setToast] = useState<{
-    id: number;
-    message: string;
-  } | null>(null);
-
-  const activeTodos = useMemo(() => selectActiveTodos(todos), [todos]);
-  const todosByGroup = useMemo(() => {
-    const grouped = new Map<string | null, Todo[]>();
-    activeTodos.forEach((todo) => {
-      const groupTodos = grouped.get(todo.groupId) ?? [];
-      groupTodos.push(todo);
-      grouped.set(todo.groupId, groupTodos);
-    });
-    return grouped;
-  }, [activeTodos]);
-  const sections = useMemo<GroupSection[]>(
-    () =>
-      [
-        {
-          id: UNGROUPED_ID,
-          name: ungroupedName ?? labels.groups.ungrouped,
-          color: '#9A97AD',
-          sortOrder: 0,
-          todos: todosByGroup.get(null) ?? [],
-        },
-        ...groups.map((group) => ({
-          ...group,
-          todos: todosByGroup.get(group.id) ?? [],
-        })),
-      ].sort(
-        (a, b) =>
-          a.sortOrder - b.sortOrder ||
-          a.name.localeCompare(b.name, language === 'zh' ? 'zh-CN' : 'en-US'),
-      ),
-    [groups, labels.groups.ungrouped, language, todosByGroup, ungroupedName],
-  );
-  const childCountByParent = useMemo(
-    () => buildChildCountByParent(activeTodos),
-    [activeTodos],
-  );
-  const siblingIndexById = useMemo(
-    () => buildSiblingIndexById(activeTodos),
-    [activeTodos],
-  );
-  const openGroupMenu = useCallback<OpenGroupMenu>(
-    (sectionId, position) => {
-      setGroupMenu({ sectionId, position });
-    },
-    [],
-  );
-  const activeMenuSection = groupMenu
-    ? sections.find((section) => section.id === groupMenu.sectionId)
-    : undefined;
-  const openInlineComposer = useCallback(
-    (todo: Todo) => {
-      const sectionId = todo.groupId ?? UNGROUPED_ID;
-      const section = sections.find((item) => item.id === sectionId);
-      setExpanded((current) => ({ ...current, [sectionId]: true }));
-      setActiveComposer(null);
-      setInlineDraft('');
-      setInlineComposer({
-        anchorId: todo.id,
-        groupId: todo.groupId,
-        parentId: todo.parentId,
-        renderAfterId: section
-          ? familyTailId(section.todos, todo.id)
-          : todo.id,
-        scheduledDate: todo.scheduledDate,
-      });
-    },
-    [sections],
-  );
-  const moveTask = useCallback(
-    (id: string, targetIndex: number) => {
-      const dragged = activeTodos.find((todo) => todo.id === id);
-      if (!dragged) {
-        return;
-      }
-
-      const siblings = activeTodos.filter(
-        (todo) =>
-          todo.parentId === dragged.parentId &&
-          todo.groupId === dragged.groupId,
-      );
-      const sourceIndex = siblings.findIndex((todo) => todo.id === id);
-      const boundedTarget = Math.max(
-        0,
-        Math.min(targetIndex, siblings.length - 1),
-      );
-      if (sourceIndex < 0 || sourceIndex === boundedTarget) {
-        return;
-      }
-
-      const target = siblings[boundedTarget];
-      const persistedSiblings = todos.filter(
-        (todo) =>
-          todo.parentId === dragged.parentId &&
-          todo.groupId === dragged.groupId,
-      );
-      const persistedTargetIndex = persistedSiblings.findIndex(
-        (todo) => todo.id === target.id,
-      );
-      reorderTask(
-        id,
-        persistedTargetIndex >= 0
-          ? persistedTargetIndex
-          : boundedTarget,
-      );
-      setToast({
-        id: Date.now(),
-        message: labels.notifications.orderUpdated,
-      });
-    },
-    [
-      activeTodos,
-      labels.notifications.orderUpdated,
-      reorderTask,
-      todos,
-    ],
-  );
-
-  useEffect(() => {
-    if (Platform.OS !== 'web') {
-      return undefined;
-    }
-
-    const createAfterSelection = (event: KeyboardEvent) => {
-      if (
-        inlineComposer ||
-        event.key !== 'Enter' ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        event.shiftKey
-      ) {
-        return;
-      }
-      const target = event.target as HTMLElement | null;
-      if (
-        target?.matches('input, textarea, select') ||
-        target?.isContentEditable
-      ) {
-        return;
-      }
-      const selectedTodo = activeTodos.find(
-        (todo) => todo.id === selectedTaskId,
-      );
-      if (!selectedTodo) {
-        return;
-      }
-
-      event.preventDefault();
-      openInlineComposer(selectedTodo);
-    };
-
-    document.addEventListener('keydown', createAfterSelection);
-    return () =>
-      document.removeEventListener('keydown', createAfterSelection);
-  }, [
-    activeTodos,
-    inlineComposer,
-    openInlineComposer,
-    selectedTaskId,
-  ]);
-
-  const toggleGroup = (id: string) => {
-    setExpanded((current) => ({ ...current, [id]: !current[id] }));
-  };
-
-  const openComposer = (id: string) => {
-    setExpanded((current) => ({ ...current, [id]: true }));
-    setInlineComposer(null);
-    setInlineDraft('');
-    setActiveComposer(id);
-    setTaskDraft('');
-  };
-
-  const submitTask = (sectionId: string) => {
-    if (!taskDraft.trim()) {
-      return;
-    }
-    addTodo({
-      title: taskDraft,
-      scheduledDate: todayKey(),
-      groupId: sectionId === UNGROUPED_ID ? null : sectionId,
-    });
-    setTaskDraft('');
-    setActiveComposer(null);
-    Keyboard.dismiss();
-  };
-
-  const submitInlineTask = () => {
-    const title = inlineDraft.trim();
-    if (!title || !inlineComposer) {
-      return;
-    }
-
-    addTodo({
-      title,
-      scheduledDate: inlineComposer.scheduledDate,
-      groupId: inlineComposer.groupId,
-      parentId: inlineComposer.parentId,
-      insertAfterId: inlineComposer.anchorId,
-    });
-    setInlineDraft('');
-    setInlineComposer(null);
-    Keyboard.dismiss();
-  };
-
-  const submitGroup = () => {
-    const name = groupDraft.trim();
-    if (!name) {
-      return;
-    }
-    const id = addGroup(name);
-    setExpanded((current) => ({ ...current, [id]: true }));
-    setGroupDraft('');
-    setActiveComposer(id);
-    Keyboard.dismiss();
-  };
-
-  const addGroupNear = (
-    name: string,
-    position: 'before' | 'after',
-  ) => {
-    if (!activeMenuSection) {
-      return;
-    }
-    const id = addGroup(name, {
-      anchorGroupId:
-        activeMenuSection.id === UNGROUPED_ID
-          ? null
-          : activeMenuSection.id,
-      position,
-    });
-    setExpanded((current) => ({ ...current, [id]: true }));
-  };
-
-  const deleteActiveGroup = () => {
-    if (!activeMenuSection || activeMenuSection.id === UNGROUPED_ID) {
-      return;
-    }
-    const groupId = activeMenuSection.id;
-    setGroupMenu(null);
-    requestConfirmation({
-      cancelText: labels.cancel,
-      confirmText: labels.groups.deleteGroup,
-      message: labels.groups.deleteGroupMessage,
-      onConfirm: () => {
-        deleteGroup(groupId);
-        setExpanded((current) => {
-          const next = { ...current };
-          delete next[groupId];
-          return next;
-        });
-        if (activeComposer === groupId) {
-          setActiveComposer(null);
-        }
-      },
-      title: labels.groups.deleteGroupTitle,
-    });
-  };
+  const controller = useGroupsController(selectedTaskId);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -789,11 +39,9 @@ const GroupsScreen = ({
           style={styles.scroll}
         >
           <View className="flex-row items-center justify-between pb-5 pt-4">
-            <View>
-              <Text className="text-[24px] font-extrabold text-ink">
-                {labels.groups.title}
-              </Text>
-            </View>
+            <Text className="text-[24px] font-extrabold text-ink">
+              {controller.labels.groups.title}
+            </Text>
           </View>
 
           <View
@@ -803,200 +51,87 @@ const GroupsScreen = ({
           >
             <TextInput
               {...inputAccentProps}
-              accessibilityLabel={labels.groups.groupPlaceholder}
+              accessibilityLabel={
+                controller.labels.groups.groupPlaceholder
+              }
               className="h-11 flex-1 text-[14px] text-[#303145]"
-              onChangeText={setGroupDraft}
-              onSubmitEditing={submitGroup}
-              placeholder={labels.groups.groupPlaceholder}
+              onChangeText={controller.setGroupDraft}
+              onSubmitEditing={controller.submitGroup}
+              placeholder={controller.labels.groups.groupPlaceholder}
               placeholderTextColor="#A0A1AD"
               returnKeyType="done"
-              value={groupDraft}
+              value={controller.groupDraft}
             />
             <Pressable
-              accessibilityLabel={labels.groups.addGroup}
+              accessibilityLabel={controller.labels.groups.addGroup}
               accessibilityRole="button"
               className={`h-11 items-center justify-center rounded-[13px] px-4 ${
-                groupDraft.trim() ? 'bg-primary' : 'bg-[#C9C6DD]'
+                controller.groupDraft.trim() ? 'bg-primary' : 'bg-[#C9C6DD]'
               }`}
-              disabled={!groupDraft.trim()}
-              onPress={submitGroup}
+              disabled={!controller.groupDraft.trim()}
+              onPress={controller.submitGroup}
             >
               <Text className="text-xs font-extrabold text-white">
-                ＋ {labels.groups.addGroup}
+                ＋ {controller.labels.groups.addGroup}
               </Text>
             </Pressable>
           </View>
 
-          {sections.map((section) => {
-            const isExpanded = expanded[section.id] ?? false;
-            const selected = groupMenu?.sectionId === section.id;
-
-            return (
-              <View
-                className="mb-3 overflow-hidden rounded-[20px] border border-[#E8E7EE] bg-white"
-                key={section.id}
-                style={[
-                  styles.cardShadow,
-                  selected && styles.groupCardSelected,
-                ]}
-              >
-                <GroupHeader
-                  isExpanded={isExpanded}
-                  labels={labels}
-                  onAddTask={() => openComposer(section.id)}
-                  onOpenMenu={openGroupMenu}
-                  onToggle={() => toggleGroup(section.id)}
-                  selected={selected}
-                  section={section}
-                />
-
-                <CollapsibleGroupBody expanded={isExpanded}>
-                  <View className="border-t border-[#ECEBF1] px-4 py-1.5">
-                    {activeComposer === section.id ? (
-                      <View
-                        className="mb-3 mt-3 rounded-[14px] border border-[#E0DDEE] bg-[#F8F7FB] p-3"
-                        nativeID={`group-task-composer-${section.id}`}
-                      >
-                        <Text className="mb-2 text-[11px] font-bold text-[#777889]">
-                          {labels.groups.addTaskTitle}
-                        </Text>
-                        <TextInput
-                          {...inputAccentProps}
-                          accessibilityLabel={labels.groups.taskPlaceholder}
-                          autoFocus
-                          className="h-11 rounded-[10px] border border-[#E3E1EA] bg-white px-3 text-[13px] text-[#303145]"
-                          onChangeText={setTaskDraft}
-                          onSubmitEditing={() => submitTask(section.id)}
-                          placeholder={labels.groups.taskPlaceholder}
-                          placeholderTextColor="#A0A1AD"
-                          returnKeyType="done"
-                          value={taskDraft}
-                        />
-                        <View className="mt-2 flex-row justify-end">
-                          <ActionButton
-                            label={labels.groups.cancelTask}
-                            onPress={() => {
-                              setActiveComposer(null);
-                              setTaskDraft('');
-                            }}
-                            variant="ghost"
-                          />
-                          <View className="w-1" />
-                          <ActionButton
-                            disabled={!taskDraft.trim()}
-                            label={labels.addTask}
-                            onPress={() => submitTask(section.id)}
-                          />
-                        </View>
-                      </View>
-                    ) : null}
-
-                    {section.todos.length === 0 &&
-                    activeComposer !== section.id ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        className="items-center py-5"
-                        onPress={() => openComposer(section.id)}
-                      >
-                        <Text className="text-xs text-[#9899A6]">
-                          ＋ {labels.groups.taskPlaceholder}
-                        </Text>
-                      </Pressable>
-                    ) : (
-                      section.todos.map((todo) => {
-                        const nested = Boolean(todo.parentId);
-                        const row = (
-                          <GroupTask
-                            childCount={childCountByParent.get(todo.id) ?? 0}
-                            editLabel={labels.editor.title}
-                            language={language}
-                            markActive={labels.markActive}
-                            markComplete={labels.markComplete}
-                            nested={nested}
-                            onCreateNext={() => openInlineComposer(todo)}
-                            onEdit={onEditTask}
-                            onOpenMenu={onOpenTaskMenu}
-                            onRename={(id, title) =>
-                              updateTodo(id, { title })
-                            }
-                            onToggle={toggleTodo}
-                            selected={selectedTaskId === todo.id}
-                            todo={todo}
-                          />
-                        );
-                        return (
-                          <React.Fragment key={todo.id}>
-                            <DraggableTaskRow
-                              id={todo.id}
-                              index={siblingIndexById.get(todo.id) ?? 0}
-                              label={`${labels.groups.reorderTask}: ${todo.title}`}
-                              nested={nested}
-                              onMove={moveTask}
-                              scopeId={
-                                todo.parentId
-                                  ? `parent:${todo.parentId}`
-                                  : `group:${section.id}:root`
-                              }
-                            >
-                              {row}
-                            </DraggableTaskRow>
-                            {inlineComposer?.renderAfterId === todo.id ? (
-                              <InlineTaskComposer
-                                draft={inlineDraft}
-                                nested={Boolean(inlineComposer.parentId)}
-                                onCancel={() => {
-                                  setInlineComposer(null);
-                                  setInlineDraft('');
-                                }}
-                                onChange={setInlineDraft}
-                                onSubmit={submitInlineTask}
-                                placeholder={
-                                  inlineComposer.parentId
-                                    ? labels.taskMenu.subtaskPlaceholder
-                                    : labels.groups.taskPlaceholder
-                                }
-                              />
-                            ) : null}
-                          </React.Fragment>
-                        );
-                      })
-                    )}
-                  </View>
-                </CollapsibleGroupBody>
-              </View>
-            );
-          })}
+          {controller.sections.map((section) => (
+            <GroupSectionCard
+              activeComposer={controller.activeComposer}
+              childCountByParent={controller.childCountByParent}
+              expanded={controller.expanded[section.id] ?? false}
+              inlineComposer={controller.inlineComposer}
+              inlineDraft={controller.inlineDraft}
+              key={section.id}
+              labels={controller.labels}
+              onCancelInlineComposer={controller.cancelInlineComposer}
+              onCancelTaskComposer={controller.cancelTaskComposer}
+              onEditTask={onEditTask}
+              onInlineDraftChange={controller.setInlineDraft}
+              onMoveTask={controller.moveTask}
+              onOpenGroupMenu={controller.openGroupMenu}
+              onOpenInlineComposer={controller.openInlineComposer}
+              onOpenTaskComposer={() => controller.openComposer(section.id)}
+              onOpenTaskMenu={onOpenTaskMenu}
+              onRenameTask={controller.renameTask}
+              onSubmitInlineTask={controller.submitInlineTask}
+              onSubmitTask={() => controller.submitTask(section.id)}
+              onTaskDraftChange={controller.setTaskDraft}
+              onToggle={() => controller.toggleGroup(section.id)}
+              onToggleTask={controller.toggleTodo}
+              section={section}
+              selected={controller.groupMenu?.sectionId === section.id}
+              selectedTaskId={selectedTaskId}
+              siblingIndexById={controller.siblingIndexById}
+              taskDraft={controller.taskDraft}
+            />
+          ))}
         </ScrollView>
       </SafeAreaView>
 
-      {groupMenu && activeMenuSection ? (
+      {controller.groupMenu && controller.activeMenuSection ? (
         <GroupActionMenu
           groupId={
-            activeMenuSection.id === UNGROUPED_ID
+            controller.activeMenuSection.id === UNGROUPED_ID
               ? null
-              : activeMenuSection.id
+              : controller.activeMenuSection.id
           }
-          groupName={activeMenuSection.name}
-          onAdd={addGroupNear}
-          onClose={() => setGroupMenu(null)}
-          onDelete={deleteActiveGroup}
-          onRename={(name) => {
-            renameGroup(
-              activeMenuSection.id === UNGROUPED_ID
-                ? null
-                : activeMenuSection.id,
-              name,
-            );
-          }}
-          position={groupMenu.position}
+          groupName={controller.activeMenuSection.name}
+          onAdd={controller.addGroupNear}
+          onClose={controller.closeGroupMenu}
+          onDelete={controller.deleteActiveGroup}
+          onRename={controller.renameActiveGroup}
+          position={controller.groupMenu.position}
         />
       ) : null}
 
-      {toast ? (
+      {controller.toast ? (
         <Toast
-          key={toast.id}
-          message={toast.message}
-          onDismiss={() => setToast(null)}
+          key={controller.toast.id}
+          message={controller.toast.message}
+          onDismiss={controller.dismissToast}
         />
       ) : null}
     </View>
@@ -1018,24 +153,6 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
-  },
-  groupCardSelected: {
-    borderColor: '#CFC9FA',
-    shadowColor: '#6759E8',
-    shadowOpacity: 0.12,
-  },
-  groupHeaderSelected: {
-    backgroundColor: '#F3F1FF',
-    position: 'relative',
-  },
-  groupSelectionMarker: {
-    backgroundColor: '#7768EE',
-    borderRadius: 2,
-    bottom: 10,
-    left: 0,
-    position: 'absolute',
-    top: 10,
-    width: 3,
   },
 });
 

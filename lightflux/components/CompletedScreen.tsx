@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
-import { translations } from '../i18n/translations';
+import { translations } from '../content';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';

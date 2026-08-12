@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import { getMilestoneOccurrence } from '../../utils/milestoneDate';
 import { todayKey } from '../../utils/date';

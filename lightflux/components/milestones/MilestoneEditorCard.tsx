@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { inputAccentProps } from '../../config/input';
-import { Translation } from '../../i18n/translations';
+import { Translation } from '../../content';
 import {
   requestMilestoneNotificationPermission,
 } from '../../services/milestoneNotifications';

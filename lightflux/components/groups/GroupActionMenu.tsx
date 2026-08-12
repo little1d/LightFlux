@@ -7,7 +7,7 @@ import {
 } from 'react-native';
 
 import { inputAccentProps } from '../../config/input';
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import ActionButton from '../ui/ActionButton';
 import MenuItem from '../ui/MenuItem';

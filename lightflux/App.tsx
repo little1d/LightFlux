@@ -47,6 +47,10 @@ import {
 import Toast from './components/ui/Toast';
 import IconButton from './components/ui/IconButton';
 import Tooltip from './components/ui/Tooltip';
+import {
+  ConfirmationProvider,
+  useConfirmation,
+} from './components/ui/ConfirmationProvider';
 import { useCurrentDateKey } from './hooks/useCurrentDateKey';
 import {
   listenForTrayActions,
@@ -58,14 +62,13 @@ import {
   TodoProvider,
   useTodoStore,
 } from './store/todoStore';
-import { translations } from './i18n/translations';
+import { translations } from './content';
 import { isRemoteAuthConfigured } from './services/authApi';
 import {
   loadSessionState,
   saveSessionState,
 } from './services/sessionStorage';
 import { NavigationItemId } from './types/todo';
-import { requestConfirmation } from './utils/confirm';
 
 type AppView = NavigationItemId | 'settings' | 'statistics';
 type NavigationView = NavigationItemId;
@@ -195,6 +198,7 @@ const AccountTrigger = ({
 };
 
 const AppContent = () => {
+  const requestConfirmation = useConfirmation();
   const [activeView, setActiveView] = useState<AppView>('groups');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
@@ -459,14 +463,11 @@ const AppContent = () => {
     notifiedUpdateVersion.current = updateInfo.version;
     setToast({
       id: Date.now(),
-      message:
-        language === 'zh'
-          ? `新版本 ${updateInfo.version} 可用`
-          : `Version ${updateInfo.version} is available`,
+      message: labels.desktop.newVersionAvailable(updateInfo.version),
     });
   }, [
     desktopPreferences.updateReminder,
-    language,
+    labels.desktop,
     updateInfo,
     updateStatus,
   ]);
@@ -711,11 +712,9 @@ const AppContent = () => {
                       ? 'checkmark-circle'
                       : 'download-outline'
                   }
-                  label={
-                    language === 'zh'
-                      ? `更新到 ${updateInfo?.version ?? ''}`
-                      : `Update to ${updateInfo?.version ?? ''}`
-                  }
+                  label={labels.desktop.updateToVersion(
+                    updateInfo?.version ?? '',
+                  )}
                   onPress={() => setUpdateMenuOpen(true)}
                   size="large"
                   tooltipPosition="right"
@@ -1024,7 +1023,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <TodoProvider>
-        <AppContent />
+        <ConfirmationProvider>
+          <AppContent />
+        </ConfirmationProvider>
       </TodoProvider>
     </SafeAreaProvider>
   );

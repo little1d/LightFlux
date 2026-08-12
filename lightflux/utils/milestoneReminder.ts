@@ -1,3 +1,4 @@
+import { translations } from '../content';
 import { Language, Milestone } from '../types/todo';
 import { getUpcomingMilestoneOccurrences } from './milestoneDate';
 
@@ -14,14 +15,10 @@ export interface MilestoneReminderSchedule {
 }
 
 const reminderBody = (language: Language, offsetDays: number): string => {
-  if (language === 'zh') {
-    return offsetDays === 0
-      ? '今天就是这个重要节点'
-      : `还有 ${offsetDays} 天`;
-  }
+  const labels = translations[language].milestones;
   return offsetDays === 0
-    ? 'This milestone is today'
-    : `${offsetDays} days to go`;
+    ? labels.reminderToday
+    : labels.reminderInDays(offsetDays);
 };
 
 export const buildMilestoneReminderSchedules = (

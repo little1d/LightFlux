@@ -11,11 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
-import { translations } from '../i18n/translations';
+import { translations } from '../content';
 import { useTodoStore } from '../store/todoStore';
-import { requestConfirmation } from '../utils/confirm';
 import { fromDateKey } from '../utils/date';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
+import { useConfirmation } from './ui/ConfirmationProvider';
 
 const TrashScreen = ({
   onPreviewTask,
@@ -24,6 +24,7 @@ const TrashScreen = ({
   onPreviewTask: (id: string) => void;
   selectedTaskId: string | null;
 }) => {
+  const requestConfirmation = useConfirmation();
   const {
     language,
     trashedTodos,

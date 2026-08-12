@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { translations } from '../i18n/translations';
+import { translations } from '../content';
 import { useTodoStore } from '../store/todoStore';
 import {
   beginWechatLogin,

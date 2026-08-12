@@ -1,0 +1,22 @@
+import type { Translation } from '../../types';
+export const groups: Translation['groups'] = {
+  title: 'Task groups',
+  ungrouped: 'Ungrouped',
+  addGroup: 'New group',
+  groupPlaceholder: 'Group name',
+  taskPlaceholder: 'Add a task to this group…',
+  addTaskTitle: 'Add main task',
+  cancelTask: 'Cancel',
+  reorderTask: 'Drag to reorder task',
+  addGroupAbove: 'Add group above',
+  addGroupBelow: 'Add group below',
+  renameGroup: 'Rename',
+  deleteGroup: 'Delete group',
+  confirmAdd: 'Add',
+  confirmRename: 'Save',
+  deleteGroupTitle: 'Delete this group?',
+  deleteGroupMessage: 'Tasks in this group will move to Ungrouped and will not be deleted.',
+  count: (count) => `${count} ${count === 1 ? 'task' : 'tasks'}`,
+  expand: 'Expand group',
+  collapse: 'Collapse group',
+};

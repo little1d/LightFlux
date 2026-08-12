@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React from 'react';
 import { Text, View } from 'react-native';
 
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface, { MenuSurfacePosition } from '../ui/MenuSurface';

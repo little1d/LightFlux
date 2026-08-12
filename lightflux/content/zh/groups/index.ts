@@ -1,0 +1,22 @@
+import type { Translation } from '../../types';
+export const groups: Translation['groups'] = {
+  title: '任务分组',
+  ungrouped: '未分组',
+  addGroup: '新建分组',
+  groupPlaceholder: '分组名称',
+  taskPlaceholder: '添加任务到此分组…',
+  addTaskTitle: '添加主任务',
+  cancelTask: '取消',
+  reorderTask: '拖拽排序任务',
+  addGroupAbove: '在上方添加分组',
+  addGroupBelow: '在下方添加分组',
+  renameGroup: '重命名',
+  deleteGroup: '删除分组',
+  confirmAdd: '添加',
+  confirmRename: '保存',
+  deleteGroupTitle: '删除这个分组？',
+  deleteGroupMessage: '分组内的任务会移至“未分组”，任务不会被删除。',
+  count: (count) => `${count} 项`,
+  expand: '展开分组',
+  collapse: '收起分组',
+};

@@ -1,0 +1,50 @@
+import type { Translation } from '../../types';
+type TodayContent = Pick<Translation, 'overview' | 'remaining' | 'taskUnit' | 'progress' | 'inputPlaceholder' | 'addTask' | 'filters' | 'clearCompleted' | 'emptyTitle' | 'emptyDescription' | 'deleteTask' | 'deleteTitle' | 'deleteMessage' | 'clearTitle' | 'clearMessage' | 'markComplete' | 'markActive' | 'taskMenu'>;
+export const today: TodayContent = {
+  overview: 'TODAY AT A GLANCE',
+  remaining: 'Remaining',
+  taskUnit: 'tasks',
+  progress: (completed, total) => total === 0 ? 'Add your first task to get started' : `${completed} of ${total} completed`,
+  inputPlaceholder: 'What needs to be done?',
+  addTask: 'Add task',
+  filters: {
+    all: 'All',
+    active: 'Active',
+    completed: 'Completed',
+  },
+  clearCompleted: 'Clear completed',
+  emptyTitle: {
+    all: 'Your list is clear',
+    active: 'Nothing left to do',
+    completed: 'No completed tasks yet',
+  },
+  emptyDescription: {
+    all: 'Start small. Add one thing you want to finish.',
+    active: 'Everything is done. Take a well-earned break.',
+    completed: 'Finished tasks will show up here.',
+  },
+  deleteTask: 'Delete task',
+  deleteTitle: 'Delete this task?',
+  deleteMessage: 'This action cannot be undone.',
+  clearTitle: 'Clear completed tasks?',
+  clearMessage: 'All completed tasks will move to trash and can be restored.',
+  markComplete: 'Mark as completed',
+  markActive: 'Mark as active',
+  taskMenu: {
+    addSubtask: 'Add subtask',
+    rename: 'Rename',
+    priority: 'Priority',
+    priorityOptions: {
+      none: 'No priority',
+      high: 'High priority',
+      medium: 'Medium priority',
+      low: 'Low priority',
+    },
+    subtaskPlaceholder: 'Subtask name…',
+    createSubtask: 'Create',
+    moveToGroup: 'Move to group',
+    backToActions: 'Back to task actions',
+    moveToTrash: 'Move to trash',
+    moreActions: 'More task actions',
+  },
+};

@@ -1,0 +1,48 @@
+import type { Translation } from '../../types';
+type CommonContent = Pick<Translation, 'appName' | 'tagline' | 'navigation' | 'search' | 'account' | 'signedOut' | 'notifications' | 'cancel' | 'delete' | 'clear'>;
+export const common: CommonContent = {
+  appName: 'LightFlux',
+  tagline: 'Make space for what matters',
+  navigation: {
+    today: 'Today',
+    completed: 'Completed',
+    calendar: 'Calendar',
+    milestones: 'Milestones',
+    groups: 'Groups',
+    trash: 'Trash',
+  },
+  search: {
+    title: 'Search tasks',
+    placeholder: 'Type a keyword…',
+    clear: 'Clear search',
+    close: 'Close search',
+    tasks: 'Tasks',
+    shortcut: 'Esc to close · Enter to open task',
+    resultCount: (count) => `${count} ${count === 1 ? 'result' : 'results'}`,
+    idleTitle: 'Find your tasks',
+    idleDescription: 'Search by title, task details, or group name.',
+    emptyTitle: 'No tasks found',
+    emptyDescription: 'Try another keyword or check whether the task is in trash.',
+  },
+  account: {
+    localAccount: 'Local account',
+    settings: 'Settings',
+    signOut: 'Sign out',
+    signOutTitle: 'Sign out of this session?',
+    signOutMessage: 'Your tasks will remain on this device and will be available when you return.',
+  },
+  signedOut: {
+    title: 'You are signed out',
+    description: 'Your local tasks are still safely stored on this device.',
+    continue: 'Return to LightFlux',
+    wechat: 'Continue with WeChat',
+    wechatError: 'Unable to start WeChat login. Check the auth service configuration.',
+  },
+  notifications: {
+    orderUpdated: 'Order updated.',
+    saveFailed: 'Save failed. Local data is preserved; try again later.',
+  },
+  cancel: 'Cancel',
+  delete: 'Delete',
+  clear: 'Clear',
+};

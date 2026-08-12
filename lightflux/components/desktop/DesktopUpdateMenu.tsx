@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
+import { translations } from '../../content';
 import { useDesktopStore } from '../../store/desktopStore';
 import { Language } from '../../types/todo';
 import ActionButton from '../ui/ActionButton';
@@ -37,30 +38,22 @@ const DesktopUpdateMenu = ({
       updateStatus: state.updateStatus,
     })),
   );
-  const chinese = language === 'zh';
+  const labels = translations[language].desktop.updateMenu;
   const required = updateInfo?.required === true;
   const progress =
     updateProgress === null ? null : Math.round(updateProgress * 100);
   const title =
     updateStatus === 'ready'
-      ? chinese
-        ? '更新已准备好'
-        : 'Update ready'
+      ? labels.ready
       : updateStatus === 'downloading'
-        ? chinese
-          ? '正在下载更新'
-          : 'Downloading update'
+        ? labels.downloading
         : updateStatus === 'error'
-          ? chinese
-            ? '更新失败'
-            : 'Update failed'
-          : chinese
-            ? `LightFlux ${updateInfo?.version ?? ''} 可用`
-            : `LightFlux ${updateInfo?.version ?? ''} is available`;
+          ? labels.failed
+          : labels.available(updateInfo?.version ?? '');
 
   return (
     <MenuSurface
-      closeLabel={chinese ? '关闭更新信息' : 'Close update details'}
+      closeLabel={labels.close}
       estimatedHeight={260}
       onClose={required ? () => undefined : onClose}
       position={position}
@@ -84,28 +77,18 @@ const DesktopUpdateMenu = ({
           <View style={styles.heading}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.meta}>
-              {required
-                ? chinese
-                  ? '必要更新'
-                  : 'Required update'
-                : chinese
-                  ? '稳定版本'
-                  : 'Stable release'}
+              {required ? labels.required : labels.stable}
             </Text>
           </View>
         </View>
 
         {updateStatus === 'error' ? (
           <Text style={styles.error} numberOfLines={3}>
-            {updateError ||
-              (chinese ? '请稍后重试。' : 'Please try again later.')}
+            {updateError || labels.tryAgain}
           </Text>
         ) : (
           <Text style={styles.body} numberOfLines={4}>
-            {updateInfo?.body ||
-              (chinese
-                ? '包含功能改进与稳定性修复。'
-                : 'Includes improvements and stability fixes.')}
+            {updateInfo?.body || labels.fallbackBody}
           </Text>
         )}
 
@@ -123,7 +106,7 @@ const DesktopUpdateMenu = ({
         <View style={styles.actions}>
           {!required && updateStatus !== 'ready' ? (
             <ActionButton
-              label={chinese ? '稍后' : 'Later'}
+              label={labels.later}
               onPress={onClose}
               size="small"
               variant="ghost"
@@ -131,25 +114,19 @@ const DesktopUpdateMenu = ({
           ) : null}
           {updateStatus === 'available' || updateStatus === 'error' ? (
             <ActionButton
-              label={chinese ? '下载更新' : 'Download update'}
+              label={labels.download}
               onPress={() => void downloadUpdate()}
               size="small"
             />
           ) : null}
           {updateStatus === 'downloading' ? (
             <Text style={styles.progressText}>
-              {progress === null
-                ? chinese
-                  ? '正在下载…'
-                  : 'Downloading…'
-                : `${progress}%`}
+              {progress === null ? labels.downloadingProgress : `${progress}%`}
             </Text>
           ) : null}
           {updateStatus === 'ready' ? (
             <ActionButton
-              label={
-                chinese ? '重启并完成更新' : 'Restart and finish update'
-              }
+              label={labels.restart}
               onPress={() => void onRelaunch()}
               size="small"
             />

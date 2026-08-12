@@ -14,7 +14,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
-import { translations } from '../i18n/translations';
+import { translations } from '../content';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Language, Todo } from '../types/todo';

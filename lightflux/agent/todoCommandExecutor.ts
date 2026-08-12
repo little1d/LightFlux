@@ -11,6 +11,12 @@ import {
 import { Todo, TodoGroup, TodoPriority } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 import {
+  byTodoOrder,
+  collectTodoFamily,
+  restoreTodoBranch,
+  todoState,
+} from '../store/todoDomain';
+import {
   applyMilestoneOperation,
   isMilestoneOperation,
   milestoneOperationRisk,
@@ -37,103 +43,7 @@ const RISK_RANK: Record<AgentRisk, number> = {
   high: 2,
 };
 
-const byTodoOrder = (a: Todo, b: Todo) =>
-  a.sortOrder - b.sortOrder || b.createdAt - a.createdAt;
-
-const collectTodoFamily = (
-  todos: Todo[],
-  rootIds: string[],
-): Set<string> => {
-  const result = new Set(rootIds);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    todos.forEach((todo) => {
-      if (todo.parentId && result.has(todo.parentId) && !result.has(todo.id)) {
-        result.add(todo.id);
-        changed = true;
-      }
-    });
-  }
-  return result;
-};
-
-const orderWithSubtasks = (
-  todos: Todo[],
-  compare: (a: Todo, b: Todo) => number = byTodoOrder,
-): Todo[] => {
-  const ids = new Set(todos.map((todo) => todo.id));
-  const children = new Map<string, Todo[]>();
-  todos.forEach((todo) => {
-    if (todo.parentId && ids.has(todo.parentId)) {
-      const current = children.get(todo.parentId) ?? [];
-      current.push(todo);
-      children.set(todo.parentId, current);
-    }
-  });
-  const result: Todo[] = [];
-  const visited = new Set<string>();
-  const append = (todo: Todo) => {
-    if (visited.has(todo.id)) {
-      return;
-    }
-    visited.add(todo.id);
-    result.push(todo);
-    children.get(todo.id)?.sort(compare).forEach(append);
-  };
-  todos
-    .filter((todo) => !todo.parentId || !ids.has(todo.parentId))
-    .sort(compare)
-    .forEach(append);
-  todos
-    .filter((todo) => !visited.has(todo.id))
-    .sort(compare)
-    .forEach(append);
-  return result;
-};
-
-export const deriveTodoCommandCollections = (allTodos: Todo[]) => ({
-  allTodos,
-  todos: orderWithSubtasks(
-    allTodos.filter((todo) => todo.trashedAt === null),
-  ),
-  trashedTodos: orderWithSubtasks(
-    allTodos.filter((todo) => todo.trashedAt !== null),
-    (a, b) =>
-      (b.trashedAt ?? 0) - (a.trashedAt ?? 0) || byTodoOrder(a, b),
-  ),
-});
-
-const restoreTodoBranch = (
-  todos: Todo[],
-  id: string,
-  timestamp: number,
-): Todo[] => {
-  const trashedTodos = todos.filter((todo) => todo.trashedAt !== null);
-  const root = trashedTodos.find((todo) => todo.id === id);
-  if (!root) {
-    return todos;
-  }
-  const idsToRestore = collectTodoFamily(trashedTodos, [id]);
-  const parentWillBeActive =
-    !root.parentId ||
-    todos.some(
-      (todo) =>
-        todo.id === root.parentId &&
-        (todo.trashedAt === null || idsToRestore.has(todo.id)),
-    );
-  return todos.map((todo) =>
-    idsToRestore.has(todo.id)
-      ? {
-          ...todo,
-          parentId:
-            todo.id === id && !parentWillBeActive ? null : todo.parentId,
-          trashedAt: null,
-          updatedAt: timestamp,
-        }
-      : todo,
-  );
-};
+export const deriveTodoCommandCollections = todoState;
 
 const hasOwn = <T extends object>(value: T, key: PropertyKey) =>
   Object.prototype.hasOwnProperty.call(value, key);

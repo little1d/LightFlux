@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { Translation } from '../../i18n/translations';
+import { Translation } from '../../content';
 import { Milestone } from '../../types/todo';
 import { MilestoneOccurrence } from '../../utils/milestoneDate';
 import IconButton from '../ui/IconButton';

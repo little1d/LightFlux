@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { ComponentProps } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { Translation } from '../../i18n/translations';
+import { Translation } from '../../content';
 import { Language, Todo } from '../../types/todo';
 import { fromDateKey } from '../../utils/date';
 

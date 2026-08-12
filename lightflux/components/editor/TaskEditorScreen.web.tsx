@@ -19,7 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import {
   ImageUploadError,
   ImageUploadErrorCode,

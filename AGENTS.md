@@ -117,3 +117,8 @@ Use this format:
 - Rule: The behavior future agents must preserve.
 - Evidence: Source paths and checks that proved the rule.
 ```
+
+### 2026-08-12 - Destructive confirmation boundary
+- Context: Permanent trash deletion and group deletion silently did nothing in desktop WebView builds because `globalThis.confirm` was unavailable.
+- Rule: Route destructive actions through the shared in-app confirmation provider; never depend on browser-native `confirm()` for Web or Tauri behavior.
+- Evidence: `lightflux/components/ui/ConfirmationProvider.tsx`; verified delete-group, permanent-delete, cancel, reload, and empty-trash confirmation workflows.

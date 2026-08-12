@@ -11,7 +11,7 @@ import {
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
 import ActionButton from '../ui/ActionButton';

@@ -1,0 +1,50 @@
+import type { Translation } from '../../types';
+type TodayContent = Pick<Translation, 'overview' | 'remaining' | 'taskUnit' | 'progress' | 'inputPlaceholder' | 'addTask' | 'filters' | 'clearCompleted' | 'emptyTitle' | 'emptyDescription' | 'deleteTask' | 'deleteTitle' | 'deleteMessage' | 'clearTitle' | 'clearMessage' | 'markComplete' | 'markActive' | 'taskMenu'>;
+export const today: TodayContent = {
+  overview: '今日概览',
+  remaining: '待完成',
+  taskUnit: '项任务',
+  progress: (completed, total) => total === 0 ? '添加第一项任务，开始今天' : `已完成 ${completed} / ${total}`,
+  inputPlaceholder: '写下要完成的事情…',
+  addTask: '添加任务',
+  filters: {
+    all: '全部',
+    active: '待办',
+    completed: '已完成',
+  },
+  clearCompleted: '清除已完成',
+  emptyTitle: {
+    all: '清单还是空的',
+    active: '待办任务已清空',
+    completed: '还没有已完成的任务',
+  },
+  emptyDescription: {
+    all: '从一件小事开始，让计划慢慢发生。',
+    active: '做得不错，可以放松一下了。',
+    completed: '完成任务后，它们会出现在这里。',
+  },
+  deleteTask: '删除任务',
+  deleteTitle: '删除这项任务？',
+  deleteMessage: '删除后无法恢复。',
+  clearTitle: '清除已完成任务？',
+  clearMessage: '所有已完成的任务都会移至垃圾桶，可随时恢复。',
+  markComplete: '标记为已完成',
+  markActive: '标记为待办',
+  taskMenu: {
+    addSubtask: '添加子任务',
+    rename: '重命名',
+    priority: '优先级',
+    priorityOptions: {
+      none: '无优先级',
+      high: '高优先级',
+      medium: '中优先级',
+      low: '低优先级',
+    },
+    subtaskPlaceholder: '输入子任务名称…',
+    createSubtask: '创建',
+    moveToGroup: '移动到分组',
+    backToActions: '返回任务操作',
+    moveToTrash: '移至垃圾桶',
+    moreActions: '更多任务操作',
+  },
+};

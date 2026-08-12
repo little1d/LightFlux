@@ -20,7 +20,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
 import { editorHtml } from '../../editor-web/build/editorHtml';
-import { translations } from '../../i18n/translations';
+import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import { RichTextDocument } from '../../types/todo';
 import { richTextPreview } from '../../utils/richText';

@@ -218,6 +218,33 @@ describe('agent task commands', () => {
     );
   });
 
+  it('requires medium risk for task rescheduling through update', () => {
+    const source = createTodoCommandState([todo('task')], [], null);
+    const operation: AgentOperation = {
+      ...operationBase('reschedule'),
+      type: 'task.update',
+      taskId: 'task',
+      changes: { scheduledDate: '2026-08-11' },
+    };
+
+    expectCommandError(
+      () =>
+        executeAgentProposal(
+          source,
+          proposal([operation], source.revision, { risk: 'low' }),
+          { confirmed: true, now: 100 },
+        ),
+      'risk-understated',
+    );
+    expect(
+      executeAgentProposal(
+        source,
+        proposal([operation], source.revision, { risk: 'medium' }),
+        { confirmed: true, now: 100 },
+      ).state.todos[0].scheduledDate,
+    ).toBe('2026-08-11');
+  });
+
   it('keeps the source unchanged when a later operation fails', () => {
     const source = createTodoCommandState([todo('existing')], [], null);
     const snapshot = JSON.stringify(source);

@@ -5,11 +5,14 @@ import {
   undoAgentExecution,
 } from './todoCommandExecutor';
 import {
+  AgentAuditRecord,
+  AgentConversationTurn,
   AgentExecutionResult,
-  AgentOperationResult,
+  AgentOperationPreview,
   AgentProposal,
-  AgentRisk,
+  AgentProposalPreview,
   AgentUndoToken,
+  PersistedAgentRuntime,
 } from './types';
 import { useTodoStore } from '../store/todoStore';
 import {
@@ -20,8 +23,16 @@ import {
 } from '../types/todo';
 import { milestoneState } from '../store/milestoneDomain';
 import { deriveTaskEventsFromTodoDiff } from '../store/taskEventDomain';
+import { toDateKey } from '../utils/date';
+import {
+  loadAgentRuntime,
+  saveAgentRuntime,
+} from '../services/agentRuntimeStorage';
 
 const MAX_AUDIT_RECORDS = 100;
+const MAX_REMOTE_TASKS = 160;
+const MAX_REMOTE_GROUPS = 80;
+const MAX_REMOTE_MILESTONES = 80;
 
 export interface AgentTaskContext {
   id: string;
@@ -62,6 +73,19 @@ export interface AgentContextSnapshot {
   tasks: AgentTaskContext[];
   groups: AgentGroupContext[];
   milestones: AgentMilestoneContext[];
+  scope: {
+    totalTasks: number;
+    includedTasks: number;
+    tasksTruncated: boolean;
+    totalGroups: number;
+    includedGroups: number;
+    groupsTruncated: boolean;
+    totalMilestones: number;
+    includedMilestones: number;
+    milestonesTruncated: boolean;
+    includesTrashed: boolean;
+    milestoneNotesIncluded: boolean;
+  };
 }
 
 export interface AgentTaskSearchInput {
@@ -85,20 +109,97 @@ export interface AgentMilestoneSearchInput {
   limit?: number;
 }
 
-export interface AgentAuditRecord {
-  proposalId: string;
-  summary: string;
-  risk: AgentRisk;
-  executedAt: number;
-  beforeRevision: number;
-  afterRevision: number;
-  operations: AgentOperationResult[];
-  undoneAt: number | null;
-}
-
 let lastUndoToken: AgentUndoToken | null = null;
 let lastUndoTaskEvents: TaskEvent[] | null = null;
 let auditRecords: AgentAuditRecord[] = [];
+let conversationId: string | null = null;
+let conversationTurns: AgentConversationTurn[] = [];
+let runtimeHydrated = false;
+let runtimeHydration: Promise<void> | null = null;
+let runtimeSaveQueue = Promise.resolve();
+
+const cloneJson = <T,>(value: T): T =>
+  JSON.parse(JSON.stringify(value)) as T;
+
+const runtimeSnapshot = (): PersistedAgentRuntime => ({
+  schemaVersion: 1,
+  conversationId,
+  turns: cloneJson(conversationTurns),
+  auditRecords: cloneJson(auditRecords),
+  undoToken: lastUndoToken ? cloneJson(lastUndoToken) : null,
+  undoTaskEvents: lastUndoTaskEvents
+    ? cloneJson(lastUndoTaskEvents)
+    : null,
+});
+
+const persistRuntime = () => {
+  const snapshot = runtimeSnapshot();
+  runtimeSaveQueue = runtimeSaveQueue.then(
+    () => saveAgentRuntime(snapshot),
+    () => saveAgentRuntime(snapshot),
+  );
+  void runtimeSaveQueue.catch((error: unknown) => {
+    console.warn('Unable to persist AI Agent history.', error);
+  });
+};
+
+export const hydrateAgentRuntime = async (): Promise<void> => {
+  if (runtimeHydrated) {
+    return;
+  }
+  if (!runtimeHydration) {
+    runtimeHydration = loadAgentRuntime()
+      .then((runtime) => {
+        conversationId = runtime.conversationId;
+        conversationTurns = cloneJson(runtime.turns);
+        auditRecords = cloneJson(runtime.auditRecords);
+        lastUndoToken = runtime.undoToken
+          ? cloneJson(runtime.undoToken)
+          : null;
+        lastUndoTaskEvents = runtime.undoTaskEvents
+          ? cloneJson(runtime.undoTaskEvents)
+          : null;
+        runtimeHydrated = true;
+      })
+      .catch((error: unknown) => {
+        console.warn('Unable to load AI Agent history.', error);
+        runtimeHydrated = true;
+      })
+      .finally(() => {
+        runtimeHydration = null;
+      });
+  }
+  await runtimeHydration;
+};
+
+export const getAgentConversationState = () => ({
+  conversationId,
+  turns: cloneJson(conversationTurns),
+});
+
+export const setAgentConversationId = (value: string) => {
+  conversationId = value;
+  persistRuntime();
+};
+
+export const appendAgentConversationTurn = (
+  turn: AgentConversationTurn,
+) => {
+  conversationTurns = [...conversationTurns, cloneJson(turn)].slice(-100);
+  persistRuntime();
+};
+
+export const updateAgentProposalStatus = (
+  proposalId: string,
+  status: NonNullable<AgentConversationTurn['proposalStatus']>,
+) => {
+  conversationTurns = conversationTurns.map((turn) =>
+    turn.proposal?.id === proposalId
+      ? { ...turn, proposalStatus: status }
+      : turn,
+  );
+  persistRuntime();
+};
 
 const currentCommandState = () => {
   const state = useTodoStore.getState();
@@ -123,42 +224,652 @@ const applyCommandState = (
   });
 };
 
+const previewText = (value: string) =>
+  value.length > 120 ? `${value.slice(0, 117)}...` : value;
+
+const dateRulePreview = (rule: MilestoneDateRule) =>
+  rule.calendar === 'solar'
+    ? `solar:${rule.year ?? '*'}-${rule.month}-${rule.day}:${rule.leapDayPolicy}`
+    : `lunar:${rule.year ?? '*'}-${rule.month}-${rule.day}:${rule.isLeapMonth ? 'leap' : 'regular'}:${rule.missingLeapMonthPolicy}`;
+
+const remindersPreview = (offsets: number[]) => offsets.join(',');
+
+const groupPreview = (
+  state: ReturnType<typeof currentCommandState>,
+  groupId: string | null,
+) =>
+  groupId === null
+    ? state.ungroupedName
+    : (state.groups.find((group) => group.id === groupId)?.name ?? groupId);
+
+const parentPreview = (
+  state: ReturnType<typeof currentCommandState>,
+  parentId: string | null,
+) =>
+  parentId === null
+    ? null
+    : (state.todos.find((todo) => todo.id === parentId)?.title ?? parentId);
+
+const operationPreview = (
+  source: ReturnType<typeof currentCommandState>,
+  result: AgentExecutionResult,
+  operation: AgentProposal['operations'][number],
+  index: number,
+): AgentOperationPreview => {
+  const operationResult = result.operations[index];
+  const beforeTask =
+    'taskId' in operation
+      ? source.todos.find((todo) => todo.id === operation.taskId)
+      : undefined;
+  const afterTask =
+    'taskId' in operation
+      ? result.state.todos.find((todo) => todo.id === operation.taskId)
+      : undefined;
+  const beforeMilestone =
+    'milestoneId' in operation
+      ? source.milestones.find(
+          (milestone) => milestone.id === operation.milestoneId,
+        )
+      : undefined;
+  const afterMilestone =
+    'milestoneId' in operation
+      ? result.state.milestones.find(
+          (milestone) => milestone.id === operation.milestoneId,
+        )
+      : undefined;
+  const changes: AgentOperationPreview['changes'] = [];
+  const addChange = (
+    field: AgentOperationPreview['changes'][number]['field'],
+    before: AgentOperationPreview['changes'][number]['before'],
+    after: AgentOperationPreview['changes'][number]['after'],
+  ) => {
+    if (before !== after) {
+      changes.push({ field, before, after });
+    }
+  };
+
+  switch (operation.type) {
+    case 'task.create':
+      addChange('title', null, operation.title);
+      addChange('scheduledDate', null, operation.scheduledDate);
+      addChange('priority', null, operation.priority ?? 'none');
+      addChange(
+        'group',
+        null,
+        groupPreview(result.state, afterTask?.groupId ?? null),
+      );
+      addChange(
+        'parent',
+        null,
+        parentPreview(result.state, afterTask?.parentId ?? null),
+      );
+      break;
+    case 'task.update':
+      if (operation.changes.title !== undefined) {
+        addChange('title', beforeTask?.title ?? null, operation.changes.title);
+      }
+      if (operation.changes.scheduledDate !== undefined) {
+        addChange(
+          'scheduledDate',
+          beforeTask?.scheduledDate ?? null,
+          operation.changes.scheduledDate,
+        );
+      }
+      if (operation.changes.priority !== undefined) {
+        addChange(
+          'priority',
+          beforeTask?.priority ?? null,
+          operation.changes.priority,
+        );
+      }
+      break;
+    case 'task.set_completion':
+      addChange(
+        'completed',
+        beforeTask?.completed ?? null,
+        operation.completed,
+      );
+      break;
+    case 'task.move':
+      addChange(
+        'scheduledDate',
+        beforeTask?.scheduledDate ?? null,
+        afterTask?.scheduledDate ?? null,
+      );
+      addChange(
+        'group',
+        groupPreview(source, beforeTask?.groupId ?? null),
+        groupPreview(result.state, afterTask?.groupId ?? null),
+      );
+      addChange(
+        'parent',
+        parentPreview(source, beforeTask?.parentId ?? null),
+        parentPreview(result.state, afterTask?.parentId ?? null),
+      );
+      if (operation.beforeTaskId || operation.afterTaskId) {
+        const anchorId = operation.beforeTaskId ?? operation.afterTaskId ?? '';
+        const anchor =
+          result.state.todos.find((todo) => todo.id === anchorId)?.title ??
+          anchorId;
+        addChange(
+          'position',
+          null,
+          `${operation.beforeTaskId ? 'before' : 'after'}:${anchor}`,
+        );
+      }
+      break;
+    case 'task.trash':
+      addChange('trashed', false, true);
+      break;
+    case 'task.restore':
+      addChange('trashed', true, false);
+      break;
+    case 'group.create': {
+      const group = result.state.groups.find(
+        (item) => item.id === operation.groupId,
+      );
+      addChange('title', null, group?.name ?? operation.name);
+      addChange('color', null, group?.color ?? operation.color ?? null);
+      break;
+    }
+    case 'group.update': {
+      const before =
+        operation.groupId === null
+          ? source.ungroupedName
+          : source.groups.find((group) => group.id === operation.groupId)?.name;
+      addChange('title', before ?? null, operation.name);
+      break;
+    }
+    case 'milestone.create':
+      addChange('title', null, operation.title);
+      addChange('type', null, operation.milestoneType);
+      addChange('dateRule', null, dateRulePreview(operation.dateRule));
+      addChange('startYear', null, operation.startYear ?? null);
+      addChange(
+        'reminders',
+        null,
+        remindersPreview(operation.reminderOffsets ?? []),
+      );
+      if (operation.notes) {
+        addChange('notes', null, previewText(operation.notes));
+      }
+      addChange('pinned', null, operation.pinned ?? false);
+      break;
+    case 'milestone.update':
+      if (operation.changes.title !== undefined) {
+        addChange(
+          'title',
+          beforeMilestone?.title ?? null,
+          operation.changes.title,
+        );
+      }
+      if (operation.changes.type !== undefined) {
+        addChange(
+          'type',
+          beforeMilestone?.type ?? null,
+          operation.changes.type,
+        );
+      }
+      if (operation.changes.dateRule !== undefined) {
+        addChange(
+          'dateRule',
+          beforeMilestone
+            ? dateRulePreview(beforeMilestone.dateRule)
+            : null,
+          dateRulePreview(operation.changes.dateRule),
+        );
+      }
+      if (operation.changes.startYear !== undefined) {
+        addChange(
+          'startYear',
+          beforeMilestone?.startYear ?? null,
+          operation.changes.startYear,
+        );
+      }
+      if (operation.changes.reminderOffsets !== undefined) {
+        addChange(
+          'reminders',
+          remindersPreview(beforeMilestone?.reminderOffsets ?? []),
+          remindersPreview(operation.changes.reminderOffsets),
+        );
+      }
+      if (operation.changes.notes !== undefined) {
+        addChange(
+          'notes',
+          previewText(beforeMilestone?.notes ?? ''),
+          previewText(operation.changes.notes),
+        );
+      }
+      if (operation.changes.icon !== undefined) {
+        addChange(
+          'icon',
+          beforeMilestone?.icon ?? null,
+          operation.changes.icon,
+        );
+      }
+      if (operation.changes.color !== undefined) {
+        addChange(
+          'color',
+          beforeMilestone?.color ?? null,
+          operation.changes.color,
+        );
+      }
+      if (operation.changes.pinned !== undefined) {
+        addChange(
+          'pinned',
+          beforeMilestone?.pinned ?? null,
+          operation.changes.pinned,
+        );
+      }
+      break;
+    case 'milestone.archive':
+      addChange(
+        'archived',
+        (beforeMilestone?.archivedAt ?? null) !== null,
+        true,
+      );
+      break;
+    case 'milestone.unarchive':
+      addChange(
+        'archived',
+        (beforeMilestone?.archivedAt ?? null) !== null,
+        false,
+      );
+      break;
+    case 'milestone.restore':
+      addChange('trashed', true, false);
+      break;
+    case 'milestone.trash':
+      addChange('trashed', false, true);
+      break;
+  }
+
+  return {
+    operationId: operation.operationId,
+    type: operation.type,
+    target:
+      afterTask?.title ??
+      beforeTask?.title ??
+      afterMilestone?.title ??
+      beforeMilestone?.title ??
+      ('name' in operation ? operation.name : ''),
+    changes,
+    affectedIds: [...operationResult.affectedIds],
+  };
+};
+
+export const previewAgentProposal = (
+  proposal: AgentProposal,
+  now = Date.now(),
+): AgentProposalPreview => {
+  const source = currentCommandState();
+  const result = executeAgentProposal(source, proposal, {
+    confirmed: true,
+    now,
+  });
+  return {
+    proposalId: proposal.id,
+    operations: proposal.operations.map((operation, index) =>
+      operationPreview(source, result, operation, index),
+    ),
+  };
+};
+
 export const getAgentContextSnapshot = (): AgentContextSnapshot => {
   const state = useTodoStore.getState();
   const commandState = currentCommandState();
+  const tasks = state.allTodos.map((todo) => ({
+    id: todo.id,
+    title: todo.title,
+    completed: todo.completed,
+    scheduledDate: todo.scheduledDate,
+    groupId: todo.groupId,
+    parentId: todo.parentId,
+    priority: todo.priority,
+    trashed: todo.trashedAt !== null,
+  }));
+  const groups = state.groups.map((group) => ({
+    id: group.id,
+    name: group.name,
+  }));
+  const milestones = state.allMilestones.map((milestone) => ({
+    id: milestone.id,
+    title: milestone.title,
+    type: milestone.type,
+    dateRule: { ...milestone.dateRule },
+    startYear: milestone.startYear,
+    reminderOffsets: [...milestone.reminderOffsets],
+    notes: milestone.notes,
+    icon: milestone.icon,
+    color: milestone.color,
+    pinned: milestone.pinned,
+    archived: milestone.archivedAt !== null,
+    trashed: milestone.trashedAt !== null,
+    revision: milestone.revision,
+  }));
   return {
     revision: commandState.revision,
     language: state.language,
     ungroupedName: state.ungroupedName,
-    tasks: state.allTodos.map((todo) => ({
-      id: todo.id,
-      title: todo.title,
-      completed: todo.completed,
-      scheduledDate: todo.scheduledDate,
-      groupId: todo.groupId,
-      parentId: todo.parentId,
-      priority: todo.priority,
-      trashed: todo.trashedAt !== null,
-    })),
-    groups: state.groups.map((group) => ({
-      id: group.id,
-      name: group.name,
-    })),
-    milestones: state.allMilestones.map((milestone) => ({
-      id: milestone.id,
-      title: milestone.title,
-      type: milestone.type,
-      dateRule: { ...milestone.dateRule },
-      startYear: milestone.startYear,
-      reminderOffsets: [...milestone.reminderOffsets],
-      notes: milestone.notes,
-      icon: milestone.icon,
-      color: milestone.color,
-      pinned: milestone.pinned,
-      archived: milestone.archivedAt !== null,
-      trashed: milestone.trashedAt !== null,
-      revision: milestone.revision,
-    })),
+    tasks,
+    groups,
+    milestones,
+    scope: {
+      totalTasks: tasks.length,
+      includedTasks: tasks.length,
+      tasksTruncated: false,
+      totalGroups: groups.length,
+      includedGroups: groups.length,
+      groupsTruncated: false,
+      totalMilestones: milestones.length,
+      includedMilestones: milestones.length,
+      milestonesTruncated: false,
+      includesTrashed: true,
+      milestoneNotesIncluded: true,
+    },
+  };
+};
+
+const messageIncludes = (message: string, values: string[]) =>
+  values.some((value) => message.includes(value));
+
+const textMatchScore = (message: string, rawValue: string) => {
+  const value = rawValue.trim().toLocaleLowerCase();
+  if (!value) {
+    return 0;
+  }
+  if (message.includes(value)) {
+    return 100;
+  }
+  const compact = value.replace(/[^\p{L}\p{N}]/gu, '');
+  if (compact.length < 2) {
+    return 0;
+  }
+  const parts = new Set<string>();
+  for (let index = 0; index < compact.length - 1; index += 1) {
+    parts.add(compact.slice(index, index + 2));
+  }
+  return Math.min(
+    60,
+    [...parts].filter((part) => message.includes(part)).length * 12,
+  );
+};
+
+const taskPriorityFromMessage = (message: string): TodoPriority | null => {
+  if (messageIncludes(message, ['高优先级', 'high priority'])) {
+    return 'high';
+  }
+  if (messageIncludes(message, ['中优先级', 'medium priority'])) {
+    return 'medium';
+  }
+  if (messageIncludes(message, ['低优先级', 'low priority'])) {
+    return 'low';
+  }
+  if (messageIncludes(message, ['无优先级', 'no priority'])) {
+    return 'none';
+  }
+  return null;
+};
+
+const selectedDateFromMessage = (message: string, now: Date) => {
+  const explicitDate = /\b\d{4}-\d{2}-\d{2}\b/.exec(message)?.[0];
+  if (explicitDate) {
+    return explicitDate;
+  }
+  const target = new Date(now);
+  if (messageIncludes(message, ['明天', 'tomorrow'])) {
+    target.setDate(target.getDate() + 1);
+    return toDateKey(target);
+  }
+  if (messageIncludes(message, ['后天', 'day after tomorrow'])) {
+    target.setDate(target.getDate() + 2);
+    return toDateKey(target);
+  }
+  return messageIncludes(message, ['今天', '今日', 'today'])
+    ? toDateKey(target)
+    : null;
+};
+
+const taskContextScore = (
+  task: AgentTaskContext,
+  message: string,
+  groupNames: Map<string, string>,
+  requestedDate: string | null,
+  requestedPriority: TodoPriority | null,
+  overdueRequested: boolean,
+  completedRequested: boolean | null,
+  today: string,
+) => {
+  let score = 0;
+  score += textMatchScore(message, task.title);
+  const groupName = task.groupId
+    ? groupNames.get(task.groupId)?.toLocaleLowerCase()
+    : undefined;
+  if (groupName && message.includes(groupName)) {
+    score += 40;
+  }
+  if (requestedDate) {
+    if (task.scheduledDate !== requestedDate) {
+      return -1;
+    }
+    score += 30;
+  }
+  if (overdueRequested) {
+    if (task.completed || task.scheduledDate >= today) {
+      return -1;
+    }
+    score += 30;
+  }
+  if (requestedPriority) {
+    if (task.priority !== requestedPriority) {
+      return -1;
+    }
+    score += 20;
+  }
+  if (completedRequested !== null) {
+    if (task.completed !== completedRequested) {
+      return -1;
+    }
+    score += 20;
+  }
+  return score;
+};
+
+export const getAgentContextForMessage = (
+  rawMessage: string,
+  now = new Date(),
+): AgentContextSnapshot => {
+  const context = getAgentContextSnapshot();
+  const message = rawMessage.trim().toLocaleLowerCase();
+  const requestedDate = selectedDateFromMessage(message, now);
+  const requestedPriority = taskPriorityFromMessage(message);
+  const overdueRequested = messageIncludes(message, [
+    '逾期',
+    '过期',
+    'overdue',
+  ]);
+  const trashedOnly = messageIncludes(message, [
+    '恢复',
+    '还原',
+    '垃圾桶里',
+    '垃圾桶中',
+    'restore',
+    'in trash',
+  ]);
+  const completedRequested = messageIncludes(message, [
+    '未完成',
+    '待办',
+    'incomplete',
+    'pending',
+  ])
+    ? false
+    : messageIncludes(message, ['已完成', '完成的', 'completed'])
+      ? true
+      : null;
+  const broadTaskRequest = messageIncludes(message, [
+    '所有任务',
+    '全部任务',
+    'all tasks',
+    '每个任务',
+  ]);
+  const existingTaskIntent = messageIncludes(message, [
+    '完成',
+    '改期',
+    '移动',
+    '优先级',
+    '删除',
+    '垃圾桶',
+    '恢复',
+    '还原',
+    '查找',
+    '哪些任务',
+    '什么任务',
+    'complete',
+    'reschedule',
+    'move',
+    'priority',
+    'trash',
+    'restore',
+    'find',
+    'which task',
+  ]);
+  const groupNames = new Map(
+    context.groups.map((group) => [group.id, group.name]),
+  );
+  const today = toDateKey(now);
+  const scoredTasks = context.tasks
+    .filter((task) => (trashedOnly ? task.trashed : !task.trashed))
+    .map((task) => ({
+      task,
+      score: taskContextScore(
+        task,
+        message,
+        groupNames,
+        requestedDate,
+        requestedPriority,
+        overdueRequested,
+        completedRequested,
+        today,
+      ),
+    }))
+    .filter(({ score }) => score >= 0);
+  const hasTaskFilter =
+    requestedDate !== null ||
+    requestedPriority !== null ||
+    overdueRequested ||
+    completedRequested !== null ||
+    trashedOnly;
+  let taskCandidates = scoredTasks.filter(({ score }) => score > 0);
+  if (
+    taskCandidates.length === 0 &&
+    (hasTaskFilter || broadTaskRequest || existingTaskIntent)
+  ) {
+    taskCandidates = scoredTasks;
+  }
+  taskCandidates.sort(
+    (a, b) =>
+      b.score - a.score ||
+      a.task.scheduledDate.localeCompare(b.task.scheduledDate) ||
+      a.task.title.localeCompare(b.task.title),
+  );
+  const selectedTaskIds = new Set(
+    taskCandidates
+      .slice(0, MAX_REMOTE_TASKS)
+      .map(({ task }) => task.id),
+  );
+  context.tasks.forEach((task) => {
+    if (
+      task.parentId &&
+      selectedTaskIds.has(task.id) &&
+      selectedTaskIds.size < MAX_REMOTE_TASKS
+    ) {
+      selectedTaskIds.add(task.parentId);
+    }
+  });
+  const tasks = context.tasks
+    .filter((task) => selectedTaskIds.has(task.id))
+    .slice(0, MAX_REMOTE_TASKS);
+
+  const selectedGroupIds = new Set(
+    tasks
+      .map((task) => task.groupId)
+      .filter((id): id is string => id !== null),
+  );
+  const groupIntent = messageIncludes(message, [
+    '分组',
+    '清单',
+    'group',
+    'list',
+  ]);
+  const groups = context.groups
+    .filter(
+      (group) =>
+        selectedGroupIds.has(group.id) ||
+        message.includes(group.name.toLocaleLowerCase()) ||
+        groupIntent,
+    )
+    .sort((a, b) => {
+      const aScore =
+        (selectedGroupIds.has(a.id) ? 2 : 0) +
+        (message.includes(a.name.toLocaleLowerCase()) ? 1 : 0);
+      const bScore =
+        (selectedGroupIds.has(b.id) ? 2 : 0) +
+        (message.includes(b.name.toLocaleLowerCase()) ? 1 : 0);
+      return bScore - aScore || a.name.localeCompare(b.name);
+    })
+    .slice(0, MAX_REMOTE_GROUPS);
+
+  const milestoneIntent = messageIncludes(message, [
+    '纪念日',
+    '倒数日',
+    '生日',
+    '节日',
+    '节点',
+    'milestone',
+    'anniversary',
+    'countdown',
+    'birthday',
+    'holiday',
+  ]);
+  const milestoneCandidates = context.milestones
+    .filter((milestone) => (trashedOnly ? milestone.trashed : !milestone.trashed))
+    .map((milestone) => {
+      return {
+        milestone,
+        score:
+          textMatchScore(message, milestone.title) +
+          Math.min(30, textMatchScore(message, milestone.notes)) +
+          (message.includes(milestone.type) ? 20 : 0),
+      };
+    })
+    .filter(({ score }) => score > 0 || milestoneIntent)
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        a.milestone.title.localeCompare(b.milestone.title),
+    );
+  const milestones = milestoneCandidates
+    .slice(0, MAX_REMOTE_MILESTONES)
+    .map(({ milestone }) => ({ ...milestone, notes: '' }));
+
+  return {
+    ...context,
+    tasks,
+    groups,
+    milestones,
+    scope: {
+      totalTasks: context.tasks.length,
+      includedTasks: tasks.length,
+      tasksTruncated: taskCandidates.length > tasks.length,
+      totalGroups: context.groups.length,
+      includedGroups: groups.length,
+      groupsTruncated: context.groups.length > groups.length,
+      totalMilestones: context.milestones.length,
+      includedMilestones: milestones.length,
+      milestonesTruncated: milestoneCandidates.length > milestones.length,
+      includesTrashed: trashedOnly,
+      milestoneNotesIncluded: false,
+    },
   };
 };
 
@@ -290,6 +1001,7 @@ export const executeConfirmedAgentProposal = (
       executedAt: now,
       beforeRevision: result.beforeRevision,
       afterRevision: result.afterRevision,
+      proposal: cloneJson(proposal),
       operations: result.operations.map((operation) => ({
         ...operation,
         affectedIds: [...operation.affectedIds],
@@ -297,6 +1009,12 @@ export const executeConfirmedAgentProposal = (
       undoneAt: null,
     },
   ].slice(-MAX_AUDIT_RECORDS);
+  conversationTurns = conversationTurns.map((turn) =>
+    turn.proposal?.id === proposal.id
+      ? { ...turn, proposalStatus: 'executed' }
+      : turn,
+  );
+  persistRuntime();
   return result;
 };
 
@@ -314,8 +1032,14 @@ export const undoLastAgentProposal = (
       ? { ...record, undoneAt: now }
       : record,
   );
+  conversationTurns = conversationTurns.map((turn) =>
+    turn.proposal?.id === token.proposalId
+      ? { ...turn, proposalStatus: 'undone' }
+      : turn,
+  );
   lastUndoToken = null;
   lastUndoTaskEvents = null;
+  persistRuntime();
   return true;
 };
 
@@ -323,18 +1047,15 @@ export const canUndoLastAgentProposal = (): boolean =>
   lastUndoToken !== null;
 
 export const getAgentAuditRecords = (): AgentAuditRecord[] =>
-  auditRecords.map((record) => ({
-    ...record,
-    operations: record.operations.map((operation) => ({
-      ...operation,
-      affectedIds: [...operation.affectedIds],
-    })),
-  }));
+  cloneJson(auditRecords);
 
 export const clearAgentRuntimeHistory = () => {
   lastUndoToken = null;
   lastUndoTaskEvents = null;
   auditRecords = [];
+  conversationId = null;
+  conversationTurns = [];
+  runtimeHydrated = true;
 };
 
 const hasOwn = <T extends object>(value: T, key: PropertyKey) =>

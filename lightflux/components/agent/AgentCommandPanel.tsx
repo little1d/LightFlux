@@ -14,12 +14,23 @@ import {
 } from 'react-native';
 
 import {
+  appendAgentConversationTurn,
   canUndoLastAgentProposal,
   executeConfirmedAgentProposal,
-  getAgentContextSnapshot,
+  getAgentConversationState,
+  hydrateAgentRuntime,
+  previewAgentProposal,
+  setAgentConversationId,
   undoLastAgentProposal,
+  updateAgentProposalStatus,
 } from '../../agent/todoCommandStoreAdapter';
-import { AgentOperation, AgentProposal } from '../../agent/types';
+import {
+  AgentConversationTurn,
+  AgentOperation,
+  AgentOperationPreview,
+  AgentPreviewValue,
+  AgentProposal,
+} from '../../agent/types';
 import { inputAccentProps } from '../../config/input';
 import { translations } from '../../i18n/translations';
 import {
@@ -52,6 +63,7 @@ const AgentCommandPanel = ({
   const [draft, setDraft] = useState('');
   const [response, setResponse] = useState<AgentTurnResponse | null>(null);
   const [proposal, setProposal] = useState<AgentProposal | null>(null);
+  const [turns, setTurns] = useState<AgentConversationTurn[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [undoAvailable, setUndoAvailable] = useState(
@@ -73,6 +85,63 @@ const AgentCommandPanel = ({
     }).start();
   }, [progress, visible]);
 
+  useEffect(() => {
+    if (!visible) {
+      return undefined;
+    }
+    let active = true;
+    void hydrateAgentRuntime().then(() => {
+      if (!active) {
+        return;
+      }
+      const runtime = getAgentConversationState();
+      setConversationId(runtime.conversationId ?? undefined);
+      setTurns(runtime.turns);
+      setProposal(null);
+      setResponse(null);
+      const latest = runtime.turns.at(-1);
+      if (
+        latest?.role === 'assistant' &&
+        latest.proposal &&
+        latest.proposalStatus === 'pending'
+      ) {
+        try {
+          const proposalPreview = previewAgentProposal(latest.proposal);
+          setProposal(latest.proposal);
+          setResponse({
+            conversationId: runtime.conversationId ?? '',
+            message: latest.message,
+            clarification: latest.clarification,
+            proposal: latest.proposal,
+            proposalPreview,
+          });
+        } catch {
+          updateAgentProposalStatus(latest.proposal.id, 'invalid');
+          setTurns((current) =>
+            current.map((turn) =>
+              turn.proposal?.id === latest.proposal?.id
+                ? { ...turn, proposalStatus: 'invalid' }
+                : turn,
+            ),
+          );
+        }
+      } else if (
+        latest?.role === 'assistant' &&
+        latest.clarification
+      ) {
+        setResponse({
+          conversationId: runtime.conversationId ?? '',
+          message: latest.message,
+          clarification: latest.clarification,
+        });
+      }
+      setUndoAvailable(canUndoLastAgentProposal());
+    });
+    return () => {
+      active = false;
+    };
+  }, [visible]);
+
   const closePanel = () => {
     requestController.current?.abort();
     requestController.current = null;
@@ -85,26 +154,69 @@ const AgentCommandPanel = ({
     if (!normalizedMessage || loading) {
       return;
     }
+    await hydrateAgentRuntime();
+    const activeConversationId =
+      conversationId ?? getAgentConversationState().conversationId ?? undefined;
+    if (proposal) {
+      updateAgentProposalStatus(proposal.id, 'rejected');
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.proposal?.id === proposal.id
+            ? { ...turn, proposalStatus: 'rejected' }
+            : turn,
+        ),
+      );
+    }
     setDraft('');
     setError('');
     setProposal(null);
     setLoading(true);
+    const createdAt = Date.now();
+    const userTurn: AgentConversationTurn = {
+      id: `user-${createdAt}-${Math.random().toString(36).slice(2, 8)}`,
+      role: 'user',
+      message: normalizedMessage,
+      createdAt,
+    };
+    appendAgentConversationTurn(userTurn);
+    setTurns((current) => [...current, userTurn].slice(-100));
     const controller = new AbortController();
     requestController.current = controller;
     try {
       const result = await submitAgentTurn({
-        conversationId,
+        conversationId: activeConversationId,
         message: normalizedMessage,
         signal: controller.signal,
       });
       setConversationId(result.conversationId);
+      setAgentConversationId(result.conversationId);
       setResponse(result);
       setProposal(result.proposal ?? null);
+      const assistantTurn: AgentConversationTurn = {
+        id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        role: 'assistant',
+        message: result.message,
+        createdAt: Date.now(),
+        clarification: result.clarification,
+        proposal: result.proposal,
+        ...(result.proposal ? { proposalStatus: 'pending' } : {}),
+      };
+      appendAgentConversationTurn(assistantTurn);
+      setTurns((current) => [...current, assistantTurn].slice(-100));
     } catch (nextError) {
       if (!controller.signal.aborted) {
-        setError(
-          nextError instanceof Error ? nextError.message : labels.requestFailed,
-        );
+        const message =
+          nextError instanceof Error ? nextError.message : labels.requestFailed;
+        setError(message);
+        const errorTurn: AgentConversationTurn = {
+          id: `assistant-error-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          role: 'assistant',
+          message,
+          createdAt: Date.now(),
+          error: true,
+        };
+        appendAgentConversationTurn(errorTurn);
+        setTurns((current) => [...current, errorTurn].slice(-100));
       }
     } finally {
       if (requestController.current === controller) {
@@ -121,12 +233,27 @@ const AgentCommandPanel = ({
     try {
       const result = executeConfirmedAgentProposal(proposal);
       setProposal(null);
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.proposal?.id === proposal.id
+            ? { ...turn, proposalStatus: 'executed' }
+            : turn,
+        ),
+      );
       setUndoAvailable(true);
       onNotify(labels.applied);
       void reportAgentProposalResult(result).catch(() => {
         setError(labels.resultReportFailed);
       });
     } catch (nextError) {
+      updateAgentProposalStatus(proposal.id, 'invalid');
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.proposal?.id === proposal.id
+            ? { ...turn, proposalStatus: 'invalid' }
+            : turn,
+        ),
+      );
       setError(
         nextError instanceof Error ? nextError.message : labels.requestFailed,
       );
@@ -136,6 +263,7 @@ const AgentCommandPanel = ({
   const undo = () => {
     try {
       if (undoLastAgentProposal()) {
+        setTurns(getAgentConversationState().turns);
         setUndoAvailable(false);
         onNotify(labels.undone);
       }
@@ -144,6 +272,20 @@ const AgentCommandPanel = ({
         nextError instanceof Error ? nextError.message : labels.undoFailed,
       );
     }
+  };
+
+  const rejectProposal = () => {
+    if (proposal) {
+      updateAgentProposalStatus(proposal.id, 'rejected');
+      setTurns((current) =>
+        current.map((turn) =>
+          turn.proposal?.id === proposal.id
+            ? { ...turn, proposalStatus: 'rejected' }
+            : turn,
+        ),
+      );
+    }
+    setProposal(null);
   };
 
   if (!visible) {
@@ -208,7 +350,7 @@ const AgentCommandPanel = ({
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {!response && !loading ? (
+            {turns.length === 0 && !loading ? (
               <Text style={styles.emptyText}>{labels.empty}</Text>
             ) : null}
 
@@ -222,11 +364,53 @@ const AgentCommandPanel = ({
               </View>
             ) : null}
 
-            {response ? (
-              <View style={styles.responseCard}>
-                <Text style={styles.responseText}>{response.message}</Text>
-              </View>
-            ) : null}
+            {turns.map((turn) => {
+              const statusLabel =
+                turn.proposalStatus === 'pending'
+                  ? labels.historyPending
+                  : turn.proposalStatus === 'executed'
+                    ? labels.historyExecuted
+                    : turn.proposalStatus === 'undone'
+                      ? labels.historyUndone
+                    : turn.proposalStatus === 'rejected'
+                        ? labels.historyRejected
+                        : turn.proposalStatus === 'invalid'
+                          ? labels.historyInvalid
+                          : null;
+              return (
+                <View
+                  key={turn.id}
+                  style={[
+                    styles.conversationTurn,
+                    turn.role === 'user'
+                      ? styles.userTurn
+                      : styles.assistantTurn,
+                    turn.error && styles.errorTurn,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.conversationText,
+                      turn.role === 'user' && styles.userTurnText,
+                    ]}
+                  >
+                    {turn.message}
+                  </Text>
+                  {turn.proposal ? (
+                    <View style={styles.historyProposal}>
+                      <Text numberOfLines={2} style={styles.historyProposalText}>
+                        {turn.proposal.summary}
+                      </Text>
+                      {statusLabel ? (
+                        <Text style={styles.historyProposalStatus}>
+                          {statusLabel}
+                        </Text>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
 
             {response?.clarification ? (
               <View style={styles.clarificationCard}>
@@ -274,8 +458,12 @@ const AgentCommandPanel = ({
                   {proposal.operations.map((operation) => (
                     <OperationRow
                       key={operation.operationId}
+                      language={language}
                       labels={labels.operations}
                       operation={operation}
+                      preview={response?.proposalPreview?.operations.find(
+                        (item) => item.operationId === operation.operationId,
+                      )}
                     />
                   ))}
                 </View>
@@ -298,7 +486,7 @@ const AgentCommandPanel = ({
                   <ActionButton
                     disabled={loading}
                     label={labels.reject}
-                    onPress={() => setProposal(null)}
+                    onPress={rejectProposal}
                     variant="ghost"
                   />
                   <View style={styles.actionGap} />
@@ -364,36 +552,54 @@ const AgentCommandPanel = ({
 };
 
 const OperationRow = ({
+  language,
   labels,
   operation,
+  preview,
 }: {
+  language: 'zh' | 'en';
   labels: Record<AgentOperation['type'], string>;
   operation: AgentOperation;
+  preview?: AgentOperationPreview;
 }) => {
-  const context = getAgentContextSnapshot();
-  const taskId = 'taskId' in operation ? operation.taskId : null;
-  const taskTitle = taskId
-    ? context.tasks.find((task) => task.id === taskId)?.title
-    : null;
-  const milestoneId =
-    'milestoneId' in operation ? operation.milestoneId : null;
-  const milestoneTitle = milestoneId
-    ? context.milestones.find(
-        (milestone) => milestone.id === milestoneId,
-      )?.title
-    : null;
+  const allLabels = translations[language];
+  const agentLabels = allLabels.agent;
   const detail =
-    operation.type === 'task.create' ||
+    preview?.target ??
+    (operation.type === 'task.create' ||
     operation.type === 'milestone.create'
       ? operation.title
       : operation.type === 'group.create' ||
           operation.type === 'group.update'
         ? operation.name
-        : taskTitle ??
-          taskId ??
-          milestoneTitle ??
-          milestoneId ??
-          '';
+        : '');
+  const formatValue = (
+    value: AgentPreviewValue,
+    field: AgentOperationPreview['changes'][number]['field'],
+  ) => {
+    if (value === null || value === '') {
+      return agentLabels.valueEmpty;
+    }
+    if (typeof value === 'boolean') {
+      return value ? agentLabels.valueYes : agentLabels.valueNo;
+    }
+    if (
+      field === 'priority' &&
+      (value === 'none' ||
+        value === 'high' ||
+        value === 'medium' ||
+        value === 'low')
+    ) {
+      return allLabels.taskMenu.priorityOptions[value];
+    }
+    if (field === 'position' && typeof value === 'string') {
+      const [position, ...title] = value.split(':');
+      return language === 'zh'
+        ? `${title.join(':')} ${position === 'before' ? '之前' : '之后'}`
+        : `${position === 'before' ? 'Before' : 'After'} ${title.join(':')}`;
+    }
+    return String(value);
+  };
 
   return (
     <View style={styles.operationRow}>
@@ -403,6 +609,21 @@ const OperationRow = ({
         {detail ? (
           <Text numberOfLines={1} style={styles.operationDetail}>
             {detail}
+          </Text>
+        ) : null}
+        {preview?.changes.map((change) => (
+          <Text
+            key={`${preview.operationId}-${change.field}`}
+            style={styles.operationChange}
+          >
+            {agentLabels.previewFields[change.field]}:{' '}
+            {formatValue(change.before, change.field)} →{' '}
+            {formatValue(change.after, change.field)}
+          </Text>
+        ))}
+        {preview && preview.affectedIds.length > 1 ? (
+          <Text style={styles.operationImpact}>
+            {agentLabels.affectedTasks(preview.affectedIds.length)}
           </Text>
         ) : null}
       </View>
@@ -500,16 +721,48 @@ const styles = StyleSheet.create({
     color: '#6A61B8',
     fontSize: 12,
   },
-  responseCard: {
-    backgroundColor: '#F6F5F9',
+  conversationTurn: {
     borderRadius: 12,
-    marginBottom: 12,
-    padding: 12,
+    marginBottom: 9,
+    maxWidth: '88%',
+    padding: 11,
   },
-  responseText: {
+  assistantTurn: {
+    backgroundColor: '#F6F5F9',
+    alignSelf: 'flex-start',
+  },
+  userTurn: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#6759E8',
+  },
+  errorTurn: {
+    backgroundColor: '#FFF1F3',
+  },
+  conversationText: {
     color: '#3B3C4E',
     fontSize: 13,
     lineHeight: 20,
+  },
+  userTurnText: {
+    color: '#FFFFFF',
+  },
+  historyProposal: {
+    borderTopColor: '#E2E0E9',
+    borderTopWidth: 1,
+    marginTop: 8,
+    paddingTop: 7,
+  },
+  historyProposalText: {
+    color: '#555667',
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 15,
+  },
+  historyProposalStatus: {
+    color: '#7770B8',
+    fontSize: 9,
+    fontWeight: '700',
+    marginTop: 4,
   },
   clarificationCard: {
     borderColor: '#E3E1EB',
@@ -618,6 +871,18 @@ const styles = StyleSheet.create({
     color: '#8B8C99',
     fontSize: 11,
     marginTop: 2,
+  },
+  operationChange: {
+    color: '#5D5E70',
+    fontSize: 10,
+    lineHeight: 16,
+    marginTop: 3,
+  },
+  operationImpact: {
+    color: '#B44758',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
   },
   assumptions: {
     backgroundColor: '#FFF9ED',

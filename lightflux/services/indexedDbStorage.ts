@@ -1,7 +1,8 @@
 const DATABASE_NAME = 'lightflux';
 const DATABASE_VERSION = 1;
 const STORE_NAME = 'app-state';
-const STATE_KEY = 'current';
+const LEGACY_STATE_KEY = 'current';
+const APP_STATE_KEY = 'lightflux.app-state.v1';
 
 interface WebStorage {
   getItem(key: string): string | null;
@@ -66,21 +67,24 @@ const transactionComplete = (transaction: IDBTransaction): Promise<void> =>
       reject(transaction.error ?? new Error('IndexedDB transaction aborted.'));
   });
 
-const readIndexedState = async (): Promise<string | null> => {
+const readIndexedState = async (key: string): Promise<string | null> => {
   const database = await openDatabase();
   const transaction = database.transaction(STORE_NAME, 'readonly');
   const value = await requestResult(
-    transaction.objectStore(STORE_NAME).get(STATE_KEY),
+    transaction.objectStore(STORE_NAME).get(key),
   );
   return typeof value === 'string' ? value : null;
 };
 
-const writeIndexedState = async (value: string): Promise<void> => {
+const writeIndexedState = async (
+  key: string,
+  value: string,
+): Promise<void> => {
   const database = await openDatabase();
   const transaction = database.transaction(STORE_NAME, 'readwrite');
   const completion = transactionComplete(transaction);
   await requestResult(
-    transaction.objectStore(STORE_NAME).put(value, STATE_KEY),
+    transaction.objectStore(STORE_NAME).put(value, key),
   );
   await completion;
 };
@@ -89,14 +93,22 @@ export const loadWebState = async (
   legacyStorageKey: string,
 ): Promise<string | null> => {
   try {
-    const indexedState = await readIndexedState();
+    const indexedState = await readIndexedState(legacyStorageKey);
     if (indexedState) {
       return indexedState;
     }
 
+    if (legacyStorageKey === APP_STATE_KEY) {
+      const legacyIndexedState = await readIndexedState(LEGACY_STATE_KEY);
+      if (legacyIndexedState) {
+        await writeIndexedState(legacyStorageKey, legacyIndexedState);
+        return legacyIndexedState;
+      }
+    }
+
     const legacyState = runtime.localStorage?.getItem(legacyStorageKey);
     if (legacyState) {
-      await writeIndexedState(legacyState);
+      await writeIndexedState(legacyStorageKey, legacyState);
       runtime.localStorage?.setItem(
         `${legacyStorageKey}.backup`,
         legacyState,
@@ -116,7 +128,7 @@ export const saveWebState = async (
   value: string,
 ): Promise<void> => {
   try {
-    await writeIndexedState(value);
+    await writeIndexedState(legacyStorageKey, value);
   } catch (error) {
     console.warn('Unable to save IndexedDB state; using localStorage.', error);
     runtime.localStorage?.setItem(legacyStorageKey, value);

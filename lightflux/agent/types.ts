@@ -2,6 +2,7 @@ import {
   Milestone,
   MilestoneDateRule,
   MilestoneType,
+  TaskEvent,
   Todo,
   TodoGroup,
   TodoPriority,
@@ -180,6 +181,92 @@ export interface AgentExecutionResult {
   state: TodoCommandState;
   operations: AgentOperationResult[];
   undoToken: AgentUndoToken;
+}
+
+export type AgentPreviewField =
+  | 'title'
+  | 'scheduledDate'
+  | 'priority'
+  | 'group'
+  | 'parent'
+  | 'completed'
+  | 'position'
+  | 'type'
+  | 'dateRule'
+  | 'startYear'
+  | 'reminders'
+  | 'notes'
+  | 'icon'
+  | 'color'
+  | 'pinned'
+  | 'archived'
+  | 'trashed';
+
+export type AgentPreviewValue = string | number | boolean | null;
+
+export interface AgentFieldChange {
+  field: AgentPreviewField;
+  before: AgentPreviewValue;
+  after: AgentPreviewValue;
+}
+
+export interface AgentOperationPreview {
+  operationId: string;
+  type: AgentOperation['type'];
+  target: string;
+  changes: AgentFieldChange[];
+  affectedIds: string[];
+}
+
+export interface AgentProposalPreview {
+  proposalId: string;
+  operations: AgentOperationPreview[];
+}
+
+export interface AgentConversationChoice {
+  id: string;
+  label: string;
+}
+
+export interface AgentConversationTurn {
+  id: string;
+  role: 'user' | 'assistant';
+  message: string;
+  createdAt: number;
+  clarification?: {
+    id: string;
+    question: string;
+    choices?: AgentConversationChoice[];
+  };
+  proposal?: AgentProposal;
+  proposalStatus?:
+    | 'pending'
+    | 'executed'
+    | 'undone'
+    | 'rejected'
+    | 'invalid';
+  error?: boolean;
+}
+
+export interface AgentAuditRecord {
+  proposalId: string;
+  summary: string;
+  risk: AgentRisk;
+  executedAt: number;
+  beforeRevision: number;
+  afterRevision: number;
+  proposal: AgentProposal;
+  operations: AgentOperationResult[];
+  undoneAt: number | null;
+}
+
+export interface PersistedAgentRuntime {
+  schemaVersion: 1;
+  conversationId: string | null;
+  turns: AgentConversationTurn[];
+  auditRecords: AgentAuditRecord[];
+  undoToken: AgentUndoToken | null;
+  undoTaskEvents: TaskEvent[] | null;
 }
 
 export type AgentCommandErrorCode =

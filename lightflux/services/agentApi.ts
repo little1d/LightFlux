@@ -1,10 +1,12 @@
 import {
   AgentExecutionResult,
   AgentProposal,
+  AgentProposalPreview,
 } from '../agent/types';
 import {
   AgentContextSnapshot,
-  getAgentContextSnapshot,
+  getAgentContextForMessage,
+  previewAgentProposal,
 } from '../agent/todoCommandStoreAdapter';
 
 const publicEnvironment = process.env as Record<string, string | undefined>;
@@ -28,6 +30,7 @@ export interface AgentTurnResponse {
   message: string;
   clarification?: AgentClarification;
   proposal?: AgentProposal;
+  proposalPreview?: AgentProposalPreview;
 }
 
 interface AgentTurnRequest {
@@ -77,7 +80,7 @@ export const submitAgentTurn = async ({
     message: normalizedMessage,
     currentTime: now.toISOString(),
     timeZone,
-    context: getAgentContextSnapshot(),
+    context: getAgentContextForMessage(normalizedMessage, now),
   };
   const response = await fetch(`${configuredApiUrl()}/api/ai/turns`, {
     body: JSON.stringify(request),
@@ -98,7 +101,12 @@ export const submitAgentTurn = async ({
   if (!body.conversationId || typeof body.message !== 'string') {
     throw new AgentApiError('The Agent API returned an invalid response.');
   }
-  return body;
+  return {
+    ...body,
+    ...(body.proposal
+      ? { proposalPreview: previewAgentProposal(body.proposal) }
+      : {}),
+  };
 };
 
 export const reportAgentProposalResult = async (
@@ -117,6 +125,7 @@ export const reportAgentProposalResult = async (
       }),
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
       method: 'POST',
       signal,
     },

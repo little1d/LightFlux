@@ -143,6 +143,133 @@ test('normalizes model operations into a confirmed proposal', async () => {
   });
 });
 
+test('orders forward references before dependent operations', async () => {
+  responseWith({
+    message: '准备创建分组和任务。',
+    clarification: null,
+    proposal: {
+      summary: '创建工作分组和任务',
+      assumptions: [],
+      operations: [
+        {
+          type: 'task.create',
+          clientRef: 'task',
+          title: '先展示的任务',
+          scheduledDate: '2026-08-11',
+          groupRef: 'later-group',
+        },
+        {
+          type: 'group.create',
+          clientRef: 'later-group',
+          name: '稍后创建的分组',
+        },
+      ],
+    },
+  });
+  const service = createAgentService({
+    baseUrl: 'https://model.example/v1',
+    apiKey: '',
+    model: 'test-model',
+  });
+  const result = await service.turn({
+    ownerId: 'user',
+    request: {
+      message: '创建工作分组和任务',
+      currentTime: '2026-08-10T01:00:00.000Z',
+      timeZone: 'Asia/Shanghai',
+      context,
+    },
+  });
+
+  assert.deepEqual(
+    result.proposal.operations.map((operation) => operation.type),
+    ['group.create', 'task.create'],
+  );
+  assert.equal(
+    result.proposal.operations[0].groupId,
+    result.proposal.operations[1].groupId,
+  );
+});
+
+test('rejects cyclic references between newly created tasks', async () => {
+  responseWith({
+    message: '准备创建任务。',
+    clarification: null,
+    proposal: {
+      summary: '创建循环任务',
+      assumptions: [],
+      operations: [
+        {
+          type: 'task.create',
+          clientRef: 'one',
+          title: 'One',
+          scheduledDate: '2026-08-11',
+          parentRef: 'two',
+        },
+        {
+          type: 'task.create',
+          clientRef: 'two',
+          title: 'Two',
+          scheduledDate: '2026-08-11',
+          parentRef: 'one',
+        },
+      ],
+    },
+  });
+  const service = createAgentService({
+    baseUrl: 'https://model.example/v1',
+    apiKey: '',
+    model: 'test-model',
+  });
+
+  await assert.rejects(
+    service.turn({
+      ownerId: 'user',
+      request: {
+        message: '创建循环任务',
+        currentTime: '2026-08-10T01:00:00.000Z',
+        timeZone: 'Asia/Shanghai',
+        context,
+      },
+    }),
+    /cyclic operation references/,
+  );
+});
+
+test('classifies every task reschedule as medium risk', async () => {
+  responseWith({
+    message: '准备改期。',
+    clarification: null,
+    proposal: {
+      summary: '任务改期',
+      assumptions: [],
+      operations: [
+        {
+          type: 'task.update',
+          taskId: 'existing',
+          changes: { scheduledDate: '2026-08-11' },
+        },
+      ],
+    },
+  });
+  const service = createAgentService({
+    baseUrl: 'https://model.example/v1',
+    apiKey: '',
+    model: 'test-model',
+  });
+  const result = await service.turn({
+    ownerId: 'user',
+    request: {
+      message: '把现有任务改到明天',
+      currentTime: '2026-08-10T01:00:00.000Z',
+      timeZone: 'Asia/Shanghai',
+      context,
+    },
+  });
+
+  assert.equal(result.proposal.risk, 'medium');
+});
+
 test('returns clarification without creating a proposal', async () => {
   responseWith({
     message: '需要确认具体任务。',
@@ -472,6 +599,41 @@ test('rate limits model turns per owner', async () => {
     service.turn({ ownerId: 'user', request }),
     (error) => error.status === 429,
   );
+});
+
+test('rejects oversized context before calling the provider', async () => {
+  let providerCalled = false;
+  globalThis.fetch = async () => {
+    providerCalled = true;
+    throw new Error('Provider should not be called.');
+  };
+  const service = createAgentService({
+    baseUrl: 'https://model.example/v1',
+    apiKey: '',
+    model: 'test-model',
+  });
+  const oversizedContext = {
+    ...context,
+    tasks: Array.from({ length: 251 }, (_, index) => ({
+      ...context.tasks[0],
+      id: `task-${index}`,
+      title: `Task ${index}`,
+    })),
+  };
+
+  await assert.rejects(
+    service.turn({
+      ownerId: 'user',
+      request: {
+        message: '查看任务',
+        currentTime: '2026-08-10T01:00:00.000Z',
+        timeZone: 'Asia/Shanghai',
+        context: oversizedContext,
+      },
+    }),
+    (error) => error.status === 413,
+  );
+  assert.equal(providerCalled, false);
 });
 
 test('times out stalled provider requests', async () => {

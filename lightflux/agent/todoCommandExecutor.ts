@@ -287,6 +287,8 @@ const operationRisk = (operation: AgentOperation): AgentRisk => {
   switch (operation.type) {
     case 'task.trash':
       return 'high';
+    case 'task.update':
+      return hasOwn(operation.changes, 'scheduledDate') ? 'medium' : 'low';
     case 'task.move':
     case 'task.restore':
     case 'task.set_completion':

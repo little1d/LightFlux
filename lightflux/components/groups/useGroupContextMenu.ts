@@ -38,7 +38,19 @@ export const useGroupContextMenu = (
   }, [onOpen, sectionId]);
 
   const openFromLongPress = useCallback(
-    () => onOpen(sectionId),
+    () => {
+      if (Platform.OS === 'web') {
+        onOpen(sectionId);
+        return;
+      }
+
+      targetRef.current?.measureInWindow((x, y, width, height) => {
+        onOpen(sectionId, {
+          x: Math.max(12, x + width - 220),
+          y: y + height + 6,
+        });
+      });
+    },
     [onOpen, sectionId],
   );
 

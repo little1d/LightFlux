@@ -111,7 +111,7 @@ const TrashScreen = ({
           </View>
 
           {!hasTrash ? (
-            <View className="min-h-[360px] items-center justify-center rounded-[24px] border border-[#E6E5EC] bg-white px-8">
+            <View className="min-h-[360px] items-center justify-center px-8">
               <View className="mb-4 h-16 w-16 items-center justify-center rounded-[24px] bg-[#EEEAF8]">
                 <Text className="text-[28px] text-[#8479C4]">⌫</Text>
               </View>
@@ -128,12 +128,12 @@ const TrashScreen = ({
                   </Text>
                   {trashedTodos.map((todo) => (
                     <View
-                      className={`mb-1 flex-row items-center rounded-[12px] border px-3 py-1.5 ${
+                      className={`mb-1 flex-row items-center border-b px-3 py-1.5 ${
                         todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'
                       } ${
                         selectedTaskId === todo.id
                           ? 'border-[#D5D1EF] bg-[#EFEDFA]'
-                          : 'border-[#E9E8EE] bg-white'
+                          : 'border-[#E9E8EE] bg-transparent'
                       }`}
                       key={todo.id}
                     >
@@ -203,7 +203,7 @@ const TrashScreen = ({
                   </Text>
                   {trashedMilestones.map((milestone) => (
                     <View
-                      className="mb-1 min-h-[52px] flex-row items-center rounded-[12px] border border-[#E9E8EE] bg-white px-3 py-1.5"
+                      className="mb-1 min-h-[52px] flex-row items-center border-b border-[#E9E8EE] px-3 py-1.5"
                       key={milestone.id}
                     >
                       <View
@@ -277,12 +277,6 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 28,
     paddingHorizontal: 20,
-  },
-  cardShadow: {
-    shadowColor: '#4B4963',
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
   },
 });
 

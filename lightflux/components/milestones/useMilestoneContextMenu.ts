@@ -32,7 +32,19 @@ export const useMilestoneContextMenu = (
   }, [milestoneId, onOpen]);
 
   const openFromLongPress = useCallback(
-    () => onOpen(milestoneId),
+    () => {
+      if (Platform.OS === 'web') {
+        onOpen(milestoneId);
+        return;
+      }
+
+      targetRef.current?.measureInWindow((x, y, width, height) => {
+        onOpen(milestoneId, {
+          x: Math.max(12, x + width - 210),
+          y: y + height + 6,
+        });
+      });
+    },
     [milestoneId, onOpen],
   );
   const openFromButton = useCallback(() => {
@@ -44,7 +56,12 @@ export const useMilestoneContextMenu = (
         return;
       }
     }
-    onOpen(milestoneId);
+    targetRef.current?.measureInWindow((x, y, width, height) => {
+      onOpen(milestoneId, {
+        x: Math.max(12, x + width - 210),
+        y: y + height + 6,
+      });
+    });
   }, [milestoneId, onOpen]);
 
   return { targetRef, openFromButton, openFromLongPress };

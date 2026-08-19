@@ -179,6 +179,7 @@ const SearchOverlay = ({
   const [query, setQuery] = useState('');
   const { width } = useWindowDimensions();
   const compact = width < 900;
+  const nativeWorkspace = Platform.OS !== 'web';
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const groupNames = useMemo(
     () => new Map(groups.map((group) => [group.id, group.name])),
@@ -237,33 +238,46 @@ const SearchOverlay = ({
       visible
     >
       <View style={styles.overlay}>
-        <Pressable
-          accessibilityLabel={labels.search.close}
-          onPress={onClose}
-          style={StyleSheet.absoluteFill}
-        />
+        {!nativeWorkspace ? (
+          <Pressable
+            accessibilityLabel={labels.search.close}
+            onPress={onClose}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
         <SafeAreaView
-          style={compact ? styles.compactPosition : styles.desktopPosition}
+          edges={nativeWorkspace ? ['top', 'bottom'] : []}
+          style={
+            nativeWorkspace
+              ? styles.nativePosition
+              : compact
+                ? styles.compactPosition
+                : styles.desktopPosition
+          }
         >
           <Animated.View
             accessibilityLabel={labels.search.title}
             accessibilityViewIsModal
             style={[
               styles.panel,
-              compact ? styles.compactPanel : styles.desktopPanel,
+              nativeWorkspace
+                ? styles.nativePanel
+                : compact
+                  ? styles.compactPanel
+                  : styles.desktopPanel,
               {
                 opacity: progress,
                 transform: [
                   {
                     translateY: progress.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [compact ? 18 : -8, 0],
+                    outputRange: [nativeWorkspace ? 8 : compact ? 18 : -8, 0],
                     }),
                   },
                   {
                     scale: progress.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [0.985, 1],
+                    outputRange: [nativeWorkspace ? 1 : 0.985, 1],
                     }),
                   },
                 ],
@@ -391,6 +405,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     pointerEvents: 'box-none',
   },
+  nativePosition: {
+    backgroundColor: '#F6F5F8',
+    flex: 1,
+  },
   panel: {
     backgroundColor: '#FFFFFF',
     borderColor: '#E1E0E8',
@@ -415,6 +433,15 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: '88%',
     minHeight: 420,
+    width: '100%',
+  },
+  nativePanel: {
+    borderColor: 'transparent',
+    borderRadius: 0,
+    flex: 1,
+    maxHeight: undefined,
+    minHeight: undefined,
+    shadowOpacity: 0,
     width: '100%',
   },
   searchBar: {

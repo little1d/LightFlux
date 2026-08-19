@@ -56,7 +56,19 @@ export const useTaskContextMenu = (
   }, [onOpen, todoId]);
 
   const openFromLongPress = useCallback(
-    () => onOpen(todoId),
+    () => {
+      if (Platform.OS === 'web') {
+        onOpen(todoId);
+        return;
+      }
+
+      targetRef.current?.measureInWindow((x, y, width, height) => {
+        onOpen(todoId, {
+          x: Math.max(12, x + width - 200),
+          y: y + height + 6,
+        });
+      });
+    },
     [onOpen, todoId],
   );
 
@@ -70,7 +82,12 @@ export const useTaskContextMenu = (
       }
     }
 
-    onOpen(todoId);
+    targetRef.current?.measureInWindow((x, y, width, height) => {
+      onOpen(todoId, {
+        x: Math.max(12, x + width - 200),
+        y: y + height + 6,
+      });
+    });
   }, [onOpen, todoId]);
 
   return { targetRef, openFromButton, openFromLongPress };

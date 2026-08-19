@@ -470,10 +470,6 @@ const styles = StyleSheet.create({
   },
   empty: {
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5E3EA',
-    borderRadius: 20,
-    borderWidth: 1,
     justifyContent: 'center',
     minHeight: 330,
   },

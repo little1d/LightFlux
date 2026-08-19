@@ -62,7 +62,6 @@ const MilestoneCard = ({
       ref={targetRef}
       style={[
         styles.card,
-        { borderColor: selected ? '#BDB5F5' : '#E6E4EB' },
         selected && styles.selected,
         hovered && styles.hovered,
       ]}
@@ -162,29 +161,21 @@ const MilestoneCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    minHeight: 245,
+    minHeight: 224,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#444052',
-    shadowOffset: { height: 6, width: 0 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
   },
   selected: {
-    backgroundColor: '#FBFAFF',
-    shadowColor: '#6759E8',
-    shadowOpacity: 0.14,
+    backgroundColor: '#EEECFF',
+    borderRadius: 10,
   },
   hovered: {
-    shadowOpacity: 0.11,
-    transform: [{ translateY: -2 }],
+    backgroundColor: '#F1F0F5',
+    borderRadius: 10,
   },
   content: {
     flex: 1,
-    padding: 17,
+    padding: 15,
   },
   titleRow: {
     alignItems: 'center',
@@ -217,7 +208,7 @@ const styles = StyleSheet.create({
     fontSize: 31,
     fontWeight: '300',
     letterSpacing: -1,
-    marginTop: 34,
+    marginTop: 26,
     textAlign: 'center',
   },
   sequence: {
@@ -230,7 +221,7 @@ const styles = StyleSheet.create({
   date: {
     color: '#9697A3',
     fontSize: 11,
-    marginTop: 22,
+    marginTop: 16,
     textAlign: 'center',
   },
   reminder: {

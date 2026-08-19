@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { clampMenuPosition } from './menuPosition';
 import Portal from './Portal';
 
 export interface MenuSurfacePosition {
@@ -87,21 +88,18 @@ const MenuSurface = ({
     Math.max(0, viewport.width - 24),
   );
   const surfacePosition =
-    Platform.OS === 'web' && position
-      ? {
-          left: Math.max(
-            12,
-            Math.min(
-              position.x,
-              viewport.width - resolvedWebWidth - 12,
-            ),
-          ),
-          top: Math.max(
-            12,
-            Math.min(position.y, viewport.height - estimatedHeight - 12),
-          ),
-        }
+    position
+      ? (() => {
+          const clamped = clampMenuPosition(
+            position,
+            viewport,
+            resolvedWebWidth,
+            estimatedHeight,
+          );
+          return { left: clamped.x, top: clamped.y };
+        })()
       : undefined;
+  const isAnchored = Boolean(position);
 
   const content = (
     <View style={styles.overlay}>
@@ -111,14 +109,12 @@ const MenuSurface = ({
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView
+        edges={[]}
         style={[
           styles.position,
-          position && Platform.OS === 'web'
-            ? styles.webPosition
-            : styles.mobilePosition,
+          isAnchored ? styles.anchoredPosition : styles.mobilePosition,
           {
-            width:
-              Platform.OS === 'web' ? resolvedWebWidth : undefined,
+            width: isAnchored ? resolvedWebWidth : undefined,
           },
           surfacePosition,
         ]}
@@ -192,7 +188,7 @@ const styles = StyleSheet.create({
   position: {
     position: 'absolute',
   },
-  webPosition: {},
+  anchoredPosition: {},
   mobilePosition: {
     bottom: 12,
     left: 16,

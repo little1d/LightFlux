@@ -17,6 +17,7 @@ import { useTodoStore } from '../../store/todoStore';
 import { Todo } from '../../types/todo';
 import { todayKey } from '../../utils/date';
 import { useConfirmation } from '../ui/ConfirmationProvider';
+import { ToastVariant } from '../ui/ToastProvider';
 import {
   GroupMenuPosition,
   OpenGroupMenu,
@@ -47,7 +48,10 @@ const familyTailId = (todos: Todo[], rootId: string): string => {
   return tailId;
 };
 
-export const useGroupsController = (selectedTaskId: string | null) => {
+export const useGroupsController = (
+  selectedTaskId: string | null,
+  notify: (message: string, variant?: ToastVariant) => void,
+) => {
   const requestConfirmation = useConfirmation();
   const {
     addGroup,
@@ -89,10 +93,6 @@ export const useGroupsController = (selectedTaskId: string | null) => {
   const [groupMenu, setGroupMenu] = useState<{
     sectionId: string;
     position?: GroupMenuPosition;
-  } | null>(null);
-  const [toast, setToast] = useState<{
-    id: number;
-    message: string;
   } | null>(null);
 
   const activeTodos = useMemo(() => selectActiveTodos(todos), [todos]);
@@ -201,14 +201,12 @@ export const useGroupsController = (selectedTaskId: string | null) => {
           ? persistedTargetIndex
           : boundedTarget,
       );
-      setToast({
-        id: Date.now(),
-        message: labels.notifications.orderUpdated,
-      });
+      notify(labels.notifications.orderUpdated);
     },
     [
       activeTodos,
       labels.notifications.orderUpdated,
+      notify,
       reorderTask,
       todos,
     ],
@@ -349,6 +347,24 @@ export const useGroupsController = (selectedTaskId: string | null) => {
     });
   };
 
+  // Completing a task earns praise; reopening quietly confirms the change.
+  const handleToggleTodo = (id: string) => {
+    const target = activeTodos.find((todo) => todo.id === id);
+    const willComplete = target ? !target.completed : false;
+    toggleTodo(id);
+    if (!target) {
+      return;
+    }
+    if (!willComplete) {
+      notify(labels.notifications.taskReopened, 'success');
+      return;
+    }
+    const praises = labels.notifications.taskCompleted;
+    const message =
+      praises[Math.floor(Math.random() * praises.length)] ?? praises[0];
+    notify(message, 'celebrate');
+  };
+
   return {
     activeComposer,
     activeMenuSection,
@@ -358,7 +374,6 @@ export const useGroupsController = (selectedTaskId: string | null) => {
     childCountByParent,
     closeGroupMenu: () => setGroupMenu(null),
     deleteActiveGroup,
-    dismissToast: () => setToast(null),
     expanded,
     groupDraft,
     groupMenu,
@@ -390,9 +405,8 @@ export const useGroupsController = (selectedTaskId: string | null) => {
     submitInlineTask,
     submitTask,
     taskDraft,
-    toast,
     toggleGroup: (id: string) =>
       setExpanded((current) => ({ ...current, [id]: !current[id] })),
-    toggleTodo,
+    toggleTodo: handleToggleTodo,
   };
 };

@@ -52,6 +52,7 @@ interface DesktopStore {
   setPreferences: (
     changes: Partial<DesktopPreferences>,
   ) => Promise<void>;
+  skipUpdateVersion: (version: string) => Promise<void>;
   syncStatus: (
     status: Omit<DesktopStatusPayload, 'updateReady' | 'updateVersion'>,
   ) => Promise<void>;
@@ -148,6 +149,25 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
     }
   },
 
+  skipUpdateVersion: async (version) => {
+    if (get().updateInfo?.required) {
+      return;
+    }
+    const skippedUpdateVersions = get().preferences.skippedUpdateVersions;
+    if (!skippedUpdateVersions.includes(version)) {
+      await get().setPreferences({
+        skippedUpdateVersions: [...skippedUpdateVersions, version],
+      });
+    }
+    await closePendingUpdate();
+    set({
+      updateInfo: null,
+      updateProgress: null,
+      updateStatus: 'idle',
+      upToDate: true,
+    });
+  },
+
   checkForUpdates: async (manual = false) => {
     const { environment } = get();
     if (!environment.updaterConfigured) {
@@ -179,12 +199,26 @@ export const useDesktopStore = create<DesktopStore>((set, get) => ({
         return;
       }
       pendingUpdate = update;
+      const required = requiredUpdate(update, environment.currentVersion);
+      if (
+        !required &&
+        get().preferences.skippedUpdateVersions.includes(update.version)
+      ) {
+        await closePendingUpdate();
+        set({
+          lastCheckedAt: checkedAt,
+          updateInfo: null,
+          updateStatus: 'idle',
+          upToDate: true,
+        });
+        return;
+      }
       set({
         lastCheckedAt: checkedAt,
         updateInfo: {
           body: update.body ?? null,
           date: update.date ?? null,
-          required: requiredUpdate(update, environment.currentVersion),
+          required,
           version: update.version,
         },
         updateStatus: 'available',

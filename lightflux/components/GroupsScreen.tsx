@@ -15,7 +15,7 @@ import GroupSectionCard from './groups/GroupSectionCard';
 import { UNGROUPED_ID } from './groups/types';
 import { useGroupsController } from './groups/useGroupsController';
 import { OpenTaskMenu } from './tasks/useTaskContextMenu';
-import Toast from './ui/Toast';
+import { useToast } from './ui/ToastProvider';
 
 const GroupsScreen = ({
   onEditTask,
@@ -26,7 +26,8 @@ const GroupsScreen = ({
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
-  const controller = useGroupsController(selectedTaskId);
+  const notify = useToast();
+  const controller = useGroupsController(selectedTaskId, notify);
 
   return (
     <View className="flex-1 bg-canvas">
@@ -124,14 +125,6 @@ const GroupsScreen = ({
           onDelete={controller.deleteActiveGroup}
           onRename={controller.renameActiveGroup}
           position={controller.groupMenu.position}
-        />
-      ) : null}
-
-      {controller.toast ? (
-        <Toast
-          key={controller.toast.id}
-          message={controller.toast.message}
-          onDismiss={controller.dismissToast}
         />
       ) : null}
     </View>

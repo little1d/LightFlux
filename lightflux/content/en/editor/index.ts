@@ -26,4 +26,12 @@ export const editor: Translation['editor'] = {
   emptyTitle: 'A task title is required.',
   previewTitle: 'Task preview',
   resizePane: 'Resize task list and details',
+  metadataTitle: 'Task info',
+  dateLabel: 'Date',
+  groupLabel: 'Group',
+  priorityLabel: 'Priority',
+  scheduleToday: 'Today',
+  scheduleTomorrow: 'Tomorrow',
+  clearDate: 'Clear date',
+  noDate: 'No date',
 };

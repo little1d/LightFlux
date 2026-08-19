@@ -6,45 +6,99 @@ import {
 } from 'react-native';
 
 import { NavigationItemId } from '../../types/todo';
+import {
+  NAVIGATION_ITEM_STEP,
+  NavigationDragState,
+} from './navigationDrag';
 
 interface DraggableNavigationItemProps {
   children: React.ReactNode;
+  dragState: NavigationDragState | null;
   id: NavigationItemId;
   index: number;
+  itemCount: number;
   label: string;
+  onDragStateChange: (state: NavigationDragState | null) => void;
   onMove: (id: NavigationItemId, targetIndex: number) => void;
 }
 
-const ITEM_STEP = 60;
-
 const DraggableNavigationItem = ({
   children,
+  dragState,
   id,
   index,
+  itemCount,
   label,
+  onDragStateChange,
   onMove,
 }: DraggableNavigationItemProps) => {
   const [offset, setOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const latestOffset = useRef(0);
   latestOffset.current = offset;
+  const stateRef = useRef({ id, index, itemCount, onDragStateChange, onMove });
+  stateRef.current = { id, index, itemCount, onDragStateChange, onMove };
+
+  const clampTarget = (raw: number) =>
+    Math.max(0, Math.min(raw, stateRef.current.itemCount - 1));
 
   const responder = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponderCapture: (_, gesture) =>
           Math.abs(gesture.dy) > 5,
-        onPanResponderMove: (_, gesture) => setOffset(gesture.dy),
-        onPanResponderRelease: () => {
-          const targetIndex =
-            index + Math.round(latestOffset.current / ITEM_STEP);
-          setOffset(0);
-          onMove(id, targetIndex);
+        onPanResponderMove: (_, gesture) => {
+          setOffset(gesture.dy);
+          setDragging(true);
+          const { id: liveId, index: liveIndex, onDragStateChange: report } =
+            stateRef.current;
+          report({
+            id: liveId,
+            sourceIndex: liveIndex,
+            targetIndex: clampTarget(
+              liveIndex + Math.round(gesture.dy / NAVIGATION_ITEM_STEP),
+            ),
+          });
         },
-        onPanResponderTerminate: () => setOffset(0),
+        onPanResponderRelease: () => {
+          const { id: liveId, index: liveIndex, onMove: move } =
+            stateRef.current;
+          const targetIndex = clampTarget(
+            liveIndex + Math.round(latestOffset.current / NAVIGATION_ITEM_STEP),
+          );
+          setOffset(0);
+          setDragging(false);
+          stateRef.current.onDragStateChange(null);
+          move(liveId, targetIndex);
+        },
+        onPanResponderTerminate: () => {
+          setOffset(0);
+          setDragging(false);
+          stateRef.current.onDragStateChange(null);
+        },
         onStartShouldSetPanResponder: () => false,
       }),
-    [id, index, onMove],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
+
+  let displacement = 0;
+  if (dragState && !dragging && dragState.id !== id) {
+    const { sourceIndex, targetIndex } = dragState;
+    if (
+      targetIndex > sourceIndex &&
+      index > sourceIndex &&
+      index <= targetIndex
+    ) {
+      displacement = -NAVIGATION_ITEM_STEP;
+    } else if (
+      targetIndex < sourceIndex &&
+      index >= targetIndex &&
+      index < sourceIndex
+    ) {
+      displacement = NAVIGATION_ITEM_STEP;
+    }
+  }
 
   return (
     <View
@@ -53,11 +107,11 @@ const DraggableNavigationItem = ({
       accessibilityRole="adjustable"
       style={[
         styles.container,
-        offset !== 0 && styles.dragging,
+        dragging && styles.dragging,
         {
           transform: [
-            { translateY: offset },
-            { scale: offset !== 0 ? 1.06 : 1 },
+            { translateY: dragging ? offset : displacement },
+            { scale: dragging ? 1.06 : 1 },
           ],
         },
       ]}

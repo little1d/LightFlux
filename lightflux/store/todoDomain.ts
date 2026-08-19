@@ -1,5 +1,30 @@
 import { Todo } from '../types/todo';
 
+// Move `id` to `targetIndex` within `order`, clamping the target into range.
+// Returns the same array reference when the move is a no-op so callers can
+// skip redundant state updates.
+export const reorderList = <T>(
+  order: T[],
+  id: T,
+  targetIndex: number,
+): T[] => {
+  const sourceIndex = order.indexOf(id);
+  if (sourceIndex < 0 || order.length === 0) {
+    return order;
+  }
+  const boundedTarget = Math.max(
+    0,
+    Math.min(targetIndex, order.length - 1),
+  );
+  if (sourceIndex === boundedTarget) {
+    return order;
+  }
+  const next = [...order];
+  const [moved] = next.splice(sourceIndex, 1);
+  next.splice(boundedTarget, 0, moved);
+  return next;
+};
+
 export const byTodoOrder = (a: Todo, b: Todo) =>
   a.sortOrder - b.sortOrder || b.createdAt - a.createdAt;
 

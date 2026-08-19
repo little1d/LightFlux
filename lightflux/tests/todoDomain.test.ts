@@ -7,6 +7,7 @@ import {
   emptyTrashTodos,
   moveTodoBranchToGroup,
   orderWithSubtasks,
+  reorderList,
   restoreTodoBranch,
   selectActiveTodos,
 } from '../store/todoDomain';
@@ -189,5 +190,51 @@ describe('moving tasks between groups', () => {
     expect(
       moveTodoBranchToGroup(source, 'trashed', 'target', 20),
     ).toBe(source);
+  });
+});
+
+describe('reorderList', () => {
+  it('moves an item down to a later slot', () => {
+    expect(reorderList(['a', 'b', 'c', 'd'], 'a', 2)).toEqual([
+      'b',
+      'c',
+      'a',
+      'd',
+    ]);
+  });
+
+  it('moves an item up to an earlier slot', () => {
+    expect(reorderList(['a', 'b', 'c', 'd'], 'd', 1)).toEqual([
+      'a',
+      'd',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('clamps a target index beyond the list end', () => {
+    expect(reorderList(['a', 'b', 'c'], 'a', 99)).toEqual([
+      'b',
+      'c',
+      'a',
+    ]);
+  });
+
+  it('clamps a negative target index to the front', () => {
+    expect(reorderList(['a', 'b', 'c'], 'c', -5)).toEqual([
+      'c',
+      'a',
+      'b',
+    ]);
+  });
+
+  it('returns the same reference for a no-op move', () => {
+    const source = ['a', 'b', 'c'];
+    expect(reorderList(source, 'b', 1)).toBe(source);
+  });
+
+  it('returns the same reference when the id is missing', () => {
+    const source = ['a', 'b', 'c'];
+    expect(reorderList(source, 'z', 0)).toBe(source);
   });
 });

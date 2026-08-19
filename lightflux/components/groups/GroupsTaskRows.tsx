@@ -1,8 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 
 import { inputAccentProps } from '../../config/input';
-import { Todo } from '../../types/todo';
+import InlineTaskTitle from '../tasks/InlineTaskTitle';
 import TaskIndicators from '../tasks/TaskIndicators';
 import TaskPriorityIndicator, {
   TASK_PRIORITY_THEME,
@@ -19,83 +18,7 @@ import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from '../tasks/useTaskContextMenu';
-
-const InlineTaskTitle = ({
-  editLabel,
-  nested,
-  onCreateNext,
-  onOpenDetails,
-  onRename,
-  todo,
-}: {
-  editLabel: string;
-  nested: boolean;
-  onCreateNext: () => void;
-  onOpenDetails: () => void;
-  onRename: (title: string) => void;
-  todo: Todo;
-}) => {
-  const [draft, setDraft] = useState(todo.title);
-  const [focused, setFocused] = useState(false);
-  const detailsOpened = useRef(false);
-
-  useEffect(() => {
-    if (!focused) {
-      setDraft(todo.title);
-    }
-  }, [focused, todo.title]);
-
-  const commit = () => {
-    const title = draft.trim();
-    setFocused(false);
-    detailsOpened.current = false;
-    if (title) {
-      setDraft(title);
-      onRename(title);
-    } else {
-      setDraft(todo.title);
-    }
-  };
-
-  const openDetails = () => {
-    if (!detailsOpened.current) {
-      detailsOpened.current = true;
-      onOpenDetails();
-    }
-  };
-
-  return (
-    <TextInput
-      {...inputAccentProps}
-      accessibilityLabel={`${editLabel}: ${todo.title}`}
-      className={`${nested ? 'ml-2.5' : 'ml-3'} h-9 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold ${
-        todo.completed ? 'text-[#A1A2AD] line-through' : 'text-[#303145]'
-      }`}
-      maxLength={160}
-      nativeID={`task-title-${todo.id}`}
-      onBlur={commit}
-      onChangeText={(value) => {
-        openDetails();
-        setDraft(value);
-        if (value.trim()) {
-          onRename(value);
-        }
-      }}
-      onFocus={() => {
-        setFocused(true);
-        openDetails();
-      }}
-      onPointerDown={openDetails}
-      onPressIn={() => requestAnimationFrame(openDetails)}
-      onSubmitEditing={() => {
-        commit();
-        requestAnimationFrame(onCreateNext);
-      }}
-      returnKeyType="done"
-      value={draft}
-    />
-  );
-};
+import { Todo } from '../../types/todo';
 
 export const InlineTaskComposer = ({
   draft,

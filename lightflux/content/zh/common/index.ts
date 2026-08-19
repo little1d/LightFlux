@@ -41,6 +41,18 @@ export const common: CommonContent = {
   notifications: {
     orderUpdated: '顺序已更新',
     saveFailed: '保存失败，本地数据仍会保留，请稍后重试',
+    taskCompleted: [
+      '完成一项，真棒！',
+      '又搞定一件事 🎉',
+      '干得漂亮，继续保持！',
+      '效率满分，向前一步 ✨',
+      '完成！给自己点个赞。',
+    ],
+    allTasksDone: '今日任务全部完成，太厉害了！🎊',
+    taskReopened: '已重新标记为待办',
+    taskMovedToGroup: (groupName) => `已移动到「${groupName}」`,
+    taskRescheduled: '日期已更新',
+    priorityUpdated: '优先级已更新',
   },
   cancel: '取消',
   delete: '删除',

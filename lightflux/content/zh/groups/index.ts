@@ -1,7 +1,7 @@
 import type { Translation } from '../../types';
 export const groups: Translation['groups'] = {
   title: '任务分组',
-  ungrouped: '未分组',
+  ungrouped: '默认分组',
   addGroup: '新建分组',
   groupPlaceholder: '分组名称',
   taskPlaceholder: '添加任务到此分组…',
@@ -15,7 +15,7 @@ export const groups: Translation['groups'] = {
   confirmAdd: '添加',
   confirmRename: '保存',
   deleteGroupTitle: '删除这个分组？',
-  deleteGroupMessage: '分组内的任务会移至“未分组”，任务不会被删除。',
+  deleteGroupMessage: '分组内的任务会移至“默认分组”，任务不会被删除。',
   count: (count) => `${count} 项`,
   expand: '展开分组',
   collapse: '收起分组',

@@ -47,6 +47,11 @@ const normalize = (value: unknown): DesktopPreferences => {
       preferences.dockVisibility === 'window-open'
         ? preferences.dockVisibility
         : 'always',
+    skippedUpdateVersions: Array.isArray(preferences.skippedUpdateVersions)
+      ? preferences.skippedUpdateVersions.filter(
+          (version): version is string => typeof version === 'string',
+        )
+      : [],
     updateReminder:
       preferences.updateReminder === 'settings-only' ||
       preferences.updateReminder === 'sidebar'

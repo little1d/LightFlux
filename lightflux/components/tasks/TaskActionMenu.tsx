@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
+  Platform,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -22,6 +23,7 @@ import { TaskMenuPosition } from './useTaskContextMenu';
 
 const MENU_WIDTH = 240;
 const EDIT_MENU_WIDTH = 300;
+const GROUP_FLYOUT_WIDTH = 216;
 type MenuMode = 'subtask' | 'rename' | 'group' | null;
 
 interface TaskActionMenuProps {
@@ -62,11 +64,54 @@ const TaskActionMenu = ({
   const todo = todos.find((item) => item.id === todoId);
   const [mode, setMode] = useState<MenuMode>(null);
   const [draft, setDraft] = useState('');
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+  const flyoutCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const viewport = useWindowDimensions();
   const compactEdit = viewport.width < 360;
+  const isWeb = Platform.OS === 'web';
   const orderedGroups = [...groups].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
   );
+  // The cascading group list opens to the right of the menu, unless the
+  // menu is already near the viewport edge, in which case it flips left.
+  const flyoutOnLeft =
+    isWeb &&
+    position !== undefined &&
+    position.x + MENU_WIDTH + GROUP_FLYOUT_WIDTH + 20 > viewport.width;
+
+  useEffect(
+    () => () => {
+      if (flyoutCloseTimer.current) {
+        clearTimeout(flyoutCloseTimer.current);
+      }
+    },
+    [],
+  );
+
+  // Hovering the "move to group" row flies the group list open; a short grace
+  // period keeps it open while the pointer travels into the flyout.
+  const cancelFlyoutClose = () => {
+    if (flyoutCloseTimer.current) {
+      clearTimeout(flyoutCloseTimer.current);
+      flyoutCloseTimer.current = null;
+    }
+  };
+  const openFlyoutOnHover = () => {
+    if (!isWeb) {
+      return;
+    }
+    cancelFlyoutClose();
+    setFlyoutOpen(true);
+  };
+  const scheduleFlyoutClose = () => {
+    if (!isWeb) {
+      return;
+    }
+    cancelFlyoutClose();
+    flyoutCloseTimer.current = setTimeout(() => setFlyoutOpen(false), 140);
+  };
 
   if (!todo) {
     return null;
@@ -115,8 +160,41 @@ const TaskActionMenu = ({
     onClose();
   };
 
+  const renderGroupList = () => (
+    <ScrollView
+      contentContainerStyle={styles.groupListContent}
+      showsVerticalScrollIndicator={false}
+      style={styles.groupList}
+    >
+      <MenuItem
+        label={ungroupedName ?? labels.groups.ungrouped}
+        onPress={() => moveToGroup(null)}
+        selected={todo.groupId === null}
+        trailing={
+          todo.groupId === null ? (
+            <Ionicons color="#6759E8" name="checkmark" size={17} />
+          ) : null
+        }
+      />
+      {orderedGroups.map((group) => (
+        <MenuItem
+          key={group.id}
+          label={group.name}
+          onPress={() => moveToGroup(group.id)}
+          selected={todo.groupId === group.id}
+          trailing={
+            todo.groupId === group.id ? (
+              <Ionicons color="#6759E8" name="checkmark" size={17} />
+            ) : null
+          }
+        />
+      ))}
+    </ScrollView>
+  );
+
   return (
     <MenuSurface
+      allowOverflow={isWeb}
       closeLabel={labels.cancel}
       estimatedHeight={
         mode === 'group'
@@ -147,43 +225,7 @@ const TaskActionMenu = ({
             onPress={() => setMode(null)}
           />
           <View style={styles.divider} />
-          <ScrollView
-            contentContainerStyle={styles.groupListContent}
-            showsVerticalScrollIndicator={false}
-            style={styles.groupList}
-          >
-            <MenuItem
-              label={ungroupedName ?? labels.groups.ungrouped}
-              onPress={() => moveToGroup(null)}
-              selected={todo.groupId === null}
-              trailing={
-                todo.groupId === null ? (
-                  <Ionicons
-                    color="#6759E8"
-                    name="checkmark"
-                    size={17}
-                  />
-                ) : null
-              }
-            />
-            {orderedGroups.map((group) => (
-              <MenuItem
-                key={group.id}
-                label={group.name}
-                onPress={() => moveToGroup(group.id)}
-                selected={todo.groupId === group.id}
-                trailing={
-                  todo.groupId === group.id ? (
-                    <Ionicons
-                      color="#6759E8"
-                      name="checkmark"
-                      size={17}
-                    />
-                  ) : null
-                }
-              />
-            ))}
-          </ScrollView>
+          {renderGroupList()}
         </View>
       ) : mode ? (
         <View
@@ -254,24 +296,44 @@ const TaskActionMenu = ({
             label={labels.taskMenu.addSubtask}
             onPress={() => beginEdit('subtask')}
           />
-          <MenuItem
-            icon={
-              <Ionicons
-                color="#6F7080"
-                name="folder-outline"
-                size={16}
-              />
-            }
-            label={labels.taskMenu.moveToGroup}
-            onPress={() => setMode('group')}
-            trailing={
-              <Ionicons
-                color="#A0A1AD"
-                name="chevron-forward"
-                size={15}
-              />
-            }
-          />
+          <View
+            onPointerEnter={openFlyoutOnHover}
+            onPointerLeave={scheduleFlyoutClose}
+            style={styles.moveRow}
+          >
+            <MenuItem
+              icon={
+                <Ionicons
+                  color="#6F7080"
+                  name="folder-outline"
+                  size={16}
+                />
+              }
+              label={labels.taskMenu.moveToGroup}
+              onHoverIn={openFlyoutOnHover}
+              onPress={() => (isWeb ? openFlyoutOnHover() : setMode('group'))}
+              selected={isWeb && flyoutOpen}
+              trailing={
+                <Ionicons
+                  color="#A0A1AD"
+                  name="chevron-forward"
+                  size={15}
+                />
+              }
+            />
+            {isWeb && flyoutOpen ? (
+              <View
+                onPointerEnter={cancelFlyoutClose}
+                onPointerLeave={scheduleFlyoutClose}
+                style={[
+                  styles.flyout,
+                  flyoutOnLeft ? styles.flyoutLeft : styles.flyoutRight,
+                ]}
+              >
+                {renderGroupList()}
+              </View>
+            ) : null}
+          </View>
         </>
       )}
 
@@ -309,6 +371,30 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     marginVertical: 3,
   },
+  flyout: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E1E0E7',
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    position: 'absolute',
+    shadowColor: '#242235',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 22,
+    top: -6,
+    width: 216,
+    zIndex: 20,
+  },
+  flyoutLeft: {
+    right: '100%',
+    marginRight: 8,
+  },
+  flyoutRight: {
+    left: '100%',
+    marginLeft: 8,
+  },
   groupList: {
     maxHeight: 264,
   },
@@ -317,6 +403,9 @@ const styles = StyleSheet.create({
   },
   groupPicker: {
     paddingBottom: 2,
+  },
+  moveRow: {
+    position: 'relative',
   },
   input: {
     color: '#303145',

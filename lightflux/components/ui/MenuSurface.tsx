@@ -6,16 +6,29 @@ import {
   Pressable,
   StyleSheet,
   View,
+  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import Portal from './Portal';
 
 export interface MenuSurfacePosition {
   x: number;
   y: number;
 }
 
+// React Native Web makes every View `position: relative` by default, so a
+// plain `absolute` overlay resolves against the nearest ancestor View instead
+// of the window. That doubled the menu's viewport coordinates and pushed menus
+// triggered far from the top-left (e.g. the Settings language select) fully
+// off-screen. `fixed` anchors the overlay to the viewport regardless of
+// ancestor positioning. RNW supports it at runtime even though its style types
+// omit the value, so it is applied through a cast.
+const webFixedPosition = { position: 'fixed' } as unknown as ViewStyle;
+
 interface MenuSurfaceProps {
+  allowOverflow?: boolean;
   children: React.ReactNode;
   closeLabel?: string;
   estimatedHeight?: number;
@@ -25,6 +38,7 @@ interface MenuSurfaceProps {
 }
 
 const MenuSurface = ({
+  allowOverflow = false,
   children,
   closeLabel = 'Close menu',
   estimatedHeight = 220,
@@ -113,6 +127,7 @@ const MenuSurface = ({
           accessibilityRole="menu"
           style={[
             styles.surface,
+            allowOverflow && styles.surfaceOverflow,
             {
               opacity,
               transform: [
@@ -139,7 +154,15 @@ const MenuSurface = ({
   );
 
   if (Platform.OS === 'web') {
-    return <View style={styles.webOverlay}>{content}</View>;
+    // Portal to document.body so the overlay lives in the root stacking
+    // context. Otherwise RNW's per-View stacking contexts and the Settings
+    // cards' `overflow: hidden` clip the menu or paint it behind later
+    // sections (the language dropdown vanishing under the statistics block).
+    return (
+      <Portal>
+        <View style={[styles.webOverlay, webFixedPosition]}>{content}</View>
+      </Portal>
+    );
   }
 
   return (
@@ -187,6 +210,9 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 22,
+  },
+  surfaceOverflow: {
+    overflow: 'visible',
   },
 });
 

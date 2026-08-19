@@ -122,3 +122,23 @@ Use this format:
 - Context: Permanent trash deletion and group deletion silently did nothing in desktop WebView builds because `globalThis.confirm` was unavailable.
 - Rule: Route destructive actions through the shared in-app confirmation provider; never depend on browser-native `confirm()` for Web or Tauri behavior.
 - Evidence: `lightflux/components/ui/ConfirmationProvider.tsx`; verified delete-group, permanent-delete, cancel, reload, and empty-trash confirmation workflows.
+
+### 2026-08-14 - Manual pointer-drag listeners attach synchronously
+- Context: Sidebar reorder used `draggable`/HTML5 DnD, then window `mousemove`/`mouseup` listeners registered from a `useEffect` keyed on a `dragging` state. Fast or synthetic events fired before the effect ran, so the drag silently no-opped.
+- Rule: For custom pointer drags, attach window listeners synchronously inside the `onMouseDown` handler (not from an effect), read live props/index via refs, clear any click-suppression flag at drag start, and clean up on unmount. Native HTML5 DnD is unreliable inside the Tauri WebView.
+- Evidence: `lightflux/components/navigation/DraggableNavigationItem.web.tsx`; pure reorder logic extracted to `reorderList` in `lightflux/store/todoDomain.ts` and covered by `lightflux/tests/todoDomain.test.ts`.
+
+### 2026-08-14 - Cascading submenus flyout, never replace in place
+- Context: "Move to group" replaced the whole action menu on hover, which mismatched the requested right-side cascade and let a pointer heading toward "移至垃圾桶" accidentally swap the menu.
+- Rule: Render nested menus as an absolutely-positioned side flyout (right by default, flip left near the viewport edge) with a short close grace period; set `allowOverflow` on `MenuSurface` so the flyout can extend past the panel. Keep in-place mode swapping for native (non-web) only.
+- Evidence: `lightflux/components/tasks/TaskActionMenu.tsx`, `lightflux/components/ui/MenuSurface.tsx`; verified hover-expand and click-to-move at desktop width.
+
+### 2026-08-18 - Viewport-anchored popovers must use position:fixed on web
+- Context: The Settings language `MenuSurface` mounted but was invisible: its overlay used `position:absolute`, and React Native Web makes every `View` `position:relative`, so the overlay resolved against its nearest ancestor `View` (the setting-control box) instead of the window. The menu's `measureInWindow`-derived viewport coordinates were then added on top of that ancestor offset, so a box at x≈669 rendered its menu at x≈1338 — fully off-screen. Menus triggered near the top-left only shifted slightly, hiding the bug for a long time.
+- Rule: Any web overlay meant to cover/position against the viewport (menus, popovers built on `measureInWindow` coordinates) must be `position:fixed`, not `absolute`. RNW accepts `'fixed'` at runtime though its style types omit it; apply via a small typed cast. Verify with a control placed far from the top-left, not just near it.
+- Evidence: `lightflux/components/ui/MenuSurface.tsx` (`webFixedPosition`); verified the language, group, priority, and date pickers open on-screen directly below their trigger and both language directions switch the whole UI.
+
+### 2026-08-18 - Web overlays must portal to document.body
+- Context: After the `position:fixed` fix the language dropdown still had its "English" option clipped/painted behind the statistics card. `position:fixed` positions against the viewport but does not escape ancestor stacking contexts: the Settings `sectionCard` uses `overflow:hidden`, and RNW wraps content in per-`View`/`Animated.View` stacking and transform contexts, so a `zIndex` set in-tree only competes within the nearest section.
+- Rule: Render web popovers/menus through a `Portal` into `document.body` so they live in the root stacking context; `position:fixed` alone is not enough when any ancestor clips overflow or creates a stacking/transform context. Keep a platform-split `Portal` (`.web` via `createPortal`, `.native` pass-through since `Modal` already escapes the tree) with a base re-export for TS resolution.
+- Evidence: `lightflux/components/ui/Portal.web.tsx`, `Portal.native.tsx`, `Portal.tsx`, `MenuSurface.tsx`; verified the language dropdown shows both options unobstructed and the move-to-group cascade flyout still expands without regression.

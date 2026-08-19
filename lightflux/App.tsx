@@ -39,18 +39,22 @@ import DesktopUpdateMenu from './components/desktop/DesktopUpdateMenu';
 import TaskEditorScreen from './components/editor/TaskEditorScreen';
 import ResizableDivider from './components/layout/ResizableDivider';
 import DraggableNavigationItem from './components/navigation/DraggableNavigationItem';
+import { NavigationDragState } from './components/navigation/navigationDrag';
 import TaskActionMenu from './components/tasks/TaskActionMenu';
 import {
   OpenTaskMenu,
   TaskMenuPosition,
 } from './components/tasks/useTaskContextMenu';
-import Toast from './components/ui/Toast';
 import IconButton from './components/ui/IconButton';
 import Tooltip from './components/ui/Tooltip';
 import {
   ConfirmationProvider,
   useConfirmation,
 } from './components/ui/ConfirmationProvider';
+import {
+  ToastProvider,
+  useToast,
+} from './components/ui/ToastProvider';
 import { useCurrentDateKey } from './hooks/useCurrentDateKey';
 import {
   listenForTrayActions,
@@ -76,11 +80,6 @@ type SelectedTask = {
   id: string;
   readOnly: boolean;
   requestId: number;
-};
-type ToastMessage = {
-  id: number;
-  message: string;
-  variant?: 'error' | 'success';
 };
 
 const DESKTOP_NAV_WIDTH = 78;
@@ -149,7 +148,7 @@ const DesktopNavigationButton = ({
       <Tooltip
         label={label}
         position="right"
-        visible={hovered || focused}
+        visible={(hovered || focused) && !isActive}
       />
     </View>
   );
@@ -199,16 +198,18 @@ const AccountTrigger = ({
 
 const AppContent = () => {
   const requestConfirmation = useConfirmation();
+  const notify = useToast();
   const [activeView, setActiveView] = useState<AppView>('groups');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickCreateRequestId, setQuickCreateRequestId] = useState(0);
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
+  const [navigationDrag, setNavigationDrag] =
+    useState<NavigationDragState | null>(null);
   const notifiedUpdateVersion = useRef<string | null>(null);
   const [taskMenu, setTaskMenu] = useState<{
     todoId: string;
@@ -321,14 +322,12 @@ const AppContent = () => {
       }
 
       reorderNavigationItem(id, boundedTarget);
-      setToast({
-        id: Date.now(),
-        message: labels.notifications.orderUpdated,
-      });
+      notify(labels.notifications.orderUpdated);
     },
     [
       labels.notifications.orderUpdated,
       navigationOrder,
+      notify,
       reorderNavigationItem,
     ],
   );
@@ -461,13 +460,11 @@ const AppContent = () => {
       return;
     }
     notifiedUpdateVersion.current = updateInfo.version;
-    setToast({
-      id: Date.now(),
-      message: labels.desktop.newVersionAvailable(updateInfo.version),
-    });
+    notify(labels.desktop.newVersionAvailable(updateInfo.version));
   }, [
     desktopPreferences.updateReminder,
     labels.desktop,
+    notify,
     updateInfo,
     updateStatus,
   ]);
@@ -561,13 +558,15 @@ const AppContent = () => {
 
   useEffect(() => {
     if (persistenceErrorAt) {
-      setToast({
-        id: persistenceErrorAt,
-        message: labels.notifications.saveFailed,
-        variant: 'error',
-      });
+      notify(labels.notifications.saveFailed, 'error');
+      clearPersistenceError();
     }
-  }, [labels.notifications.saveFailed, persistenceErrorAt]);
+  }, [
+    clearPersistenceError,
+    labels.notifications.saveFailed,
+    notify,
+    persistenceErrorAt,
+  ]);
 
   const signOut = () => {
     setAccountMenuOpen(false);
@@ -614,9 +613,7 @@ const AppContent = () => {
         focusComposerRequestId={quickCreateRequestId}
         onOpenTaskMenu={openTaskMenu}
         onEditTask={openActiveTask}
-        onNotify={(message) =>
-          setToast({ id: Date.now(), message, variant: 'success' })
-        }
+        onNotify={notify}
         onOpenMilestones={() => changeView('milestones')}
         selectedTaskId={selectedTaskId}
       />
@@ -684,10 +681,13 @@ const AppContent = () => {
               const isActive = item.id === activeView;
               return (
                 <DraggableNavigationItem
+                  dragState={navigationDrag}
                   id={item.id}
                   index={index}
+                  itemCount={navigationItems.length}
                   key={item.id}
                   label={labels.navigation[item.id]}
+                  onDragStateChange={setNavigationDrag}
                   onMove={moveNavigationItem}
                 >
                   <DesktopNavigationButton
@@ -856,20 +856,6 @@ const AppContent = () => {
           position={{ x: 90, y: Math.max(12, height - 290) }}
         />
       ) : null}
-
-      {toast ? (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          onDismiss={() => {
-            if (toast.variant === 'error') {
-              clearPersistenceError();
-            }
-            setToast(null);
-          }}
-          variant={toast.variant}
-        />
-      ) : null}
     </View>
     <SearchOverlay
       onClose={() => setSearchOpen(false)}
@@ -879,9 +865,7 @@ const AppContent = () => {
     />
     <AgentCommandPanel
       onClose={() => setAgentOpen(false)}
-      onNotify={(message, variant = 'success') =>
-        setToast({ id: Date.now(), message, variant })
-      }
+      onNotify={notify}
       visible={agentOpen}
     />
     {selectedTask && !usesDesktopLayout ? (
@@ -1005,9 +989,11 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   agentButtonPosition: {
+    alignItems: 'center',
     marginBottom: 14,
   },
   updateButtonPosition: {
+    alignItems: 'center',
     marginBottom: 9,
   },
   mobileAgentButtonPosition: {
@@ -1024,7 +1010,9 @@ export default function App() {
     <SafeAreaProvider>
       <TodoProvider>
         <ConfirmationProvider>
-          <AppContent />
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
         </ConfirmationProvider>
       </TodoProvider>
     </SafeAreaProvider>

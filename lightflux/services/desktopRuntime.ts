@@ -23,6 +23,7 @@ export interface DesktopPreferences {
   dockBadge: DockBadgeMode;
   dockIcon: DockIconStyle;
   dockVisibility: DockVisibility;
+  skippedUpdateVersions: string[];
   updateReminder: UpdateReminderMode;
 }
 
@@ -48,6 +49,7 @@ export const DEFAULT_DESKTOP_PREFERENCES: DesktopPreferences = {
   dockBadge: 'today',
   dockIcon: 'flux',
   dockVisibility: 'always',
+  skippedUpdateVersions: [],
   updateReminder: 'sidebar-and-toast',
 };
 

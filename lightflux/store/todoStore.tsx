@@ -38,6 +38,7 @@ import {
   deleteTrashedTodoBranch,
   emptyTrashTodos,
   moveTodoBranchToGroup,
+  reorderList,
   restoreTodoBranch,
   todoState,
 } from './todoDomain';
@@ -510,18 +511,14 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
   reorderNavigationItem: (id, targetIndex) =>
     set((state) => {
-      const sourceIndex = state.navigationOrder.indexOf(id);
-      const boundedTarget = Math.max(
-        0,
-        Math.min(targetIndex, state.navigationOrder.length - 1),
+      const navigationOrder = reorderList(
+        state.navigationOrder,
+        id,
+        targetIndex,
       );
-      if (sourceIndex < 0 || sourceIndex === boundedTarget) {
+      if (navigationOrder === state.navigationOrder) {
         return state;
       }
-
-      const navigationOrder = [...state.navigationOrder];
-      const [moved] = navigationOrder.splice(sourceIndex, 1);
-      navigationOrder.splice(boundedTarget, 0, moved);
       return { navigationOrder };
     }),
 

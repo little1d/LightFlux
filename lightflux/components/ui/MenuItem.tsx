@@ -11,6 +11,8 @@ interface MenuItemProps {
   disabled?: boolean;
   icon?: React.ReactNode;
   label: string;
+  onHoverIn?: () => void;
+  onHoverOut?: () => void;
   onPress: () => void;
   selected?: boolean;
   trailing?: React.ReactNode;
@@ -21,6 +23,8 @@ const MenuItem = ({
   disabled = false,
   icon,
   label,
+  onHoverIn,
+  onHoverOut,
   onPress,
   selected = false,
   trailing,
@@ -34,8 +38,14 @@ const MenuItem = ({
       disabled={disabled}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
+      onHoverIn={() => {
+        setHovered(true);
+        onHoverIn?.();
+      }}
+      onHoverOut={() => {
+        setHovered(false);
+        onHoverOut?.();
+      }}
       onPress={onPress}
       style={({ pressed }) => [
         styles.item,

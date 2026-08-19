@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 
 import { translations } from '../../content';
@@ -24,14 +24,18 @@ const DesktopUpdateMenu = ({
   position,
 }: DesktopUpdateMenuProps) => {
   const {
+    currentVersion,
     downloadUpdate,
+    skipUpdateVersion,
     updateError,
     updateInfo,
     updateProgress,
     updateStatus,
   } = useDesktopStore(
     useShallow((state) => ({
+      currentVersion: state.environment.currentVersion,
       downloadUpdate: state.downloadUpdate,
+      skipUpdateVersion: state.skipUpdateVersion,
       updateError: state.updateError,
       updateInfo: state.updateInfo,
       updateProgress: state.updateProgress,
@@ -40,6 +44,7 @@ const DesktopUpdateMenu = ({
   );
   const labels = translations[language].desktop.updateMenu;
   const required = updateInfo?.required === true;
+  const version = updateInfo?.version ?? '';
   const progress =
     updateProgress === null ? null : Math.round(updateProgress * 100);
   const title =
@@ -49,15 +54,15 @@ const DesktopUpdateMenu = ({
         ? labels.downloading
         : updateStatus === 'error'
           ? labels.failed
-          : labels.available(updateInfo?.version ?? '');
+          : labels.available(version);
 
   return (
     <MenuSurface
       closeLabel={labels.close}
-      estimatedHeight={260}
+      estimatedHeight={300}
       onClose={required ? () => undefined : onClose}
       position={position}
-      width={310}
+      width={330}
     >
       <View style={styles.content}>
         <View style={styles.header}>
@@ -69,7 +74,7 @@ const DesktopUpdateMenu = ({
                   ? 'checkmark'
                   : updateStatus === 'error'
                     ? 'alert'
-                    : 'download-outline'
+                    : 'sparkles'
               }
               size={18}
             />
@@ -77,7 +82,7 @@ const DesktopUpdateMenu = ({
           <View style={styles.heading}>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.meta}>
-              {required ? labels.required : labels.stable}
+              {required ? labels.required : labels.currentVersion(currentVersion)}
             </Text>
           </View>
         </View>
@@ -87,9 +92,14 @@ const DesktopUpdateMenu = ({
             {updateError || labels.tryAgain}
           </Text>
         ) : (
-          <Text style={styles.body} numberOfLines={4}>
-            {updateInfo?.body || labels.fallbackBody}
-          </Text>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={styles.bodyScroll}
+          >
+            <Text style={styles.body}>
+              {updateInfo?.body || labels.fallbackBody}
+            </Text>
+          </ScrollView>
         )}
 
         {updateStatus === 'downloading' ? (
@@ -108,6 +118,18 @@ const DesktopUpdateMenu = ({
             <ActionButton
               label={labels.later}
               onPress={onClose}
+              size="small"
+              variant="ghost"
+            />
+          ) : null}
+          {!required &&
+          (updateStatus === 'available' || updateStatus === 'error') ? (
+            <ActionButton
+              label={labels.skip}
+              onPress={() => {
+                void skipUpdateVersion(version);
+                onClose();
+              }}
               size="small"
               variant="ghost"
             />
@@ -169,12 +191,15 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   body: {
-    borderTopColor: '#EBEAF0',
-    borderTopWidth: 1,
     color: '#666778',
     fontSize: 12,
     lineHeight: 18,
+  },
+  bodyScroll: {
+    borderTopColor: '#EBEAF0',
+    borderTopWidth: 1,
     marginTop: 12,
+    maxHeight: 116,
     paddingTop: 11,
   },
   error: {

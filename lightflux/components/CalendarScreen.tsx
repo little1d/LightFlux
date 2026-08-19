@@ -25,6 +25,10 @@ import {
   toDateKey,
 } from '../utils/date';
 import TaskIndicators from './tasks/TaskIndicators';
+import TaskPriorityIndicator, {
+  TaskPriorityIcon,
+  TASK_PRIORITY_THEME,
+} from './tasks/TaskPriorityIndicator';
 import {
   TaskCheckbox,
   TaskMoreButton,
@@ -105,15 +109,21 @@ const CalendarDay = ({
         <>
           {tasks.slice(0, 2).map((todo) => (
             <View key={todo.id} style={styles.dayTaskPill}>
-              <View
-                style={[
-                  styles.dayTaskDot,
-                  {
-                    backgroundColor:
-                      groupColors.get(todo.groupId ?? '') ?? '#8B7EFF',
-                  },
-                ]}
-              />
+              {todo.priority !== 'none' ? (
+                <View style={styles.dayTaskPriority}>
+                  <TaskPriorityIcon priority={todo.priority} size={10} />
+                </View>
+              ) : (
+                <View
+                  style={[
+                    styles.dayTaskDot,
+                    {
+                      backgroundColor:
+                        groupColors.get(todo.groupId ?? '') ?? '#8B7EFF',
+                    },
+                  ]}
+                />
+              )}
               <Text numberOfLines={1} style={styles.dayTaskTitle}>
                 {todo.title}
               </Text>
@@ -182,6 +192,10 @@ const CalendarTask = ({
       ref={targetRef}
       style={[
         styles.taskRow,
+        todo.priority !== 'none' &&
+          !selected && {
+            backgroundColor: TASK_PRIORITY_THEME[todo.priority].rowBackground,
+          },
         selected && styles.taskRowSelected,
         hovered && !selected && styles.taskRowHovered,
       ]}
@@ -212,6 +226,7 @@ const CalendarTask = ({
           {todo.title}
         </Text>
       </Pressable>
+      <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
       <View
         className="ml-2 h-2 w-2 rounded"
@@ -613,6 +628,13 @@ const styles = StyleSheet.create({
     height: 6,
     marginRight: 5,
     width: 6,
+  },
+  dayTaskPriority: {
+    alignItems: 'center',
+    height: 12,
+    justifyContent: 'center',
+    marginRight: 3,
+    width: 12,
   },
   dayTaskTitle: {
     color: '#555667',

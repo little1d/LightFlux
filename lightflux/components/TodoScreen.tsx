@@ -27,6 +27,7 @@ import { useTodoStore } from '../store/todoStore';
 import { Milestone, Todo } from '../types/todo';
 import { fromDateKey } from '../utils/date';
 import { getMilestoneOccurrence, milestoneOccursOn } from '../utils/milestoneDate';
+import InlineTaskTitle from './tasks/InlineTaskTitle';
 import TaskIndicators from './tasks/TaskIndicators';
 import TaskPriorityIndicator, {
   TASK_PRIORITY_THEME,
@@ -43,6 +44,7 @@ import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
+import { ToastVariant } from './ui/ToastProvider';
 
 interface TodayMilestoneRowProps {
   labels: Translation['milestones'];
@@ -138,6 +140,7 @@ interface TodoRowProps {
   todo: Todo;
   onEdit: (id: string) => void;
   onOpenMenu: OpenTaskMenu;
+  onRename: (id: string, title: string) => void;
   onToggle: (id: string) => void;
 }
 
@@ -149,6 +152,7 @@ const TodoRow = ({
   todo,
   onEdit,
   onOpenMenu,
+  onRename,
   onToggle,
 }: TodoRowProps) => {
   const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
@@ -187,24 +191,24 @@ const TodoRow = ({
         onPress={() => onToggle(todo.id)}
       />
 
+      <InlineTaskTitle
+        editLabel={labels.editor.title}
+        nested={nested}
+        onOpenDetails={() => onEdit(todo.id)}
+        onRename={(title) => onRename(todo.id, title)}
+        openDetailsOnEdit={false}
+        todo={todo}
+      />
+
       <Pressable
-        accessibilityLabel={`${labels.editor.title}: ${todo.title}`}
+        accessibilityLabel={labels.taskMenu.moreActions}
         accessibilityRole="button"
-        className="ml-2.5 flex-1 py-1.5"
+        className="mr-1 h-8 w-6 items-center justify-center"
         delayLongPress={350}
         onLongPress={openFromLongPress}
         onPress={() => onEdit(todo.id)}
       >
-        <Text
-          className={`text-[13px] font-semibold leading-[18px] ${
-            todo.completed
-              ? 'text-[#999AAA] line-through'
-              : 'text-[#303145]'
-          }`}
-          numberOfLines={1}
-        >
-          {todo.title}
-        </Text>
+        <Ionicons color="#B7B8C4" name="chevron-forward" size={15} />
       </Pressable>
 
       <TaskPriorityIndicator priority={todo.priority} />
@@ -229,7 +233,7 @@ const TodoScreen = ({
   onEditTask: (id: string) => void;
   onOpenTaskMenu: OpenTaskMenu;
   onOpenMilestones: () => void;
-  onNotify: (message: string) => void;
+  onNotify: (message: string, variant?: ToastVariant) => void;
   selectedTaskId: string | null;
 }) => {
   const [draft, setDraft] = useState('');
@@ -240,6 +244,7 @@ const TodoScreen = ({
     milestones,
     addTodo: createTodo,
     toggleTodo,
+    updateTodo,
   } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
@@ -247,6 +252,7 @@ const TodoScreen = ({
       milestones: state.milestones,
       addTodo: state.addTodo,
       toggleTodo: state.toggleTodo,
+      updateTodo: state.updateTodo,
     })),
   );
   const dateKey = useCurrentDateKey();
@@ -308,6 +314,38 @@ const TodoScreen = ({
       milestoneId: milestone.id,
     });
     onNotify(labels.milestones.relatedTaskCreated);
+  };
+
+  // Completing a task earns a bit of praise; the last remaining task of the day
+  // gets a louder celebration. Reopening quietly confirms the change.
+  const handleToggle = (id: string) => {
+    const target = todos.find((todo) => todo.id === id);
+    const willComplete = target ? !target.completed : false;
+    toggleTodo(id);
+
+    if (!target) {
+      return;
+    }
+    if (!willComplete) {
+      onNotify(labels.notifications.taskReopened, 'success');
+      return;
+    }
+
+    const remainingActive = todos.filter(
+      (todo) => !todo.completed && todo.id !== id,
+    ).length;
+    if (todos.length > 1 && remainingActive === 0) {
+      onNotify(labels.notifications.allTasksDone, 'celebrate');
+      return;
+    }
+    const praises = labels.notifications.taskCompleted;
+    const message =
+      praises[Math.floor(Math.random() * praises.length)] ?? praises[0];
+    onNotify(message, 'celebrate');
+  };
+
+  const handleRename = (id: string, title: string) => {
+    updateTodo(id, { title });
   };
 
   const listHeader = (
@@ -479,7 +517,8 @@ const TodoScreen = ({
                 )}
                 onEdit={onEditTask}
                 onOpenMenu={onOpenTaskMenu}
-                onToggle={toggleTodo}
+                onRename={handleRename}
+                onToggle={handleToggle}
                 selected={selectedTaskId === item.id}
                 todo={item}
               />

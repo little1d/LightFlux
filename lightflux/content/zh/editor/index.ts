@@ -26,4 +26,12 @@ export const editor: Translation['editor'] = {
   emptyTitle: '任务标题不能为空。',
   previewTitle: '任务预览',
   resizePane: '调整任务列表与详情宽度',
+  metadataTitle: '任务信息',
+  dateLabel: '日期',
+  groupLabel: '分组',
+  priorityLabel: '优先级',
+  scheduleToday: '今天',
+  scheduleTomorrow: '明天',
+  clearDate: '清除日期',
+  noDate: '未安排',
 };

@@ -1,93 +1,183 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 import { NavigationItemId } from '../../types/todo';
+import {
+  NAVIGATION_ITEM_STEP,
+  NavigationDragState,
+} from './navigationDrag';
 
 interface DraggableNavigationItemProps {
   children: React.ReactNode;
+  dragState: NavigationDragState | null;
   id: NavigationItemId;
   index: number;
+  itemCount: number;
   label: string;
+  onDragStateChange: (state: NavigationDragState | null) => void;
   onMove: (id: NavigationItemId, targetIndex: number) => void;
 }
 
-const DRAG_TYPE = 'text/lightflux-navigation-id';
+// Ignore micro movements so a plain click still selects the view.
+const DRAG_THRESHOLD = 5;
 
+// HTML5 native drag-and-drop does not fire reliably inside the Tauri
+// WebView, so the desktop sidebar drags with window-level mouse events
+// instead. The dragged row lifts and follows the cursor as a live preview
+// while the other rows slide out of the way to reveal the drop slot.
+//
+// The window listeners are attached synchronously on mouse down (not from an
+// effect) so a drag never misses the first moves while React re-renders.
 const DraggableNavigationItem = ({
   children,
+  dragState,
   id,
   index,
+  itemCount,
   label,
+  onDragStateChange,
   onMove,
 }: DraggableNavigationItemProps) => {
+  const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [targeted, setTargeted] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [activated, setActivated] = useState(false);
+  const startY = useRef(0);
+  const activatedRef = useRef(false);
+  const suppressClick = useRef(false);
+  const latestOffset = useRef(0);
+  const cleanupRef = useRef<(() => void) | null>(null);
+  latestOffset.current = offset;
 
-  useEffect(() => {
-    const tab = containerRef.current?.querySelector<HTMLElement>('[role="tab"]');
-    if (tab) {
-      tab.style.cursor = dragging ? 'grabbing' : 'grab';
+  // Keep the latest props in refs so the imperatively-attached listeners
+  // always act on current values without re-binding.
+  const moveState = useRef({ id, index, itemCount, onDragStateChange, onMove });
+  moveState.current = { id, index, itemCount, onDragStateChange, onMove };
+
+  const endDrag = () => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    activatedRef.current = false;
+    setActivated(false);
+    setDragging(false);
+    setOffset(0);
+    moveState.current.onDragStateChange(null);
+  };
+
+  // Detach listeners if the component unmounts mid-drag.
+  useEffect(
+    () => () => {
+      cleanupRef.current?.();
+      cleanupRef.current = null;
+    },
+    [],
+  );
+
+  const clampTarget = (raw: number) =>
+    Math.max(0, Math.min(raw, moveState.current.itemCount - 1));
+
+  const beginDrag = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || cleanupRef.current) {
+      return;
     }
-  }, [dragging]);
+    // Clear any stale suppression left by a drag that ended off-row so a
+    // fresh click still selects the view.
+    suppressClick.current = false;
+    startY.current = event.clientY;
+    activatedRef.current = false;
+    setActivated(false);
+    setDragging(true);
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientY - startY.current;
+      if (!activatedRef.current && Math.abs(delta) < DRAG_THRESHOLD) {
+        return;
+      }
+      if (!activatedRef.current) {
+        activatedRef.current = true;
+        setActivated(true);
+      }
+      setOffset(delta);
+      const { id: liveId, index: liveIndex, onDragStateChange: report } =
+        moveState.current;
+      report({
+        id: liveId,
+        sourceIndex: liveIndex,
+        targetIndex: clampTarget(liveIndex + Math.round(delta / NAVIGATION_ITEM_STEP)),
+      });
+    };
+    const handleUp = () => {
+      if (activatedRef.current) {
+        suppressClick.current = true;
+        const { id: liveId, index: liveIndex, onMove: move } =
+          moveState.current;
+        const targetIndex = clampTarget(
+          liveIndex + Math.round(latestOffset.current / NAVIGATION_ITEM_STEP),
+        );
+        move(liveId, targetIndex);
+      }
+      endDrag();
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    cleanupRef.current = () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  };
+
+  const lifted = dragging && activated;
+
+  // While another row is lifted, slide this row into the gap it leaves so the
+  // drop slot is always visible. Rows between the source and the live target
+  // shift by exactly one step in the opposite direction of the drag.
+  let displacement = 0;
+  if (dragState && !lifted && dragState.id !== id) {
+    const { sourceIndex, targetIndex } = dragState;
+    if (targetIndex > sourceIndex && index > sourceIndex && index <= targetIndex) {
+      displacement = -NAVIGATION_ITEM_STEP;
+    } else if (
+      targetIndex < sourceIndex &&
+      index >= targetIndex &&
+      index < sourceIndex
+    ) {
+      displacement = NAVIGATION_ITEM_STEP;
+    }
+  }
+
+  const translateY = lifted ? offset : displacement;
 
   return (
     <div
       aria-label={label}
-      draggable
-      onDragEnd={() => {
-        setDragging(false);
-        setTargeted(false);
-      }}
-      onDragEnter={() => setTargeted(true)}
-      onDragLeave={() => setTargeted(false)}
-      onDragOver={(event) => {
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-      }}
-      onDragStart={(event) => {
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData(DRAG_TYPE, id);
-        event.currentTarget.style.backgroundColor = '#ECE9FF';
-        event.currentTarget.style.boxShadow =
-          '0 10px 24px rgba(58, 49, 120, 0.24)';
-        event.currentTarget.style.transform = 'scale(1.06)';
-        const bounds = event.currentTarget.getBoundingClientRect();
-        event.dataTransfer.setDragImage(
-          event.currentTarget,
-          bounds.width / 2,
-          bounds.height / 2,
-        );
-        setDragging(true);
-      }}
-      onDrop={(event) => {
-        event.preventDefault();
-        const sourceId = event.dataTransfer.getData(
-          DRAG_TYPE,
-        ) as NavigationItemId;
-        setTargeted(false);
-        if (sourceId) {
-          onMove(sourceId, index);
+      onClickCapture={(event) => {
+        if (suppressClick.current) {
+          event.preventDefault();
+          event.stopPropagation();
+          suppressClick.current = false;
         }
       }}
-      ref={containerRef}
+      onMouseDown={beginDrag}
       role="listitem"
       style={{
         alignItems: 'center',
-        backgroundColor: dragging ? '#ECE9FF' : 'transparent',
+        backgroundColor: lifted ? '#ECE9FF' : 'transparent',
         borderRadius: 15,
-        boxShadow: dragging
-          ? '0 10px 24px rgba(58, 49, 120, 0.24)'
-          : targeted
-            ? 'inset 0 0 0 2px #8B7EFF'
-            : 'none',
+        boxShadow: lifted ? '0 12px 26px rgba(58, 49, 120, 0.26)' : 'none',
         cursor: dragging ? 'grabbing' : 'grab',
         display: 'inline-flex',
         justifyContent: 'center',
         marginBottom: 12,
-        opacity: dragging ? 0.52 : 1,
-        transform: dragging ? 'scale(1.06)' : 'scale(1)',
-        transition:
-          'background-color 120ms ease, box-shadow 120ms ease, transform 120ms ease, opacity 120ms ease',
+        opacity: dragging ? 0.96 : 1,
+        position: 'relative',
+        touchAction: 'none',
+        transform: lifted
+          ? `translateY(${translateY}px) scale(1.06)`
+          : `translateY(${translateY}px) scale(1)`,
+        transition: lifted
+          ? 'none'
+          : 'transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 140ms ease, background-color 140ms ease',
+        userSelect: 'none',
+        zIndex: lifted ? 40 : 0,
       }}
       tabIndex={0}
     >

@@ -130,11 +130,13 @@ export interface Translation {
       failed: string;
       available: (version: string) => string;
       close: string;
+      currentVersion: (version: string) => string;
       required: string;
       stable: string;
       tryAgain: string;
       fallbackBody: string;
       later: string;
+      skip: string;
       download: string;
       downloadingProgress: string;
       restart: string;
@@ -196,6 +198,12 @@ export interface Translation {
   notifications: {
     orderUpdated: string;
     saveFailed: string;
+    taskCompleted: string[];
+    allTasksDone: string;
+    taskReopened: string;
+    taskMovedToGroup: (groupName: string) => string;
+    taskRescheduled: string;
+    priorityUpdated: string;
   };
   overview: string;
   remaining: string;
@@ -277,6 +285,14 @@ export interface Translation {
     emptyTitle: string;
     previewTitle: string;
     resizePane: string;
+    metadataTitle: string;
+    dateLabel: string;
+    groupLabel: string;
+    priorityLabel: string;
+    scheduleToday: string;
+    scheduleTomorrow: string;
+    clearDate: string;
+    noDate: string;
   };
   agent: {
     title: string;

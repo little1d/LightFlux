@@ -41,6 +41,18 @@ export const common: CommonContent = {
   notifications: {
     orderUpdated: 'Order updated.',
     saveFailed: 'Save failed. Local data is preserved; try again later.',
+    taskCompleted: [
+      'Nicely done!',
+      'One more off the list 🎉',
+      'Great work — keep it up!',
+      'Momentum looking good ✨',
+      'Done! Give yourself credit.',
+    ],
+    allTasksDone: "Every task done today. You're on fire! 🎊",
+    taskReopened: 'Marked as active again.',
+    taskMovedToGroup: (groupName) => `Moved to “${groupName}”.`,
+    taskRescheduled: 'Date updated.',
+    priorityUpdated: 'Priority updated.',
   },
   cancel: 'Cancel',
   delete: 'Delete',

@@ -3,7 +3,6 @@ export const desktop: Translation['desktop'] = {
   newVersionAvailable: (version) => `新版本 ${version} 可用`,
   updateToVersion: (version) => `更新到 ${version}`,
   settings: {
-    subtitle: '界面、桌面端与工作方式偏好',
     general: '通用',
     languageDescription: '选择界面的显示语言',
     softwareUpdate: '软件更新',

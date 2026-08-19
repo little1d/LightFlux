@@ -3,7 +3,6 @@ export const desktop: Translation['desktop'] = {
   newVersionAvailable: (version) => `Version ${version} is available`,
   updateToVersion: (version) => `Update to ${version}`,
   settings: {
-    subtitle: 'Interface, desktop, and workflow preferences',
     general: 'General',
     languageDescription: 'Choose the interface language',
     softwareUpdate: 'Software update',

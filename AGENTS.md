@@ -142,3 +142,38 @@ Use this format:
 - Context: After the `position:fixed` fix the language dropdown still had its "English" option clipped/painted behind the statistics card. `position:fixed` positions against the viewport but does not escape ancestor stacking contexts: the Settings `sectionCard` uses `overflow:hidden`, and RNW wraps content in per-`View`/`Animated.View` stacking and transform contexts, so a `zIndex` set in-tree only competes within the nearest section.
 - Rule: Render web popovers/menus through a `Portal` into `document.body` so they live in the root stacking context; `position:fixed` alone is not enough when any ancestor clips overflow or creates a stacking/transform context. Keep a platform-split `Portal` (`.web` via `createPortal`, `.native` pass-through since `Modal` already escapes the tree) with a base re-export for TS resolution.
 - Evidence: `lightflux/components/ui/Portal.web.tsx`, `Portal.native.tsx`, `Portal.tsx`, `MenuSurface.tsx`; verified the language dropdown shows both options unobstructed and the move-to-group cascade flyout still expands without regression.
+
+### 2026-08-19 - Native menus anchor to their trigger
+- Context: Native `MenuSurface` ignored a supplied position and always used its bottom-sheet fallback, so task, group, and milestone actions appeared detached from their trigger on iOS/Android.
+- Rule: Preserve one shared action-menu contract, but measure native trigger views with `measureInWindow`, pass a position, and clamp it against the viewport in `MenuSurface`. Reserve the bottom sheet layout only for intentionally unanchored native overlays; retain the Web `Portal` and fixed-position path.
+- Evidence: `lightflux/components/tasks/useTaskContextMenu.ts`, `components/groups/useGroupContextMenu.ts`, `components/milestones/useMilestoneContextMenu.ts`, `components/ui/MenuSurface.tsx`, `components/ui/menuPosition.ts`; `lightflux/tests/menuPosition.test.ts`.
+
+### 2026-08-19 - Native focus workflows use full-screen workspaces
+- Context: AI commands and global search reused narrow desktop overlays on iOS/Android, carrying desktop shortcut copy and leaving the active screen visible behind a touch workflow.
+- Rule: Keep AI/search business behavior shared, but render focused native text-entry workflows as full-screen safe-area workspaces with explicit close controls. Keep Web/Tauri keyboard shortcuts and compact overlays; expose mobile search through an accessible icon rather than a persistent navigation item.
+- Evidence: `lightflux/components/agent/AgentCommandPanel.tsx`, `lightflux/components/SearchOverlay.tsx`, `lightflux/App.tsx`; verified narrow Web entry flow and `npm run typecheck`.
+
+### 2026-08-19 - Mobile utilities belong only on primary workspaces
+- Context: A global right-side cluster for account, search, and AI obscured page-owned controls such as Trash's empty action, while its controls used mismatched shapes and colors.
+- Rule: On mobile, render account/settings only on a designated primary workspace and render search/AI only on primary task workspaces. Do not overlay utility controls on pages that own their own header actions. Use the shared `IconButton` size and shape; reserve violet fills for active state rather than separate control classes.
+- Evidence: `lightflux/App.tsx`, `lightflux/components/GroupsScreen.tsx`, `lightflux/components/account/AccountMenu.tsx`; verified Groups and Trash at 627px, plus `npm test` and `npm run desktop:web`.
+
+### 2026-08-19 - Navigation visibility is a V10 preference
+- Context: Optional navigation views need to be hidden without deleting their local data or destroying desktop navigation order.
+- Rule: Persist only optional hidden IDs in `hiddenNavigationItems`; Today and Groups remain visible active-task surfaces. Normalize older state to an empty hidden set, and map visible drag targets back to the full navigation order before reordering.
+- Evidence: `lightflux/types/todo.ts`, `services/todoStorage.ts`, `store/todoStore.tsx`, `App.tsx`; `tests/todoStorageMigration.test.ts`.
+
+### 2026-08-19 - Native keyboard workflows require explicit avoidance
+- Context: Native full-screen AI and detail workflows can leave text composers behind the iOS keyboard when only safe-area padding is applied.
+- Rule: Put native text-entry workspaces inside `KeyboardAvoidingView` and use a contextual bottom sheet for task details when the originating task surface should remain visible.
+- Evidence: `lightflux/components/agent/AgentCommandPanel.tsx`, `components/editor/TaskEditorScreen.native.tsx`, `App.tsx`; TypeScript and Web export passed.
+
+### 2026-08-19 - Mobile utility controls use direct destinations
+- Context: A mobile account menu added an unnecessary intermediate step before Settings, while the Today brand block competed with left/right utility controls in the same narrow header.
+- Rule: Let mobile settings controls navigate directly to Settings; reserve account-menu behavior for desktop. On narrow task surfaces, omit nonessential branding and keep utility controls as the header priority.
+- Evidence: `lightflux/App.tsx`, `lightflux/components/TodoScreen.tsx`; browser workflow verified at 670px.
+
+### 2026-08-19 - Mobile prompt sheets use explicit exit and submit paths
+- Context: Quick creation had a broad dimmed backdrop and duplicate footer actions despite a close icon and keyboard submit; the AI prompt needed the same lightweight bottom-sheet interaction.
+- Rule: For focused mobile prompt sheets, keep the source context visible, close through an explicit icon or platform back gesture, and submit direct text entry through its natural input action. Do not add backdrop dismissal or redundant footer buttons unless dismissal safety requires it.
+- Evidence: `lightflux/components/tasks/QuickAddTaskSheet.tsx`, `components/agent/AgentCommandPanel.tsx`; typecheck, tests, and Web export passed.

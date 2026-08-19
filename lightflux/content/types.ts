@@ -47,29 +47,13 @@ export interface Translation {
     dataTitle: string;
     statisticsTitle: string;
     statisticsDescription: string;
-    shortcutsTitle: string;
-    shortcutSearch: string;
-    shortcutClose: string;
-    shortcutBold: string;
-    shortcutItalic: string;
-    shortcutHeading: string;
-    shortcutList: string;
-    shortcutQuote: string;
-    shortcutCode: string;
-    keySearch: string;
-    keyClose: string;
-    keyBold: string;
-    keyItalic: string;
-    keyHeading: string;
-    keyList: string;
-    keyQuote: string;
-    keyCode: string;
+    visibleViewsTitle: string;
+    visibleViewsDescription: (view: string) => string;
   };
   desktop: {
     newVersionAvailable: (version: string) => string;
     updateToVersion: (version: string) => string;
     settings: {
-      subtitle: string;
       general: string;
       languageDescription: string;
       softwareUpdate: string;
@@ -205,10 +189,6 @@ export interface Translation {
     taskRescheduled: string;
     priorityUpdated: string;
   };
-  overview: string;
-  remaining: string;
-  taskUnit: string;
-  progress: (completed: number, total: number) => string;
   inputPlaceholder: string;
   addTask: string;
   filters: Record<TodoFilter, string>;

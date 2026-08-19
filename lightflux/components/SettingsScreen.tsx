@@ -14,6 +14,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { translations } from '../content';
 import { useTodoStore } from '../store/todoStore';
 import { Language } from '../types/todo';
+import {
+  OPTIONAL_NAVIGATION_ITEM_IDS,
+  OptionalNavigationItemId,
+} from '../types/todo';
 import DesktopSettingsSections from './settings/DesktopSettingsSections';
 import {
   SettingOption,
@@ -23,8 +27,15 @@ import {
 import styles from './settings/styles';
 
 const SettingsScreen = ({
+  hiddenNavigationItems,
+  onNavigationVisibilityChange,
   onOpenStatistics,
 }: {
+  hiddenNavigationItems: OptionalNavigationItemId[];
+  onNavigationVisibilityChange: (
+    id: OptionalNavigationItemId,
+    visible: boolean,
+  ) => void;
   onOpenStatistics: () => void;
 }) => {
   const { width } = useWindowDimensions();
@@ -40,17 +51,6 @@ const SettingsScreen = ({
     { label: labels.settings.chinese, value: 'zh' },
     { label: labels.settings.english, value: 'en' },
   ];
-  const shortcuts = [
-    [labels.settings.shortcutSearch, labels.settings.keySearch],
-    [labels.settings.shortcutClose, labels.settings.keyClose],
-    [labels.settings.shortcutBold, labels.settings.keyBold],
-    [labels.settings.shortcutItalic, labels.settings.keyItalic],
-    [labels.settings.shortcutHeading, labels.settings.keyHeading],
-    [labels.settings.shortcutList, labels.settings.keyList],
-    [labels.settings.shortcutQuote, labels.settings.keyQuote],
-    [labels.settings.shortcutCode, labels.settings.keyCode],
-  ];
-
   return (
     <View style={styles.screen}>
       <ExpoStatusBar style="dark" />
@@ -61,9 +61,7 @@ const SettingsScreen = ({
           style={styles.scroll}
         >
           <View style={styles.header}>
-            <Text style={styles.eyebrow}>LIGHTFLUX PREFERENCES</Text>
             <Text style={styles.title}>{labels.settings.title}</Text>
-            <Text style={styles.subtitle}>{desktopLabels.subtitle}</Text>
           </View>
 
           <View style={styles.section}>
@@ -126,27 +124,52 @@ const SettingsScreen = ({
             </View>
           </View>
 
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {labels.settings.visibleViewsTitle}
+            </Text>
+            <View style={styles.sectionCard}>
+              {OPTIONAL_NAVIGATION_ITEM_IDS.map((id) => {
+                const visible = !hiddenNavigationItems.includes(id);
+                return (
+                  <SettingRow
+                    description={labels.settings.visibleViewsDescription(
+                      labels.navigation[id],
+                    )}
+                    key={id}
+                    stacked={stacked}
+                    title={labels.navigation[id]}
+                  >
+                    <Pressable
+                      accessibilityLabel={labels.navigation[id]}
+                      accessibilityRole="switch"
+                      accessibilityState={{ checked: visible }}
+                      onPress={() =>
+                        onNavigationVisibilityChange(id, !visible)
+                      }
+                      style={[
+                        styles.toggle,
+                        visible && styles.toggleActive,
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.toggleThumb,
+                          visible && styles.toggleThumbActive,
+                        ]}
+                      />
+                    </Pressable>
+                  </SettingRow>
+                );
+              })}
+            </View>
+          </View>
+
           <DesktopSettingsSections
             controlWidth={controlWidth}
             language={language}
             stacked={stacked}
           />
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {labels.settings.shortcutsTitle}
-            </Text>
-            <View style={styles.sectionCard}>
-              {shortcuts.map(([description, keys]) => (
-                <View key={description} style={styles.shortcutRow}>
-                  <Text style={styles.shortcutDescription}>{description}</Text>
-                  <View style={styles.shortcutKeys}>
-                    <Text style={styles.shortcutKeysText}>{keys}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
         </ScrollView>
       </SafeAreaView>
     </View>

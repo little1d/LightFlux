@@ -1,10 +1,6 @@
 import type { Translation } from '../../types';
-type TodayContent = Pick<Translation, 'overview' | 'remaining' | 'taskUnit' | 'progress' | 'inputPlaceholder' | 'addTask' | 'filters' | 'clearCompleted' | 'emptyTitle' | 'emptyDescription' | 'deleteTask' | 'deleteTitle' | 'deleteMessage' | 'clearTitle' | 'clearMessage' | 'markComplete' | 'markActive' | 'taskMenu'>;
+type TodayContent = Pick<Translation, 'inputPlaceholder' | 'addTask' | 'filters' | 'clearCompleted' | 'emptyTitle' | 'emptyDescription' | 'deleteTask' | 'deleteTitle' | 'deleteMessage' | 'clearTitle' | 'clearMessage' | 'markComplete' | 'markActive' | 'taskMenu'>;
 export const today: TodayContent = {
-  overview: 'TODAY AT A GLANCE',
-  remaining: 'Remaining',
-  taskUnit: 'tasks',
-  progress: (completed, total) => total === 0 ? 'Add your first task to get started' : `${completed} of ${total} completed`,
   inputPlaceholder: 'What needs to be done?',
   addTask: 'Add task',
   filters: {

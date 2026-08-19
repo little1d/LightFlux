@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   appendAgentConversationTurn,
@@ -57,6 +59,7 @@ const AgentCommandPanel = ({
   const labels = translations[language].agent;
   const { width } = useWindowDimensions();
   const compact = width < 700;
+  const nativeWorkspace = Platform.OS !== 'web';
   const progress = useRef(new Animated.Value(0)).current;
   const requestController = useRef<AbortController | null>(null);
   const [conversationId, setConversationId] = useState<string>();
@@ -294,47 +297,68 @@ const AgentCommandPanel = ({
 
   return (
     <Modal
-      animationType="none"
+      animationType={nativeWorkspace ? 'slide' : 'none'}
       onRequestClose={closePanel}
       transparent
       visible
     >
-      <View style={styles.overlay}>
-        <Pressable
-          accessibilityLabel={labels.close}
-          onPress={closePanel}
-          style={StyleSheet.absoluteFill}
-        />
-        <Animated.View
-          style={[
-            styles.panel,
-            compact ? styles.panelCompact : styles.panelWide,
-            {
-              opacity: progress,
-              transform: [
-                {
-                  translateY: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [compact ? 16 : 8, 0],
-                  }),
-                },
-                {
-                  scale: progress.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.985, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
+      <View
+        style={[
+          styles.overlay,
+          nativeWorkspace && styles.nativeOverlay,
+        ]}
+      >
+        {!nativeWorkspace ? (
+          <Pressable
+            accessibilityLabel={labels.close}
+            onPress={closePanel}
+            style={StyleSheet.absoluteFill}
+          />
+        ) : null}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={nativeWorkspace && styles.nativeKeyboardAvoider}
         >
+          <SafeAreaView
+            edges={nativeWorkspace ? ['top', 'bottom'] : []}
+            style={nativeWorkspace && styles.nativeSafeArea}
+          >
+            <Animated.View
+            style={[
+              styles.panel,
+              nativeWorkspace
+                ? styles.panelNative
+                : compact
+                  ? styles.panelCompact
+                  : styles.panelWide,
+              {
+                opacity: progress,
+                transform: [
+                  {
+                    translateY: progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [nativeWorkspace ? 8 : compact ? 16 : 8, 0],
+                    }),
+                  },
+                  {
+                    scale: progress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [nativeWorkspace ? 1 : 0.985, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
           <View style={styles.header}>
             <View style={styles.agentIcon}>
               <Ionicons color="#6759E8" name="sparkles" size={17} />
             </View>
             <View style={styles.headerText}>
               <Text style={styles.title}>{labels.title}</Text>
-              <Text style={styles.shortcut}>{labels.shortcut}</Text>
+              {!nativeWorkspace ? (
+                <Text style={styles.shortcut}>{labels.shortcut}</Text>
+              ) : null}
             </View>
             <IconButton
               icon="close"
@@ -349,6 +373,7 @@ const AgentCommandPanel = ({
             contentContainerStyle={styles.content}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            style={styles.conversationScroll}
           >
             {turns.length === 0 && !loading ? (
               <Text style={styles.emptyText}>{labels.empty}</Text>
@@ -545,7 +570,9 @@ const AgentCommandPanel = ({
               <Text style={styles.undoText}>{labels.undo}</Text>
             </Pressable>
           ) : null}
-        </Animated.View>
+            </Animated.View>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -638,6 +665,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  nativeOverlay: {
+    backgroundColor: 'transparent',
+    justifyContent: 'flex-end',
+  },
+  nativeSafeArea: {
+    width: '100%',
+  },
+  nativeKeyboardAvoider: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   panel: {
     backgroundColor: '#FFFFFF',
     borderColor: '#DEDEE7',
@@ -665,6 +703,15 @@ const styles = StyleSheet.create({
     maxHeight: '88%',
     position: 'absolute',
     right: 0,
+  },
+  panelNative: {
+    borderColor: '#E2E0E8',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    height: '72%',
+    maxHeight: undefined,
+    shadowOpacity: 0.15,
+    width: '100%',
   },
   header: {
     alignItems: 'center',
@@ -697,6 +744,9 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 14,
+  },
+  conversationScroll: {
+    flex: 1,
   },
   emptyText: {
     color: '#858694',

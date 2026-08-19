@@ -3,10 +3,12 @@ import { Platform } from 'react-native';
 
 import {
   NAVIGATION_ITEM_IDS,
+  OPTIONAL_NAVIGATION_ITEM_IDS,
   Milestone,
   MilestoneDateRule,
   MilestoneType,
   NavigationItemId,
+  OptionalNavigationItemId,
   PersistedAppState,
   TaskEvent,
   TaskEventType,
@@ -53,6 +55,23 @@ const normalizeNavigationOrder = (value: unknown): NavigationItemId[] => {
     ...NAVIGATION_ITEM_IDS.filter((item) => !unique.includes(item)),
   ];
 };
+
+const normalizeHiddenNavigationItems = (
+  value: unknown,
+): OptionalNavigationItemId[] =>
+  Array.isArray(value)
+    ? [
+        ...new Set(
+          value.filter(
+            (item): item is OptionalNavigationItemId =>
+              typeof item === 'string' &&
+              OPTIONAL_NAVIGATION_ITEM_IDS.includes(
+                item as OptionalNavigationItemId,
+              ),
+          ),
+        ),
+      ]
+    : [];
 
 const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
   if (!value || typeof value !== 'object') {
@@ -350,7 +369,9 @@ export const parsePersistedAppState = (
           )
       : [];
     const taskEvents =
-      parsed.schemaVersion === 9 && Array.isArray(parsed.taskEvents)
+      parsed.schemaVersion !== undefined &&
+      parsed.schemaVersion >= 9 &&
+      Array.isArray(parsed.taskEvents)
         ? Array.from(
             new Map(
               normalizedEvents.map((event) => [event.id, event]),
@@ -370,7 +391,7 @@ export const parsePersistedAppState = (
         : now;
 
     return {
-      schemaVersion: 9,
+      schemaVersion: 10,
       updatedAt: deriveStateUpdatedAt(
         todos,
         groups,
@@ -380,6 +401,9 @@ export const parsePersistedAppState = (
       language: parsed.language === 'en' ? 'en' : 'zh',
       analyticsStartedAt,
       navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
+      hiddenNavigationItems: normalizeHiddenNavigationItems(
+        parsed.hiddenNavigationItems,
+      ),
       ungroupedName:
         typeof parsed.ungroupedName === 'string' &&
         parsed.ungroupedName.trim().length > 0

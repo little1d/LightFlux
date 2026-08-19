@@ -10,6 +10,8 @@ import React, {
   useState,
 } from 'react';
 import {
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
@@ -30,6 +32,7 @@ import TaskEditorMetadata from './TaskEditorMetadata';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const TaskEditorScreen = ({
+  embedded = false,
   todoId,
   onClose,
   readOnly = false,
@@ -127,7 +130,14 @@ const TaskEditorScreen = ({
 
   return (
     <View className="flex-1 bg-canvas">
-      <SafeAreaView className="flex-1">
+      <SafeAreaView
+        className="flex-1"
+        edges={embedded ? [] : ['top', 'bottom']}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          className="flex-1"
+        >
         <View className="flex-row items-start bg-white px-5 pb-3 pt-4">
           <View className="flex-1">
             {readOnly ? (
@@ -179,7 +189,7 @@ const TaskEditorScreen = ({
           />
         </View>
 
-        <View className="relative mx-4 mb-3 flex-1 overflow-hidden rounded-[18px] border border-[#E2E1E9] bg-white">
+        <View className="relative mx-4 mb-3 flex-1 overflow-hidden rounded-[14px] border border-[#E2E1E9] bg-white">
           {showBodyPlaceholder ? (
             <Text style={styles.bodyPlaceholder}>
               {labels.editor.bodyPlaceholder}
@@ -187,6 +197,7 @@ const TaskEditorScreen = ({
           ) : null}
           <RichText editor={editor} style={styles.richText} />
         </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );

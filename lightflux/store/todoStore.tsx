@@ -14,6 +14,7 @@ import {
   Milestone,
   MilestoneUpdate,
   NavigationItemId,
+  OptionalNavigationItemId,
   NewMilestone,
   NewTodo,
   PersistedAppState,
@@ -68,6 +69,7 @@ interface TodoStore {
   archivedMilestones: Milestone[];
   trashedMilestones: Milestone[];
   navigationOrder: NavigationItemId[];
+  hiddenNavigationItems: OptionalNavigationItemId[];
   ungroupedName: string | null;
   isHydrated: boolean;
   persistenceReady: boolean;
@@ -91,6 +93,10 @@ interface TodoStore {
     id: NavigationItemId,
     targetIndex: number,
   ) => void;
+  setNavigationItemVisible: (
+    id: OptionalNavigationItemId,
+    visible: boolean,
+  ) => void;
   renameGroup: (id: string | null, name: string) => void;
   deleteGroup: (id: string) => void;
   addMilestone: (milestone: NewMilestone) => string | null;
@@ -113,6 +119,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   analyticsStartedAt: Date.now(),
   ...milestoneState([]),
   navigationOrder: [...NAVIGATION_ITEM_IDS],
+  hiddenNavigationItems: [],
   ungroupedName: null,
   isHydrated: false,
   persistenceReady: false,
@@ -136,6 +143,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
           analyticsStartedAt: state.analyticsStartedAt,
           ...milestoneState(state.milestones),
           navigationOrder: state.navigationOrder,
+          hiddenNavigationItems: state.hiddenNavigationItems,
           ungroupedName: state.ungroupedName,
         });
       }
@@ -177,7 +185,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         groupId: todo.groupId ?? null,
         milestoneId: todo.milestoneId ?? null,
         parentId: todo.parentId ?? null,
-        priority: 'none',
+        priority: todo.priority ?? 'none',
         sortOrder: 0,
         trashedAt: null,
         content: todo.content ?? emptyRichTextDocument(),
@@ -522,6 +530,20 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       return { navigationOrder };
     }),
 
+  setNavigationItemVisible: (id, visible) =>
+    set((state) => {
+      const isHidden = state.hiddenNavigationItems.includes(id);
+      if (visible === !isHidden) {
+        return state;
+      }
+
+      return {
+        hiddenNavigationItems: visible
+          ? state.hiddenNavigationItems.filter((item) => item !== id)
+          : [...state.hiddenNavigationItems, id],
+      };
+    }),
+
   deleteGroup: (id) =>
     set((state) => ({
       groups: state.groups.filter((group) => group.id !== id),
@@ -700,11 +722,12 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 }));
 
 const persistedState = (state: TodoStore): PersistedAppState => ({
-  schemaVersion: 9,
+  schemaVersion: 10,
   updatedAt: Date.now(),
   analyticsStartedAt: state.analyticsStartedAt,
   language: state.language,
   navigationOrder: state.navigationOrder,
+  hiddenNavigationItems: state.hiddenNavigationItems,
   ungroupedName: state.ungroupedName,
   todos: state.allTodos,
   groups: state.groups,
@@ -728,6 +751,9 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const taskEvents = useTodoStore((state) => state.taskEvents);
   const allMilestones = useTodoStore((state) => state.allMilestones);
   const navigationOrder = useTodoStore((state) => state.navigationOrder);
+  const hiddenNavigationItems = useTodoStore(
+    (state) => state.hiddenNavigationItems,
+  );
   const ungroupedName = useTodoStore((state) => state.ungroupedName);
   const isHydrated = useTodoStore((state) => state.isHydrated);
   const persistenceReady = useTodoStore((state) => state.persistenceReady);
@@ -803,6 +829,7 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     isHydrated,
     language,
     navigationOrder,
+    hiddenNavigationItems,
     persistenceReady,
     taskEvents,
     ungroupedName,

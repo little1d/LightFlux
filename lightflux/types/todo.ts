@@ -15,6 +15,16 @@ export const NAVIGATION_ITEM_IDS = [
 
 export type NavigationItemId = (typeof NAVIGATION_ITEM_IDS)[number];
 
+export const OPTIONAL_NAVIGATION_ITEM_IDS = [
+  'completed',
+  'calendar',
+  'milestones',
+  'trash',
+] as const;
+
+export type OptionalNavigationItemId =
+  (typeof OPTIONAL_NAVIGATION_ITEM_IDS)[number];
+
 export interface RichTextMark {
   type: string;
   attrs?: Record<string, unknown>;
@@ -127,11 +137,12 @@ export interface Milestone {
 }
 
 export interface PersistedAppState {
-  schemaVersion: 9;
+  schemaVersion: 10;
   updatedAt: number;
   analyticsStartedAt: number;
   language: Language;
   navigationOrder: NavigationItemId[];
+  hiddenNavigationItems: OptionalNavigationItemId[];
   ungroupedName: string | null;
   todos: Todo[];
   groups: TodoGroup[];
@@ -150,6 +161,7 @@ export interface NewTodo {
   groupId?: string | null;
   milestoneId?: string | null;
   parentId?: string | null;
+  priority?: TodoPriority;
   insertAfterId?: string;
   content?: RichTextDocument;
 }

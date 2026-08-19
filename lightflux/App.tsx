@@ -31,9 +31,7 @@ import SignedOutScreen from './components/SignedOutScreen';
 import StatisticsScreen from './components/StatisticsScreen';
 import TrashScreen from './components/TrashScreen';
 import TodoScreen from './components/TodoScreen';
-import AccountMenu, {
-  AccountAvatar,
-} from './components/account/AccountMenu';
+import AccountMenu from './components/account/AccountMenu';
 import AgentCommandPanel from './components/agent/AgentCommandPanel';
 import DesktopUpdateMenu from './components/desktop/DesktopUpdateMenu';
 import TaskEditorScreen from './components/editor/TaskEditorScreen';
@@ -41,6 +39,7 @@ import ResizableDivider from './components/layout/ResizableDivider';
 import DraggableNavigationItem from './components/navigation/DraggableNavigationItem';
 import { NavigationDragState } from './components/navigation/navigationDrag';
 import TaskActionMenu from './components/tasks/TaskActionMenu';
+import QuickAddTaskSheet from './components/tasks/QuickAddTaskSheet';
 import {
   OpenTaskMenu,
   TaskMenuPosition,
@@ -72,7 +71,10 @@ import {
   loadSessionState,
   saveSessionState,
 } from './services/sessionStorage';
-import { NavigationItemId } from './types/todo';
+import {
+  NavigationItemId,
+  OptionalNavigationItemId,
+} from './types/todo';
 
 type AppView = NavigationItemId | 'settings' | 'statistics';
 type NavigationView = NavigationItemId;
@@ -165,34 +167,15 @@ const AccountTrigger = ({
   onPress: () => void;
   tooltipPosition: 'right' | 'bottom';
 }) => {
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-
   return (
-    <View style={styles.accountTrigger}>
-      <Pressable
-        accessibilityLabel={label}
-        accessibilityRole="button"
-        onBlur={() => setFocused(false)}
-        onFocus={() => setFocused(true)}
-        onHoverIn={() => setHovered(true)}
-        onHoverOut={() => setHovered(false)}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.accountTriggerButton,
-          hovered && styles.accountTriggerHovered,
-          focused && styles.accountTriggerFocused,
-          pressed && styles.accountTriggerPressed,
-        ]}
-      >
-        <AccountAvatar active={active} />
-      </Pressable>
-      <Tooltip
-        label={label}
-        position={tooltipPosition}
-        visible={hovered || focused}
-      />
-    </View>
+    <IconButton
+      icon="person-circle-outline"
+      label={label}
+      onPress={onPress}
+      size="large"
+      tooltipPosition={tooltipPosition}
+      variant={active ? 'primary' : 'neutral'}
+    />
   );
 };
 
@@ -207,6 +190,7 @@ const AppContent = () => {
   const [agentOpen, setAgentOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickCreateRequestId, setQuickCreateRequestId] = useState(0);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
   const [navigationDrag, setNavigationDrag] =
     useState<NavigationDragState | null>(null);
@@ -218,16 +202,20 @@ const AppContent = () => {
   const {
     clearPersistenceError,
     language,
+    hiddenNavigationItems,
     navigationOrder,
     persistenceErrorAt,
     reorderNavigationItem,
+    setNavigationItemVisible,
   } = useTodoStore(
     useShallow((state) => ({
       clearPersistenceError: state.clearPersistenceError,
       language: state.language,
+      hiddenNavigationItems: state.hiddenNavigationItems,
       navigationOrder: state.navigationOrder,
       persistenceErrorAt: state.persistenceErrorAt,
       reorderNavigationItem: state.reorderNavigationItem,
+      setNavigationItemVisible: state.setNavigationItemVisible,
     })),
   );
   const {
@@ -306,18 +294,31 @@ const AppContent = () => {
       listPaneWidth ?? Math.round(availableDesktopWidth * 0.46),
     ),
   );
-  const navigationItems = navigationOrder.map((id) => ({
-    id,
-    icon: NAV_ICONS[id],
-  }));
+  const visibleNavigationOrder = navigationOrder.filter(
+    (id) => !hiddenNavigationItems.includes(id as OptionalNavigationItemId),
+  );
+  const navigationItems = visibleNavigationOrder
+    .map((id) => ({
+      id,
+      icon: NAV_ICONS[id],
+    }));
   const moveNavigationItem = useCallback(
     (id: NavigationItemId, targetIndex: number) => {
       const sourceIndex = navigationOrder.indexOf(id);
+      const targetId = visibleNavigationOrder[
+        Math.max(0, Math.min(targetIndex, visibleNavigationOrder.length - 1))
+      ];
+      const targetOrderIndex = targetId
+        ? navigationOrder.indexOf(targetId)
+        : sourceIndex;
+      if (sourceIndex < 0 || targetOrderIndex < 0) {
+        return;
+      }
       const boundedTarget = Math.max(
         0,
-        Math.min(targetIndex, navigationOrder.length - 1),
+        Math.min(targetOrderIndex, navigationOrder.length - 1),
       );
-      if (sourceIndex < 0 || sourceIndex === boundedTarget) {
+      if (sourceIndex === boundedTarget) {
         return;
       }
 
@@ -329,6 +330,7 @@ const AppContent = () => {
       navigationOrder,
       notify,
       reorderNavigationItem,
+      visibleNavigationOrder,
     ],
   );
 
@@ -377,6 +379,15 @@ const AppContent = () => {
     setSelectedTask(null);
     setAgentOpen(true);
   }, []);
+  const setNavigationVisible = useCallback(
+    (id: OptionalNavigationItemId, visible: boolean) => {
+      setNavigationItemVisible(id, visible);
+      if (!visible && activeView === id) {
+        changeView('today');
+      }
+    },
+    [activeView, changeView, setNavigationItemVisible],
+  );
   const relaunchWithFlush = useCallback(async () => {
     await flushAppState().catch((error) => {
       console.warn('Unable to flush data before relaunch.', error);
@@ -606,6 +617,8 @@ const AppContent = () => {
       />
     ) : activeView === 'settings' ? (
       <SettingsScreen
+        hiddenNavigationItems={hiddenNavigationItems}
+        onNavigationVisibilityChange={setNavigationVisible}
         onOpenStatistics={() => changeView('statistics')}
       />
     ) : activeView === 'today' ? (
@@ -650,6 +663,10 @@ const AppContent = () => {
     updateStatus !== 'unavailable';
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
   const mainContentHidden = mobileEditorOpen || searchOpen;
+  const showMobileUtilities =
+    !usesDesktopLayout &&
+    !selectedTask &&
+    (activeView === 'today' || activeView === 'groups');
 
   return (
     <>
@@ -728,7 +745,7 @@ const AppContent = () => {
               onPress={openAgent}
               size="large"
               tooltipPosition="right"
-              variant="primary"
+              variant="neutral"
             />
           </View>
         </SafeAreaView>
@@ -744,8 +761,11 @@ const AppContent = () => {
         <View className="flex-1">{activeScreen}</View>
 
         {!usesDesktopLayout && activeView !== 'statistics' ? (
-          <SafeAreaView className="border-t border-[#E4E3EA] bg-white">
-            <View className="h-[66px] flex-row items-center justify-around px-6">
+          <SafeAreaView
+            className="border-t border-[#E4E3EA] bg-canvas"
+            edges={['bottom']}
+          >
+            <View className="h-[58px] flex-row items-center justify-around px-3">
               {navigationItems.map((item) => {
                 const isActive = item.id === activeView;
                 return (
@@ -797,27 +817,33 @@ const AppContent = () => {
         </>
       ) : null}
 
-      {!usesDesktopLayout && !selectedTask ? (
-        <SafeAreaView style={styles.mobileAccountOverlay}>
-          <View style={styles.mobileAccountPosition}>
-            <View style={styles.mobileAgentButtonPosition}>
+      {showMobileUtilities ? (
+        <SafeAreaView style={styles.mobileUtilityOverlay}>
+          <View style={styles.mobileUtilityRow}>
+            <AccountTrigger
+              active={false}
+              label={labels.account.settings}
+              onPress={() => changeView('settings')}
+              tooltipPosition="bottom"
+            />
+            <View style={styles.mobileUtilityActions}>
+              <IconButton
+                icon="search-outline"
+                label={labels.search.title}
+                onPress={openSearch}
+                size="large"
+                tooltipPosition="bottom"
+                variant="neutral"
+              />
               <IconButton
                 icon="sparkles"
                 label={labels.agent.title}
                 onPress={openAgent}
                 size="large"
                 tooltipPosition="bottom"
-                variant="primary"
+                variant="neutral"
               />
             </View>
-            <AccountTrigger
-              active={
-                activeView === 'settings' || activeView === 'statistics'
-              }
-              label={labels.account.localAccount}
-              onPress={() => setAccountMenuOpen((current) => !current)}
-              tooltipPosition="bottom"
-            />
           </View>
         </SafeAreaView>
       ) : null}
@@ -835,14 +861,14 @@ const AppContent = () => {
         />
       ) : null}
 
-      {accountMenuOpen ? (
+      {accountMenuOpen && usesDesktopLayout ? (
         <AccountMenu
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
           position={
             usesDesktopLayout
               ? undefined
-              : { x: Math.max(12, width - 252), y: 72 }
+              : { x: 12, y: 72 }
           }
           onSignOut={signOut}
         />
@@ -856,6 +882,23 @@ const AppContent = () => {
           position={{ x: 90, y: Math.max(12, height - 290) }}
         />
       ) : null}
+      {!usesDesktopLayout &&
+      !selectedTask &&
+      (activeView === 'today' || activeView === 'groups') ? (
+        <View style={styles.mobileQuickAdd}>
+          <Pressable
+            accessibilityLabel={labels.addTask}
+            accessibilityRole="button"
+            onPress={() => setQuickAddOpen(true)}
+            style={({ pressed }) => [
+              styles.mobileQuickAddButton,
+              pressed && styles.mobileQuickAddPressed,
+            ]}
+          >
+            <Ionicons color="#FFFFFF" name="add" size={27} />
+          </Pressable>
+        </View>
+      ) : null}
     </View>
     <SearchOverlay
       onClose={() => setSearchOpen(false)}
@@ -868,20 +911,33 @@ const AppContent = () => {
       onNotify={notify}
       visible={agentOpen}
     />
+    <QuickAddTaskSheet
+      onClose={() => setQuickAddOpen(false)}
+      visible={quickAddOpen}
+    />
     {selectedTask && !usesDesktopLayout ? (
       <Modal
         animationType="none"
         onRequestClose={closeSelectedTask}
-        presentationStyle="fullScreen"
+        presentationStyle="overFullScreen"
+        transparent
         visible
       >
         <View style={styles.mobileEditorOverlay}>
-          <TaskEditorScreen
-            key={`${selectedTask.id}-${selectedTask.requestId}`}
-            onClose={closeSelectedTask}
-            readOnly={selectedTask.readOnly}
-            todoId={selectedTask.id}
+          <Pressable
+            accessibilityLabel={labels.editor.close}
+            onPress={closeSelectedTask}
+            style={StyleSheet.absoluteFill}
           />
+          <SafeAreaView edges={['bottom']} style={styles.mobileEditorSheet}>
+            <TaskEditorScreen
+              embedded
+              key={`${selectedTask.id}-${selectedTask.requestId}`}
+              onClose={closeSelectedTask}
+              readOnly={selectedTask.readOnly}
+              todoId={selectedTask.id}
+            />
+          </SafeAreaView>
         </View>
       </Modal>
     ) : null}
@@ -890,29 +946,6 @@ const AppContent = () => {
 };
 
 const styles = StyleSheet.create({
-  accountTrigger: {
-    position: 'relative',
-  },
-  accountTriggerButton: {
-    borderColor: 'transparent',
-    borderRadius: 17,
-    borderWidth: 2,
-  },
-  accountTriggerHovered: {
-    backgroundColor: '#EFEDF5',
-    transform: [{ translateY: -1 }],
-  },
-  accountTriggerFocused: {
-    borderColor: '#AFA6F5',
-    shadowColor: '#6759E8',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-  },
-  accountTriggerPressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.94 }],
-  },
   desktopAccountPosition: {
     marginBottom: 28,
   },
@@ -971,7 +1004,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textAlign: 'center',
   },
-  mobileAccountOverlay: {
+  mobileUtilityOverlay: {
     bottom: 0,
     left: 0,
     pointerEvents: 'box-none',
@@ -980,13 +1013,17 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 50,
   },
-  mobileAccountPosition: {
-    alignItems: 'flex-end',
+  mobileUtilityRow: {
+    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 10,
     pointerEvents: 'box-none',
+  },
+  mobileUtilityActions: {
+    flexDirection: 'row',
+    gap: 8,
   },
   agentButtonPosition: {
     alignItems: 'center',
@@ -996,12 +1033,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 9,
   },
-  mobileAgentButtonPosition: {
-    marginRight: 10,
-  },
   mobileEditorOverlay: {
-    backgroundColor: '#F5F5FA',
+    backgroundColor: 'rgba(31, 30, 43, 0.2)',
     flex: 1,
+    justifyContent: 'flex-end',
+  },
+  mobileEditorSheet: {
+    backgroundColor: '#F6F5F8',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    height: '84%',
+    overflow: 'hidden',
+  },
+  mobileQuickAdd: {
+    bottom: 86,
+    position: 'absolute',
+    right: 18,
+    zIndex: 60,
+  },
+  mobileQuickAddButton: {
+    alignItems: 'center',
+    backgroundColor: '#6759E8',
+    borderRadius: 26,
+    height: 52,
+    justifyContent: 'center',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 7, width: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    width: 52,
+  },
+  mobileQuickAddPressed: {
+    backgroundColor: '#594CCD',
+    transform: [{ scale: 0.94 }],
   },
 });
 

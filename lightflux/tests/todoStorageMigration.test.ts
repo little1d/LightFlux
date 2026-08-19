@@ -59,7 +59,7 @@ describe('persisted state V9 migration', () => {
     );
 
     expect(result).toMatchObject({
-      schemaVersion: 9,
+      schemaVersion: 10,
       analyticsStartedAt: 100,
       milestones: [],
       taskEvents: [
@@ -73,6 +73,7 @@ describe('persisted state V9 migration', () => {
     });
     expect(result?.navigationOrder).toContain('milestones');
     expect(result?.navigationOrder).not.toContain('search');
+    expect(result?.hiddenNavigationItems).toEqual([]);
   });
 
   it('normalizes persisted V9 events and filters unknown tasks', () => {
@@ -119,6 +120,31 @@ describe('persisted state V9 migration', () => {
         taskId: 'legacy-task',
       }),
     ]);
+  });
+
+  it('preserves only optional hidden navigation views in V10 state', () => {
+    const result = parsePersistedAppState(
+      JSON.stringify({
+        schemaVersion: 10,
+        updatedAt: 20,
+        analyticsStartedAt: 15,
+        language: 'zh',
+        todos: [legacyTodo],
+        groups: [],
+        milestones: [],
+        taskEvents: [],
+        hiddenNavigationItems: [
+          'completed',
+          'today',
+          'trash',
+          'unknown',
+          'trash',
+        ],
+      }),
+      100,
+    );
+
+    expect(result?.hiddenNavigationItems).toEqual(['completed', 'trash']);
   });
 
   it('keeps valid milestones and filters invalid records', () => {

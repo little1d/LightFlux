@@ -8,7 +8,7 @@ import { PersistedAppState, Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 
 const state = (updatedAt: number): PersistedAppState => ({
-  schemaVersion: 9,
+  schemaVersion: 10,
   updatedAt,
   analyticsStartedAt: 1,
   groups: [],
@@ -20,6 +20,7 @@ const state = (updatedAt: number): PersistedAppState => ({
     'groups',
     'trash',
   ],
+  hiddenNavigationItems: [],
   todos: [],
   milestones: [],
   taskEvents: [],

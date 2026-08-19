@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +29,8 @@ const GroupsScreen = ({
 }) => {
   const notify = useToast();
   const controller = useGroupsController(selectedTaskId, notify);
+  const { width } = useWindowDimensions();
+  const compact = width < 900;
 
   return (
     <View className="flex-1 bg-canvas">
@@ -39,7 +42,10 @@ const GroupsScreen = ({
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View className="flex-row items-center justify-between pb-5 pt-4">
+          <View
+            className="flex-row items-center justify-between pb-5 pt-4"
+            style={compact && styles.headerWithAccount}
+          >
             <Text className="text-[24px] font-extrabold text-ink">
               {controller.labels.groups.title}
             </Text>
@@ -146,6 +152,9 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
+  },
+  headerWithAccount: {
+    paddingLeft: 54,
   },
 });
 

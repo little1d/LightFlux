@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -282,10 +283,8 @@ const TodoScreen = ({
   );
 
   const labels = translations[language];
-  const completedCount = todos.filter((todo) => todo.completed).length;
-  const activeCount = todos.length - completedCount;
-  const progress = todos.length === 0 ? 0 : completedCount / todos.length;
-  const progressWidth = `${Math.round(progress * 100)}%` as `${number}%`;
+  const { width } = useWindowDimensions();
+  const showBrandHeader = width >= 900;
   const canAddTodo = draft.trim().length > 0;
 
   useEffect(() => {
@@ -350,64 +349,30 @@ const TodoScreen = ({
 
   const listHeader = (
     <>
-      <View className="flex-row items-center justify-between pb-[22px] pt-[18px]">
-        <View className="shrink flex-row items-center">
-          <View
-            className="mr-[11px] h-11 w-11 items-center justify-center rounded-[14px] bg-primary"
-            style={styles.brandMarkShadow}
-          >
-            <Text className="text-2xl font-extrabold leading-7 text-white">
-              ✓
-            </Text>
-          </View>
-          <View>
-            <Text className="text-[21px] font-extrabold tracking-[-0.4px] text-ink">
-              {labels.appName}
-            </Text>
-            <Text className="mt-0.5 text-xs text-[#777B8D]">
-              {labels.tagline}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {todos.length > 0 ? (
-        <View
-          className="mb-[18px] overflow-hidden rounded-[26px] bg-[#25233B] p-[22px]"
-          style={styles.summaryShadow}
-        >
-          <View style={styles.summaryGlow} />
-          <Text className="mb-[13px] text-[11px] font-bold tracking-[1.2px] text-[#B7B3D7]">
-            {labels.overview}
-          </Text>
-          <View className="flex-row items-center justify-between">
+      {showBrandHeader ? (
+        <View className="flex-row items-center justify-between pb-[22px] pt-[18px]">
+          <View className="shrink flex-row items-center">
+            <View
+              className="mr-[11px] h-11 w-11 items-center justify-center rounded-[14px] bg-primary"
+              style={styles.brandMarkShadow}
+            >
+              <Text className="text-2xl font-extrabold leading-7 text-white">
+                ✓
+              </Text>
+            </View>
             <View>
-              <View className="flex-row items-end">
-                <Text className="text-[42px] font-extrabold leading-[46px] tracking-[-1.5px] text-white">
-                  {activeCount}
-                </Text>
-                <Text className="mb-1.5 ml-2 text-[13px] font-semibold text-[#DAD7EC]">
-                  {labels.taskUnit}
-                </Text>
-              </View>
-              <Text className="mt-0.5 text-[13px] text-[#9D99B7]">
-                {labels.remaining}
+              <Text className="text-[21px] font-extrabold tracking-[-0.4px] text-ink">
+                {labels.appName}
               </Text>
-            </View>
-            <View className="h-[50px] w-[50px] items-center justify-center rounded-[25px] border border-white/15 bg-white/10">
-              <Text className="text-[13px] font-extrabold text-white">
-                {Math.round(progress * 100)}%
+              <Text className="mt-0.5 text-xs text-[#777B8D]">
+                {labels.tagline}
               </Text>
             </View>
           </View>
-          <View className="mt-5 h-1.5 overflow-hidden rounded bg-white/10">
-            <View style={[styles.progressFill, { width: progressWidth }]} />
-          </View>
-          <Text className="mt-[9px] text-xs text-[#ABA7C3]">
-            {labels.progress(completedCount, todos.length)}
-          </Text>
         </View>
-      ) : null}
+      ) : (
+        <View className="h-[58px]" />
+      )}
 
       {todayMilestones.length > 0 ? (
         <View className="mb-[18px]">
@@ -571,27 +536,6 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 6, width: 0 },
     shadowOpacity: 0.24,
     shadowRadius: 10,
-  },
-  summaryShadow: {
-    shadowColor: '#25233B',
-    shadowOffset: { height: 12, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 22,
-  },
-  summaryGlow: {
-    backgroundColor: '#7669F1',
-    borderRadius: 95,
-    height: 170,
-    opacity: 0.32,
-    position: 'absolute',
-    right: -45,
-    top: -60,
-    width: 170,
-  },
-  progressFill: {
-    backgroundColor: '#8B7EFF',
-    borderRadius: 4,
-    height: '100%',
   },
   composerShadow: {
     shadowColor: '#45435F',

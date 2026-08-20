@@ -37,6 +37,13 @@ export const createEmailAuth = ({
     database,
     secret,
     trustedOrigins: unique(trustedOrigins),
+    emailAndPassword: {
+      autoSignIn: false,
+      enabled: true,
+      maxPasswordLength: 128,
+      minPasswordLength: 8,
+      requireEmailVerification: true,
+    },
     advanced: {
       cookiePrefix: 'lightflux-auth',
       database: {
@@ -109,12 +116,14 @@ export const createEmailAuth = ({
       emailOTP({
         allowedAttempts: 3,
         expiresIn: 5 * 60,
+        overrideDefaultEmailVerification: true,
         otpLength: 6,
         rateLimit: {
           max: 3,
           window: 60,
         },
         resendStrategy: 'rotate',
+        sendVerificationOnSignUp: true,
         storeOTP: 'hashed',
         sendVerificationOTP: ({ email, otp, type }) =>
           sendOtp({ email, otp, type }),

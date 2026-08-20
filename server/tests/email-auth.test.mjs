@@ -133,3 +133,36 @@ test('signs in with an email OTP and restores the session', async () => {
   );
   assert.equal(await expiredSessionResponse.json(), null);
 });
+
+test('registers a verified password account and signs in with it', async () => {
+  const signUpResponse = await authRequest('/sign-up/email', {
+    email: 'password@example.com',
+    name: 'Password User',
+    password: 'correct-horse-battery-staple',
+  });
+  assert.equal(signUpResponse.status, 200);
+  assert.equal(sentOtp.email, 'password@example.com');
+  assert.equal(sentOtp.type, 'email-verification');
+  assert.match(sentOtp.otp, /^\d{6}$/);
+
+  const verifyResponse = await authRequest('/email-otp/verify-email', {
+    email: 'password@example.com',
+    otp: sentOtp.otp,
+  });
+  assert.equal(verifyResponse.status, 200);
+
+  const signInResponse = await authRequest('/sign-in/email', {
+    email: 'password@example.com',
+    password: 'correct-horse-battery-staple',
+    rememberMe: true,
+  });
+  assert.equal(signInResponse.status, 200);
+  const cookie = signInResponse.headers.get('set-cookie')?.split(';')[0];
+  assert.ok(cookie);
+
+  const sessionResponse = await authRequest('/get-session', null, cookie);
+  const session = await sessionResponse.json();
+  assert.equal(sessionResponse.status, 200);
+  assert.equal(session.user.email, 'password@example.com');
+  assert.equal(session.user.emailVerified, true);
+});

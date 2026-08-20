@@ -672,10 +672,6 @@ const AppContent = () => {
       />
     ) : activeView === 'calendar' ? (
       <CalendarScreen
-        onAddTask={(dateKey) => {
-          setQuickAddInitialDate(dateKey);
-          setQuickAddOpen(true);
-        }}
         onOpenTaskMenu={openTaskMenu}
         onEditTask={openActiveTask}
         selectedTaskId={selectedTaskId}
@@ -901,7 +897,6 @@ const AppContent = () => {
 
       {accountMenuOpen && usesDesktopLayout ? (
         <AccountMenu
-          currentUser={currentUser}
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
           position={

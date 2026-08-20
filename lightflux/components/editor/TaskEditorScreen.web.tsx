@@ -34,11 +34,15 @@ import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const EDITOR_CSS = `
   .lightflux-tiptap {
-    min-height: 160px;
-    padding: 22px;
+    min-height: 120px;
+    padding: 16px;
     outline: none;
     color: #303145;
     font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .lightflux-tiptap:focus {
+    outline: none;
+    box-shadow: none;
   }
   .lightflux-tiptap > *:first-child { margin-top: 0; }
   .lightflux-tiptap p { margin: 0 0 0.85em; }
@@ -100,8 +104,8 @@ const EDITOR_CSS = `
   }
   @media (max-width: 899px) {
     .lightflux-tiptap {
-      min-height: 120px;
-      padding: 4px 2px 24px;
+      min-height: 80px;
+      padding: 8px 2px 16px;
     }
   }
 `;
@@ -291,11 +295,11 @@ const TaskEditorScreen = ({
 
   return (
     <View
-      className={`flex-1 ${
-        compact || embedded ? 'bg-white' : 'bg-canvas'
+      className={`${
+        compact || embedded ? 'bg-white' : 'flex-1 bg-canvas'
       }`}
     >
-      <SafeAreaView className="flex-1">
+      <SafeAreaView className={compact || embedded ? '' : 'flex-1'}>
         <ScrollView
           contentContainerStyle={[
             styles.content,
@@ -369,8 +373,8 @@ const TaskEditorScreen = ({
           <View
             className={
               compact
-                ? 'min-h-[120px]'
-                : `min-h-[200px] overflow-hidden rounded-[16px] border bg-white ${
+                ? 'min-h-[80px]'
+                : `min-h-[160px] overflow-hidden rounded-[16px] border bg-white ${
                     readOnly ? 'border-[#ECEBF0]' : 'border-[#E2E1E9]'
                   }`
             }

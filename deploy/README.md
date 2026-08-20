@@ -1,33 +1,43 @@
 # Deployment
 
-Production deployment assets for the LightFlux API. The API runs as a single
-Docker container behind nginx (TLS). PostgreSQL is hosted on Supabase and email
-OTP is delivered through Resend SMTP, so no database or mail container runs on
-the server.
+Production deployment assets for LightFlux. `lightflux.site` serves both the
+static Web app (exported Expo bundle) and the API from one nginx instance with a
+single TLS certificate. The API runs as a single Docker container. PostgreSQL is
+hosted on Supabase and email OTP is delivered through Resend SMTP, so no
+database or mail container runs on the server.
 
 ```
 deploy/
 ├── compose.prod.yaml         # Production compose (API only; external Supabase)
 ├── .env.production.example   # Environment template (no secrets)
-├── nginx/lightflux.conf      # Reverse-proxy config (certbot adds TLS)
+├── nginx/lightflux.conf      # Static Web app + API reverse proxy (certbot adds TLS)
 └── scripts/
     ├── install-docker.sh     # Docker install with Tencent intranet mirror
     ├── bootstrap.sh          # One-time server setup (docker + nginx + certbot)
-    └── deploy.sh             # Repeatable deploy (sync → build → migrate → restart)
+    ├── deploy.sh             # API deploy (sync → build → migrate → restart)
+    └── deploy-web.sh         # Web deploy (build export → sync to /opt/lightflux/web)
 ```
 
 ## Architecture
 
 ```
-Client (Web / Tauri / Expo)
-        │  HTTPS
-        ▼
-   nginx :443  ──reverse proxy──►  API container :8787 (127.0.0.1)
-        │                                  │
-   Let's Encrypt                     Supabase PostgreSQL (pooler :5432)
-   auto-renew                        Resend SMTP :465
+                          Client (browser / Tauri / Expo)
+                                    │  HTTPS
+                                    ▼
+                              nginx :443
+                        ┌───────────┴────────────┐
+              /  /_expo (static)          /api  /health (proxy)
+                        │                          │
+              /opt/lightflux/web           API container :8787 (127.0.0.1)
+              (exported Expo Web)                   │
+                                          Supabase PostgreSQL (pooler :5432)
+   Let's Encrypt auto-renew               Resend SMTP :465
 ```
 
+- The Web app is a same-origin SPA: it calls `https://lightflux.site/api`, so no
+  cross-origin CORS is involved for browser clients.
+- nginx serves `/opt/lightflux/web` for `/` (SPA history fallback to
+  `index.html`) and reverse-proxies `/api/` and `/health` to the container.
 - The API binds to `127.0.0.1:8787`; only nginx is exposed publicly.
 - `PUBLIC_BASE_URL` must be `https://…` so the Better Auth session cookie is
   marked `Secure`.
@@ -59,7 +69,7 @@ chmod 600 /opt/lightflux/server/.env
 # edit /opt/lightflux/server/.env
 ```
 
-## Deploying (manual)
+## Deploying the API (manual)
 
 From a workstation with `rsync` + `ssh` access:
 
@@ -70,6 +80,28 @@ SSH_HOST=182.254.243.33 bash deploy/scripts/deploy.sh
 This syncs `server/` (excluding `.env`, `node_modules`, `data`) and
 `compose.prod.yaml`, rebuilds the image, runs migrations, and restarts the
 container. The server-side `.env` is never touched.
+
+## Deploying the Web app (manual)
+
+The Web app is exported locally so the `EXPO_PUBLIC_*` values from
+`lightflux/.env` are baked into the bundle. Point that file at production
+(`EXPO_PUBLIC_AUTH_API_URL=https://lightflux.site`, and the AI/upload URLs to
+the same origin) before building, then:
+
+```bash
+SSH_HOST=182.254.243.33 bash deploy/scripts/deploy-web.sh
+```
+
+This runs `npm run desktop:web`, syncs `lightflux/desktop-dist/` to
+`/opt/lightflux/web`, and reloads nginx. nginx serves the SPA from `/` and
+proxies `/api` and `/health` to the API container, so the browser app talks to
+the same origin.
+
+> The service files (`services/authConfig.ts`, `agentApi.ts`, `imageUpload.ts`)
+> read `process.env.EXPO_PUBLIC_*` directly. Expo only inlines the value for
+> direct member access, so do not reintroduce an intermediate `const env =
+> process.env` alias — the export would ship an empty origin and silently fall
+> back to local-only mode.
 
 ## Deploying (CI/CD)
 
@@ -87,7 +119,9 @@ Add the matching public key to `~/.ssh/authorized_keys` on the server. Prefer a
 non-root deploy user with `docker` group membership in the long run.
 
 `server-ci.yml` runs `npm test` for the server on every PR and push that
-touches `server/**`.
+touches `server/**`. Web deploys stay manual because the bundle bakes in the
+`lightflux/.env` origin at build time; run `deploy-web.sh` after shipping
+front-end changes you want live on the Web app.
 
 ## Certificates
 

@@ -958,17 +958,6 @@ const AppContent = () => {
           ]}
         >
           <SafeAreaView style={styles.settingsPanelSafeArea}>
-            <View style={styles.settingsPanelHeader}>
-              <View style={styles.settingsPanelHeaderSpacer} />
-              <IconButton
-                icon="close"
-                label={labels.cancel}
-                onPress={() => setSettingsPanelOpen(false)}
-                showTooltip={false}
-                size="small"
-                variant="transparent"
-              />
-            </View>
             <SettingsScreen
               hiddenNavigationItems={hiddenNavigationItems}
               onNavigationVisibilityChange={setNavigationVisible}
@@ -1167,7 +1156,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 20,
     top: 0,
-    width: '82%',
+    width: '60%',
   },
   settingsPanelSafeArea: {
     flex: 1,

@@ -264,16 +264,34 @@ const CalendarScreen = ({
   const labels = translations[language];
   const today = useCurrentDateKey();
   const { width } = useWindowDimensions();
-  const compact = width < 700;
-  const [contentWidth, setContentWidth] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState(today);
 
-  const showTaskTitles = contentWidth >= 610;
+  // Density follows the measured viewport width (the ScrollView's own width,
+  // capped at maxWidth). We deliberately measure the viewport rather than the
+  // padded inner content: the inner content width depends on `compact` (which
+  // toggles the horizontal padding), so measuring it would create a feedback
+  // loop — shrinking past the threshold flips padding, which changes the inner
+  // width back across the threshold, and the layout jitters. The viewport width
+  // is independent of that decision, so the thresholds stay stable.
+  const showTaskTitles = viewportWidth >= 600;
+  const compact = viewportWidth > 0 && viewportWidth < 560;
+  const mobileFab = width < 900;
   const days = useMemo(() => monthGrid(visibleMonth), [visibleMonth]);
+  // Chunk the flat day list into weeks so each row is a flex container whose
+  // seven cells split the measured width evenly. Flex sizing (rather than a
+  // hardcoded `${100/7}%`) keeps the grid within the viewport at every width.
+  const weeks = useMemo(() => {
+    const result: Date[][] = [];
+    for (let index = 0; index < days.length; index += 7) {
+      result.push(days.slice(index, index + 7));
+    }
+    return result;
+  }, [days]);
   const tasksByDate = useMemo(() => {
     const result = new Map<string, Todo[]>();
     todos.forEach((todo) => {
@@ -331,6 +349,12 @@ const CalendarScreen = ({
         <ScrollView
           contentContainerStyle={[styles.content, compact && styles.contentCompact]}
           keyboardShouldPersistTaps="handled"
+          onLayout={(event) => {
+            const nextWidth = Math.round(event.nativeEvent.layout.width);
+            if (nextWidth !== viewportWidth) {
+              setViewportWidth(nextWidth);
+            }
+          }}
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
@@ -340,15 +364,7 @@ const CalendarScreen = ({
             </Text>
           </View>
 
-          <View
-            onLayout={(event) => {
-              const nextWidth = Math.round(event.nativeEvent.layout.width);
-              if (nextWidth !== contentWidth) {
-                setContentWidth(nextWidth);
-              }
-            }}
-            style={styles.workspace}
-          >
+          <View style={styles.workspace}>
             <View
               nativeID="calendar-month-panel"
               style={[styles.calendarCard, styles.calendarShadow, styles.calendarBorder]}
@@ -401,24 +417,28 @@ const CalendarScreen = ({
               </View>
 
               <View style={styles.daysGrid}>
-                {days.map((date) => {
-                  const dateKey = toDateKey(date);
-                  return (
-                    <CalendarDay
-                      currentMonth={visibleMonth.getMonth()}
-                      date={date}
-                      groupColors={groupColors}
-                      key={dateKey}
-                      language={language}
-                      onSelect={selectDate}
-                      selected={dateKey === selectedDate}
-                      showTaskTitles={showTaskTitles}
-                      taskCountLabel={labels.calendar.tasksForDate}
-                      tasks={tasksByDate.get(dateKey) ?? []}
-                      today={dateKey === today}
-                    />
-                  );
-                })}
+                {weeks.map((week) => (
+                  <View key={toDateKey(week[0])} style={styles.weekRow}>
+                    {week.map((date) => {
+                      const dateKey = toDateKey(date);
+                      return (
+                        <CalendarDay
+                          currentMonth={visibleMonth.getMonth()}
+                          date={date}
+                          groupColors={groupColors}
+                          key={dateKey}
+                          language={language}
+                          onSelect={selectDate}
+                          selected={dateKey === selectedDate}
+                          showTaskTitles={showTaskTitles}
+                          taskCountLabel={labels.calendar.tasksForDate}
+                          tasks={tasksByDate.get(dateKey) ?? []}
+                          today={dateKey === today}
+                        />
+                      );
+                    })}
+                  </View>
+                ))}
               </View>
             </View>
 
@@ -458,11 +478,11 @@ const CalendarScreen = ({
           onPress={() => onAddTask(selectedDate)}
           style={({ pressed }) => [
             styles.fab,
-            compact && styles.fabCompact,
+            mobileFab && styles.fabCompact,
             pressed && styles.fabPressed,
           ]}
         >
-          <Ionicons color="#FFFFFF" name="add" size={compact ? 26 : 28} />
+          <Ionicons color="#FFFFFF" name="add" size={mobileFab ? 26 : 28} />
         </Pressable>
       </SafeAreaView>
     </View>
@@ -479,7 +499,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     alignSelf: 'center',
-    maxWidth: 1180,
+    maxWidth: 900,
     width: '100%',
   },
   content: {
@@ -565,14 +585,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   daysGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
   },
   agendaList: {
     marginTop: 10,
   },
+  weekRow: {
+    flexDirection: 'row',
+  },
   weekColumn: {
-    width: `${100 / 7}%`,
+    flex: 1,
+    minWidth: 0,
   },
   dayCell: {
     backgroundColor: '#FFFFFF',
@@ -580,8 +603,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderRightColor: '#EFEEF3',
     borderRightWidth: 1,
+    flex: 1,
+    minWidth: 0,
     padding: 7,
-    width: `${100 / 7}%`,
   },
   dayHovered: {
     backgroundColor: '#F7F6FB',

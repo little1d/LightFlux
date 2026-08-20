@@ -20,7 +20,7 @@
 - 本地会话退出与重新进入，不删除设备上的任务
 - iOS、Android 使用本地文件持久化，Web 使用 localStorage
 - 版本化本地数据结构，支持旧数据迁移
-- Node API 使用 PostgreSQL，支持微信登录、云状态同步和 AI 代理
+- Node API 使用 PostgreSQL，支持邮箱验证码、微信登录、云状态同步和 AI 代理
 
 ## 运行
 
@@ -46,9 +46,10 @@ IndexedDB（不可用时回退到 `localStorage`），iOS/Android 写入应用�
 父任务 ID、分组 ID、完成/删除时间、富文本 JSON 和持久化排序字段
 `sortOrder`；应用状态包含全局更新时间以协调本地与云端版本，任务分组也包含独立顺序字段。状态管理使用 Zustand，存储通过独立 service
 隔离；登录后以完整版本化聚合同步到 PostgreSQL `JSONB`，未登录时仍
-完全使用设备本地数据。
+完全使用设备本地数据。云写入使用服务端 revision CAS；发生 409 时，
+客户端基于持久化云端基线执行三方合并并自动重试。
 
-## 微信登录
+## 账户与登录
 
 ```bash
 cd server
@@ -64,8 +65,8 @@ npm run dev
 EXPO_PUBLIC_AUTH_API_URL=http://localhost:8787
 ```
 
-微信开放平台应用审核完成前，认证接口会返回明确的未配置错误。服务端
-负责使用 AppSecret 换取微信 token、首次登录自动注册用户、UnionID
-账号合并、哈希会话和云状态管理。服务端配置见 `server/README.md`，
+默认登录方式为六位邮箱验证码。Web/Tauri 使用 HttpOnly Cookie，
+iOS/Android 通过 Better Auth Expo 客户端将会话保存在 SecureStore。
+微信开放平台接口作为兼容登录方式保留。服务端配置见 `server/README.md`，
 PostgreSQL 设计见 [`docs/backend-postgresql.md`](docs/backend-postgresql.md)，申请材料和审核步骤见
 [`docs/wechat-open-platform/README.md`](docs/wechat-open-platform/README.md)。

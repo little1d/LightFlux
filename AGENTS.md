@@ -36,8 +36,9 @@ subdirectory overrides it for that subtree.
 - AI data mutations follow understand, disambiguate, preview, confirm, execute,
   audit, and undo semantics. The model must not mutate local data directly.
 - Persistent server identity, session, and cloud app-state data use PostgreSQL
-  migrations. Keep client-owned state as a versioned JSONB aggregate, reject
-  stale writes by `updatedAt`, and keep upload bytes outside the database.
+  migrations. Keep client-owned state as a versioned JSONB aggregate, use
+  server revision compare-and-swap for writes, and keep upload bytes outside
+  the database.
 - Shared business rules belong in domain/store/service code. Put platform
   differences at `.web`, `.native`, Expo, or Tauri boundaries.
 - Global search uses `Command/Ctrl + F` and suppresses the browser default.

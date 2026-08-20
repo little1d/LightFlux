@@ -1,139 +1,194 @@
-import { Platform } from 'react-native';
+import { authClient, getAuthRequestHeaders } from './authClient';
+import {
+  authApiUrl,
+  isRemoteAuthConfigured,
+} from './authConfig';
 
-const publicEnvironment = process.env as Record<string, string | undefined>;
-const apiUrl =
-  publicEnvironment.EXPO_PUBLIC_AUTH_API_URL?.replace(/\/$/, '') ?? '';
+export { isRemoteAuthConfigured } from './authConfig';
 
-export const isRemoteAuthConfigured =
-  apiUrl.length > 0 && Platform.OS === 'web';
+const authError = (
+  error: { message?: string } | null,
+  fallback: string,
+) => new Error(error?.message || fallback);
+
+export const requestEmailOtp = async (email: string): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const result = await authClient.emailOtp.sendVerificationOtp({
+    email: email.trim().toLowerCase(),
+    type: 'sign-in',
+  });
+  if (result.error) {
+    throw authError(result.error, 'Unable to send the verification code.');
+  }
+};
+
+export const verifyEmailOtp = async (
+  email: string,
+  otp: string,
+): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  const result = await authClient.signIn.emailOtp({
+    email: normalizedEmail,
+    name: normalizedEmail.split('@')[0] || 'LightFlux user',
+    otp: otp.trim(),
+  });
+  if (result.error || !result.data?.user) {
+    throw authError(result.error, 'Unable to verify the code.');
+  }
+  const session = await authClient.getSession();
+  if (!session.data?.user) {
+    throw new Error('The authenticated session could not be restored.');
+  }
+};
 
 export const getRemoteSession = async (): Promise<boolean> => {
   if (!isRemoteAuthConfigured) {
     return false;
   }
+  const result = await authClient.getSession();
+  return Boolean(result.data?.user);
+};
 
-  const response = await fetch(`${apiUrl}/api/auth/session`, {
-    credentials: 'include',
-  });
-  return response.ok;
+export interface RemoteUser {
+  id: string;
+  email: string;
+  name?: string;
+}
+
+export const getRemoteUser = async (): Promise<RemoteUser | null> => {
+  if (!isRemoteAuthConfigured) {
+    return null;
+  }
+  const result = await authClient.getSession();
+  if (!result.data?.user) {
+    return null;
+  }
+  const { user } = result.data;
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || undefined,
+  };
 };
 
 export const logoutRemoteSession = async (): Promise<void> => {
   if (!isRemoteAuthConfigured) {
     return;
   }
+  const result = await authClient.signOut();
+  if (result.error) {
+    throw authError(result.error, 'Unable to sign out.');
+  }
+};
 
-  await fetch(`${apiUrl}/api/auth/logout`, {
+export const authenticatedFetch = async (
+  input: string,
+  init: RequestInit = {},
+): Promise<Response> => {
+  const headers = new Headers(init.headers);
+  const authHeaders = await getAuthRequestHeaders();
+  for (const [name, value] of Object.entries(authHeaders)) {
+    headers.set(name, value);
+  }
+  return fetch(input, {
+    ...init,
     credentials: 'include',
-    method: 'POST',
+    headers,
   });
 };
 
-export const beginWechatLogin = async (): Promise<void> => {
-  if (!isRemoteAuthConfigured) {
-    throw new Error('WeChat authentication API is not configured.');
-  }
-
-  if (Platform.OS !== 'web') {
-    throw new Error(
-      'The native WeChat SDK requires an approved AppID and a development build.',
-    );
-  }
-
-  const returnTo = globalThis.location?.href;
-  const response = await fetch(
-    `${apiUrl}/api/auth/wechat/web/start?return_to=${encodeURIComponent(
-      returnTo ?? '',
-    )}`,
-    { credentials: 'include' },
-  );
-  const body = (await response.json()) as {
-    authorizationUrl?: string;
-    error?: string;
-  };
-
-  if (!response.ok || !body.authorizationUrl) {
-    throw new Error(body.error || 'Unable to start WeChat login.');
-  }
-
-  globalThis.location?.assign(body.authorizationUrl);
-};
-
-export interface WechatMobileAuthRequest {
-  appId: string;
-  scope: string;
-  state: string;
+export interface RemoteAppStateSnapshot {
+  ownerId: string;
+  revision: number;
+  state: unknown | null;
 }
 
-export const getWechatMobileAuthRequest =
-  async (): Promise<WechatMobileAuthRequest> => {
-    const response = await fetch(`${apiUrl}/api/auth/wechat/mobile/state`, {
-      credentials: 'include',
-    });
-    const body = (await response.json()) as WechatMobileAuthRequest & {
-      error?: string;
-    };
-    if (!response.ok) {
-      throw new Error(body.error || 'Unable to initialize WeChat login.');
-    }
-    return body;
-  };
+export class RemoteAppStateConflictError extends Error {
+  snapshot: RemoteAppStateSnapshot;
 
-export const exchangeWechatMobileCode = async (
-  code: string,
-  state: string,
-): Promise<{ token: string; expiresIn: number }> => {
-  const response = await fetch(
-    `${apiUrl}/api/auth/wechat/mobile/exchange`,
-    {
-      body: JSON.stringify({ code, state }),
-      headers: { 'Content-Type': 'application/json' },
-      method: 'POST',
-    },
-  );
-  const body = (await response.json()) as {
-    token?: string;
-    expiresIn?: number;
-    error?: string;
-  };
-  if (!response.ok || !body.token || !body.expiresIn) {
-    throw new Error(body.error || 'Unable to complete WeChat login.');
+  constructor(snapshot: RemoteAppStateSnapshot) {
+    super('A newer app state already exists.');
+    this.snapshot = snapshot;
   }
-  return { token: body.token, expiresIn: body.expiresIn };
-};
+}
 
-export const loadRemoteAppState = async (): Promise<unknown | null> => {
+export const loadRemoteAppState =
+  async (): Promise<RemoteAppStateSnapshot | null> => {
   if (!isRemoteAuthConfigured) {
     return null;
   }
-  const response = await fetch(`${apiUrl}/api/app-state`, {
-    credentials: 'include',
-  });
+  const response = await authenticatedFetch(
+    `${authApiUrl}/api/app-state`,
+  );
   if (response.status === 401) {
     return null;
   }
   const body = (await response.json()) as {
+    ownerId?: string;
+    revision?: number;
     state?: unknown;
     error?: string;
   };
   if (!response.ok) {
     throw new Error(body.error || 'Unable to load task data.');
   }
-  return body.state ?? null;
+  if (
+    typeof body.ownerId !== 'string' ||
+    !Number.isSafeInteger(body.revision) ||
+    (body.revision ?? -1) < 0
+  ) {
+    throw new Error('The cloud returned invalid synchronization metadata.');
+  }
+  const revision = body.revision as number;
+  return {
+    ownerId: body.ownerId,
+    revision,
+    state: body.state ?? null,
+  };
 };
 
-export const saveRemoteAppState = async (state: unknown): Promise<void> => {
+export const saveRemoteAppState = async (
+  state: unknown,
+  baseRevision: number,
+): Promise<number> => {
   if (!isRemoteAuthConfigured) {
-    return;
+    return baseRevision;
   }
-  const response = await fetch(`${apiUrl}/api/app-state`, {
-    body: JSON.stringify({ state }),
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    method: 'PUT',
-  });
+  const response = await authenticatedFetch(
+    `${authApiUrl}/api/app-state`,
+    {
+      body: JSON.stringify({ baseRevision, state }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+    },
+  );
+  const body = (await response.json()) as {
+    error?: string;
+    ownerId?: string;
+    revision?: number;
+    state?: unknown;
+  };
+  if (
+    response.status === 409 &&
+    Number.isSafeInteger(body.revision) &&
+    (body.revision ?? -1) >= 0
+  ) {
+    throw new RemoteAppStateConflictError({
+      ownerId: body.ownerId ?? '',
+      revision: body.revision as number,
+      state: body.state ?? null,
+    });
+  }
   if (!response.ok) {
-    const body = (await response.json()) as { error?: string };
     throw new Error(body.error || 'Unable to save task data.');
   }
+  if (!Number.isSafeInteger(body.revision) || (body.revision ?? -1) <= 0) {
+    throw new Error('The cloud returned an invalid app-state revision.');
+  }
+  return body.revision as number;
 };

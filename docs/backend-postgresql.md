@@ -8,8 +8,11 @@ LightFlux remains local-first:
 2. Device persistence commits the versioned aggregate.
 3. Authenticated Web clients synchronize the aggregate through
    `/api/app-state`.
-4. PostgreSQL accepts only a state whose `updatedAt` is not older than the
-   current cloud copy.
+4. PostgreSQL accepts a write only when its `baseRevision` matches the current
+   server revision.
+5. A 409 response includes the current aggregate and revision; the client
+   merges its persisted cloud base, local state, and returned cloud state,
+   then retries.
 
 PostgreSQL owns identity, session, and cloud-backup concerns. It does not
 reimplement client task-domain rules. This avoids two competing sources of
@@ -32,8 +35,10 @@ The initial migration creates:
 - `lightflux_schema_migrations`
 
 Foreign keys cascade identity, session, and app-state removal when a user is
-deleted. Session values are one-way SHA-256 hashes. App states use JSONB plus a
-separate indexed comparison value, `state_updated_at`.
+deleted. Legacy WeChat session values are one-way SHA-256 hashes. App states
+use JSONB, a compatibility `state_updated_at`, and a monotonic `revision`.
+Email OTP credentials use Better Auth tables; Expo native session cookies are
+stored with SecureStore.
 
 ## Migration policy
 

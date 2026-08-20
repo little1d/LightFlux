@@ -1,7 +1,7 @@
 # LightFlux API
 
-Node.js backend for WeChat authentication, PostgreSQL-backed cloud state,
-image uploads, and the AI Agent proxy.
+Node.js backend for email OTP authentication, PostgreSQL-backed cloud state,
+image uploads, the AI Agent proxy, and legacy WeChat authentication.
 
 ## Local setup
 
@@ -22,9 +22,14 @@ npm run db:migrate
 npm run dev
 ```
 
-`SESSION_SECRET` must contain at least 32 random characters. `DATABASE_URL` is
-required. Set `DATABASE_SSL=true` for a hosted database, and keep certificate
-verification enabled in production.
+`SESSION_SECRET` and `BETTER_AUTH_SECRET` must contain at least 32 random
+characters. `DATABASE_URL` is required. Set `DATABASE_SSL=true` for a hosted
+database, and keep certificate verification enabled in production.
+
+Local development defaults to `OTP_DELIVERY=log`, which prints the code in the
+API process. Production requires `OTP_DELIVERY=smtp` and the `SMTP_*`
+variables. SES and other SMTP services can be switched without changing auth
+code.
 
 The API deliberately does not run migrations during ordinary startup.
 Deployments must run `npm run db:migrate` before starting new application
@@ -36,19 +41,39 @@ the checksum of every applied SQL file.
 - `users`: LightFlux user profiles.
 - `auth_identities`: WeChat AppID/OpenID identities and optional UnionID
   linkage.
-- `sessions`: SHA-256 hashes of cookie or bearer tokens. Raw tokens are never
-  persisted.
-- `app_states`: one versioned JSONB aggregate per user.
+- `sessions`: SHA-256 hashes of legacy WeChat cookie or bearer tokens.
+- `email_auth_*`: Better Auth users, sessions, OTP verifications, and rate
+  limits.
+- `federated_identities`: stable mapping from an authentication provider
+  subject to the internal LightFlux user ID.
+- `app_states`: one JSONB aggregate and monotonic server revision per user.
 
 Task state remains local-first. The server stores the client's complete,
 versioned aggregate instead of duplicating task, group, milestone, and event
-rules in a second domain model. Writes older than the current
-`state.updatedAt` are rejected with HTTP `409`, preventing a stale device from
-overwriting newer cloud state.
+rules in a second domain model. Clients submit `baseRevision`; PostgreSQL
+updates only when it matches the current revision. A mismatch returns HTTP
+`409` with the latest state and revision so the client can three-way merge and
+retry. `state.updatedAt` remains only as protection for older clients that do
+not yet submit a revision.
 
 Uploaded image bytes remain beneath `UPLOAD_DIR`; they do not belong in
 PostgreSQL. The client stores returned URLs, so this boundary can later move to
 S3-compatible object storage without rewriting task documents.
+
+## Email OTP authentication
+
+The client requests a six-digit code, valid for five minutes and three
+verification attempts. OTP values are hashed in PostgreSQL. Web and Tauri use
+an HttpOnly cookie; Expo native clients keep the cookie in SecureStore.
+
+When Caddy or Nginx is the only public path to the API, configure
+`AUTH_IP_ADDRESS_HEADERS` and `AUTH_TRUSTED_PROXIES` to match that proxy. Do
+not trust forwarded IP headers while the Node port is directly reachable.
+
+Expo native clients persist Better Auth cookies in SecureStore. Login is
+considered complete only after the client restores the session and reconciles
+the account-scoped cloud state; sync, image uploads, and Agent calls all use
+the same authenticated fetch boundary.
 
 ## Importing the old JSON repository
 
@@ -106,6 +131,10 @@ TEST_DATABASE_URL=postgresql://... npm run test:postgres
 ## Endpoints
 
 - `GET /health`
+- `POST /api/auth/email/email-otp/send-verification-otp`
+- `POST /api/auth/email/sign-in/email-otp`
+- `GET /api/auth/email/get-session`
+- `POST /api/auth/email/sign-out`
 - `GET /api/auth/wechat/web/start`
 - `GET /api/auth/wechat/web/callback`
 - `GET /api/auth/wechat/mobile/state`

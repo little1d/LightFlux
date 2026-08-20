@@ -1,3 +1,5 @@
+import { authenticatedFetch } from './authApi';
+
 const publicEnvironment = process.env as Record<string, string | undefined>;
 const uploadApiUrl = (
   publicEnvironment.EXPO_PUBLIC_UPLOAD_API_URL ??
@@ -56,9 +58,8 @@ export const uploadTaskImage = async (file: File): Promise<string> => {
     );
   }
 
-  const response = await fetch(`${uploadApiUrl}/api/uploads`, {
+  const response = await authenticatedFetch(`${uploadApiUrl}/api/uploads`, {
     body: file,
-    credentials: 'include',
     headers: {
       'Content-Type': file.type,
     },

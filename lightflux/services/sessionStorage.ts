@@ -6,6 +6,7 @@ import {
   isRemoteAuthConfigured,
   logoutRemoteSession,
 } from './authApi';
+import { resetRemoteSyncContext } from './todoStorage';
 
 const STORAGE_KEY = 'lightflux.session.v1';
 const sessionFile = () =>
@@ -44,6 +45,7 @@ export const saveSessionState = async (signedIn: boolean): Promise<void> => {
   if (isRemoteAuthConfigured) {
     if (!signedIn) {
       await logoutRemoteSession();
+      resetRemoteSyncContext();
     }
     return;
   }

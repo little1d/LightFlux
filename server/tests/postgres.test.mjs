@@ -135,7 +135,7 @@ test('re-running migrations is idempotent', async () => {
   const applied = await pool.query(
     'SELECT id, name, checksum FROM lightflux_schema_migrations',
   );
-  assert.equal(applied.rowCount, 2);
+  assert.equal(applied.rowCount, 3);
   for (const migration of applied.rows) {
     assert.match(migration.checksum, /^[0-9a-f]{64}$/);
   }
@@ -168,7 +168,7 @@ test('stores hashed sessions and ignores expired sessions', async () => {
   );
 });
 
-test('rejects stale app-state writes without changing current data', async () => {
+test('uses revision CAS and returns the current snapshot on conflict', async () => {
   const user = await repository.upsertWechatUser('web', {
     appId: 'web-app',
     openId: 'state-user',
@@ -189,16 +189,50 @@ test('rejects stale app-state writes without changing current data', async () =>
     groups: [],
   };
 
-  assert.equal(
-    (await repository.putAppState(user.id, currentState)).updated,
-    true,
+  const firstWrite = await repository.putAppState(
+    user.id,
+    currentState,
+    0,
   );
-  const staleResult = await repository.putAppState(user.id, staleState);
+  assert.equal(firstWrite.updated, true);
+  assert.equal(firstWrite.revision, 1);
+  const staleResult = await repository.putAppState(
+    user.id,
+    staleState,
+    0,
+  );
   assert.deepEqual(staleResult, {
+    conflict: true,
+    currentRevision: 1,
+    currentState,
     updated: false,
-    currentUpdatedAt: 200,
   });
-  assert.deepEqual(await repository.getAppState(user.id), currentState);
+  assert.deepEqual(await repository.getAppStateSnapshot(user.id), {
+    revision: 1,
+    state: currentState,
+  });
+});
+
+test('keeps updatedAt protection for clients without baseRevision', async () => {
+  const user = await repository.upsertWechatUser('web', {
+    appId: 'web-app',
+    openId: 'legacy-state-user',
+    unionId: null,
+    displayName: 'Legacy state user',
+    avatarUrl: null,
+  });
+  const currentState = {
+    schemaVersion: 10,
+    updatedAt: 200,
+    todos: [],
+    groups: [],
+  };
+  const staleState = { ...currentState, updatedAt: 100 };
+
+  await repository.putAppState(user.id, currentState);
+  const staleResult = await repository.putAppState(user.id, staleState);
+  assert.equal(staleResult.updated, false);
+  assert.equal(staleResult.currentUpdatedAt, 200);
 });
 
 test('imports the legacy JSON snapshot idempotently', async () => {

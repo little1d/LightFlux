@@ -6,7 +6,12 @@ import {
   clearRuntimeMilestoneNotifications,
   reconcileMilestoneNotifications,
 } from '../services/milestoneNotifications';
-import { loadAppState, saveAppState } from '../services/todoStorage';
+import { mergeConcurrentAppStates } from '../services/appStateMerge';
+import {
+  loadAppState,
+  saveAppState,
+  synchronizeAppState,
+} from '../services/todoStorage';
 import {
   NAVIGATION_ITEM_IDS,
   GroupPlacement,
@@ -76,6 +81,7 @@ interface TodoStore {
   persistenceErrorAt: number | null;
   hydrationStarted: boolean;
   hydrate: () => Promise<void>;
+  syncRemote: () => Promise<void>;
   clearPersistenceError: () => void;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   addTodo: (todo: NewTodo) => void;
@@ -111,6 +117,20 @@ interface TodoStore {
 const makeId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const persistedStoreSlice = (state: PersistedAppState) => ({
+  language: state.language,
+  ...todoState(state.todos),
+  groups: state.groups,
+  taskEvents: state.taskEvents,
+  analyticsStartedAt: state.analyticsStartedAt,
+  ...milestoneState(state.milestones),
+  navigationOrder: state.navigationOrder,
+  hiddenNavigationItems: state.hiddenNavigationItems,
+  ungroupedName: state.ungroupedName,
+});
+
+let hydrationPromise: Promise<void> | null = null;
+
 export const useTodoStore = create<TodoStore>((set, get) => ({
   language: 'zh',
   ...todoState([]),
@@ -126,36 +146,57 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   persistenceErrorAt: null,
   hydrationStarted: false,
 
-  hydrate: async () => {
-    if (get().hydrationStarted) {
-      return;
+  hydrate: () => {
+    if (hydrationPromise) {
+      return hydrationPromise;
     }
 
     set({ hydrationStarted: true });
-    try {
-      const state = await loadAppState();
-      if (state) {
+    hydrationPromise = (async () => {
+      try {
+        const state = await loadAppState();
+        if (state) {
+          set(persistedStoreSlice(state));
+        }
+        set({ isHydrated: true, persistenceReady: true });
+      } catch (error) {
+        console.warn('Unable to load LightFlux data.', error);
         set({
-          language: state.language,
-          ...todoState(state.todos),
-          groups: state.groups,
-          taskEvents: state.taskEvents,
-          analyticsStartedAt: state.analyticsStartedAt,
-          ...milestoneState(state.milestones),
-          navigationOrder: state.navigationOrder,
-          hiddenNavigationItems: state.hiddenNavigationItems,
-          ungroupedName: state.ungroupedName,
+          isHydrated: true,
+          persistenceErrorAt: Date.now(),
+          persistenceReady: false,
         });
       }
-      set({ isHydrated: true, persistenceReady: true });
-    } catch (error) {
-      console.warn('Unable to load LightFlux data.', error);
-      set({
-        isHydrated: true,
-        persistenceErrorAt: Date.now(),
-        persistenceReady: false,
-      });
+    })();
+    return hydrationPromise;
+  },
+
+  syncRemote: async () => {
+    await get().hydrate();
+    if (!get().isHydrated) {
+      return;
     }
+    const requestedState = persistedState(get());
+    const synchronizedState = await synchronizeAppState(requestedState, {
+      requireRemoteSession: true,
+    });
+    if (!synchronizedState) {
+      return;
+    }
+    if (synchronizedState === requestedState) {
+      set({ persistenceReady: true });
+      return;
+    }
+    const currentState = persistedState(get());
+    const reconciledState = mergeConcurrentAppStates(
+      requestedState,
+      currentState,
+      synchronizedState,
+    );
+    set({
+      ...persistedStoreSlice(reconciledState),
+      persistenceReady: true,
+    });
   },
 
   clearPersistenceError: () => set({ persistenceErrorAt: null }),
@@ -813,12 +854,24 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const timer = setTimeout(() => {
-      saveAppState(
-        persistedState(useTodoStore.getState()),
-      ).catch((error: unknown) => {
-        console.warn('Unable to save LightFlux data.', error);
-        useTodoStore.setState({ persistenceErrorAt: Date.now() });
-      });
+      const requestedState = persistedState(useTodoStore.getState());
+      saveAppState(requestedState)
+        .then((synchronizedState) => {
+          if (synchronizedState === requestedState) {
+            return;
+          }
+          const currentState = persistedState(useTodoStore.getState());
+          const reconciledState = mergeConcurrentAppStates(
+            requestedState,
+            currentState,
+            synchronizedState,
+          );
+          useTodoStore.setState(persistedStoreSlice(reconciledState));
+        })
+        .catch((error: unknown) => {
+          console.warn('Unable to save LightFlux data.', error);
+          useTodoStore.setState({ persistenceErrorAt: Date.now() });
+        });
     }, 180);
 
     return () => clearTimeout(timer);

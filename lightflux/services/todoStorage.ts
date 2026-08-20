@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import {
   NAVIGATION_ITEM_IDS,
   OPTIONAL_NAVIGATION_ITEM_IDS,
+  Language,
   Milestone,
   MilestoneDateRule,
   MilestoneType,
@@ -27,19 +28,25 @@ import {
   isRichTextDocument,
 } from '../utils/richText';
 import {
+  appStatesEqual,
   deriveStateUpdatedAt,
-  selectLatestAppState,
+  mergeConcurrentAppStates,
 } from './appStateMerge';
 import {
   isRemoteAuthConfigured,
   loadRemoteAppState,
+  RemoteAppStateConflictError,
+  RemoteAppStateSnapshot,
   saveRemoteAppState,
 } from './authApi';
 import { loadWebState, saveWebState } from './indexedDbStorage';
 import { migrateTaskEvents } from '../store/taskEventDomain';
 
 const STORAGE_KEY = 'lightflux.app-state.v1';
+const SYNC_METADATA_KEY = 'lightflux.sync-metadata.v1';
 const stateFile = () => new File(Paths.document, 'lightflux-state.json');
+const syncMetadataFile = () =>
+  new File(Paths.document, 'lightflux-sync-metadata.json');
 
 const normalizeNavigationOrder = (value: unknown): NavigationItemId[] => {
   const saved = Array.isArray(value)
@@ -419,6 +426,34 @@ export const parsePersistedAppState = (
   }
 };
 
+interface SyncMetadata {
+  baseState: PersistedAppState | null;
+  ownerId: string;
+  revision: number;
+}
+
+let syncMetadataCache: SyncMetadata | null | undefined;
+let activeRemoteOwnerId: string | null = null;
+let remoteSaveQueue: Promise<void> = Promise.resolve();
+let deviceWriteGeneration = 0;
+
+const emptyAppState = (language: Language = 'zh'): PersistedAppState => {
+  const timestamp = Date.now();
+  return {
+    schemaVersion: 10,
+    updatedAt: timestamp,
+    analyticsStartedAt: timestamp,
+    language,
+    navigationOrder: [...NAVIGATION_ITEM_IDS],
+    hiddenNavigationItems: [],
+    ungroupedName: null,
+    todos: [],
+    groups: [],
+    milestones: [],
+    taskEvents: [],
+  };
+};
+
 const loadDeviceState = async (): Promise<PersistedAppState | null> => {
   if (Platform.OS === 'web') {
     const rawState = await loadWebState(STORAGE_KEY);
@@ -446,6 +481,228 @@ const saveDeviceState = async (
   stateFile().write(serializedState);
 };
 
+const parseSyncMetadata = (rawValue: string): SyncMetadata | null => {
+  try {
+    const value = JSON.parse(rawValue) as Partial<SyncMetadata>;
+    const baseState =
+      value.baseState === null
+        ? null
+        : parsePersistedAppState(JSON.stringify(value.baseState));
+    if (
+      typeof value.ownerId !== 'string' ||
+      !value.ownerId ||
+      !Number.isSafeInteger(value.revision) ||
+      (value.revision ?? -1) < 0 ||
+      (value.baseState !== null && !baseState)
+    ) {
+      return null;
+    }
+    return {
+      baseState,
+      ownerId: value.ownerId,
+      revision: value.revision as number,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const loadSyncMetadata = async (): Promise<SyncMetadata | null> => {
+  if (syncMetadataCache !== undefined) {
+    return syncMetadataCache;
+  }
+  let rawValue: string | null = null;
+  if (Platform.OS === 'web') {
+    rawValue = await loadWebState(SYNC_METADATA_KEY);
+  } else {
+    const file = syncMetadataFile();
+    rawValue = file.exists ? await file.text() : null;
+  }
+  syncMetadataCache = rawValue ? parseSyncMetadata(rawValue) : null;
+  return syncMetadataCache;
+};
+
+const saveSyncMetadata = async (
+  metadata: SyncMetadata,
+): Promise<void> => {
+  syncMetadataCache = metadata;
+  const serializedMetadata = JSON.stringify(metadata);
+  if (Platform.OS === 'web') {
+    await saveWebState(SYNC_METADATA_KEY, serializedMetadata);
+    return;
+  }
+  syncMetadataFile().write(serializedMetadata);
+};
+
+const normalizedRemoteState = (
+  snapshot: RemoteAppStateSnapshot,
+): PersistedAppState | null => {
+  if (snapshot.state === null) {
+    return null;
+  }
+  const state = parsePersistedAppState(JSON.stringify(snapshot.state));
+  if (!state) {
+    throw new Error('The cloud returned an invalid app state.');
+  }
+  return state;
+};
+
+const candidateForSnapshot = (
+  localState: PersistedAppState | null,
+  snapshot: RemoteAppStateSnapshot,
+  metadata: SyncMetadata | null,
+): PersistedAppState => {
+  const remoteState = normalizedRemoteState(snapshot);
+  if (metadata?.ownerId && metadata.ownerId !== snapshot.ownerId) {
+    return remoteState ?? emptyAppState(localState?.language);
+  }
+  if (!localState) {
+    return remoteState ?? emptyAppState();
+  }
+  if (!remoteState) {
+    return localState;
+  }
+  if (appStatesEqual(localState, remoteState)) {
+    return remoteState;
+  }
+  const baseState =
+    metadata?.ownerId === snapshot.ownerId ? metadata.baseState : null;
+  if (baseState && appStatesEqual(localState, baseState)) {
+    return remoteState;
+  }
+  if (baseState && appStatesEqual(remoteState, baseState)) {
+    return localState;
+  }
+  return mergeConcurrentAppStates(baseState, localState, remoteState);
+};
+
+const commitCandidate = async (
+  candidate: PersistedAppState,
+  initialSnapshot: RemoteAppStateSnapshot,
+  initialBaseState: PersistedAppState | null,
+): Promise<PersistedAppState> => {
+  let snapshot = initialSnapshot;
+  let baseState = initialBaseState;
+  let nextState = candidate;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const remoteState = normalizedRemoteState(snapshot);
+    if (remoteState && appStatesEqual(nextState, remoteState)) {
+      await saveSyncMetadata({
+        baseState: remoteState,
+        ownerId: snapshot.ownerId,
+        revision: snapshot.revision,
+      });
+      return remoteState;
+    }
+    try {
+      const revision = await saveRemoteAppState(
+        nextState,
+        snapshot.revision,
+      );
+      await saveSyncMetadata({
+        baseState: nextState,
+        ownerId: snapshot.ownerId,
+        revision,
+      });
+      return nextState;
+    } catch (error) {
+      if (!(error instanceof RemoteAppStateConflictError)) {
+        throw error;
+      }
+      const conflictSnapshot = {
+        ...error.snapshot,
+        ownerId: error.snapshot.ownerId || snapshot.ownerId,
+      };
+      const conflictState = normalizedRemoteState(conflictSnapshot);
+      if (conflictSnapshot.ownerId !== snapshot.ownerId) {
+        nextState =
+          conflictState ?? emptyAppState(nextState.language);
+        baseState = null;
+      } else if (conflictState) {
+        nextState = mergeConcurrentAppStates(
+          remoteState ?? baseState,
+          nextState,
+          conflictState,
+        );
+        baseState = conflictState;
+      }
+      snapshot = conflictSnapshot;
+    }
+  }
+
+  throw new Error('Unable to synchronize after repeated cloud conflicts.');
+};
+
+export const synchronizeAppState = async (
+  localState: PersistedAppState | null,
+  options: { requireRemoteSession?: boolean } = {},
+): Promise<PersistedAppState | null> => {
+  if (!isRemoteAuthConfigured) {
+    return localState;
+  }
+  const snapshot = await loadRemoteAppState();
+  if (!snapshot) {
+    activeRemoteOwnerId = null;
+    if (options.requireRemoteSession) {
+      throw new Error('An authenticated cloud session is required.');
+    }
+    return localState;
+  }
+  activeRemoteOwnerId = snapshot.ownerId;
+  const metadata = await loadSyncMetadata();
+  const candidate = candidateForSnapshot(localState, snapshot, metadata);
+  const baseState =
+    metadata?.ownerId === snapshot.ownerId ? metadata.baseState : null;
+  const synchronized = await commitCandidate(
+    candidate,
+    snapshot,
+    baseState,
+  );
+  await saveDeviceState(synchronized);
+  return synchronized;
+};
+
+const saveRemoteKnownState = async (
+  state: PersistedAppState,
+): Promise<PersistedAppState> => {
+  const metadata = await loadSyncMetadata();
+  if (
+    !activeRemoteOwnerId ||
+    !metadata ||
+    metadata.ownerId !== activeRemoteOwnerId
+  ) {
+    return (await synchronizeAppState(state)) ?? state;
+  }
+
+  try {
+    const revision = await saveRemoteAppState(state, metadata.revision);
+    await saveSyncMetadata({
+      baseState: state,
+      ownerId: metadata.ownerId,
+      revision,
+    });
+    return state;
+  } catch (error) {
+    if (!(error instanceof RemoteAppStateConflictError)) {
+      throw error;
+    }
+    const snapshot = {
+      ...error.snapshot,
+      ownerId: error.snapshot.ownerId || metadata.ownerId,
+    };
+    const remoteState = normalizedRemoteState(snapshot);
+    const candidate = remoteState
+      ? mergeConcurrentAppStates(metadata.baseState, state, remoteState)
+      : state;
+    return commitCandidate(candidate, snapshot, metadata.baseState);
+  }
+};
+
+export const resetRemoteSyncContext = (): void => {
+  activeRemoteOwnerId = null;
+};
+
 export const loadAppState = async (): Promise<PersistedAppState | null> => {
   const deviceState = await loadDeviceState();
   if (!isRemoteAuthConfigured) {
@@ -453,30 +710,7 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
   }
 
   try {
-    const remoteState = await loadRemoteAppState();
-    if (!remoteState) {
-      return deviceState;
-    }
-
-    const normalizedRemoteState = parsePersistedAppState(
-      JSON.stringify(remoteState),
-    );
-    if (normalizedRemoteState) {
-      const latestState = selectLatestAppState(
-        deviceState,
-        normalizedRemoteState,
-      );
-      if (latestState === normalizedRemoteState) {
-        await saveDeviceState(normalizedRemoteState);
-      } else if (
-        latestState &&
-        latestState.updatedAt > normalizedRemoteState.updatedAt
-      ) {
-        await saveRemoteAppState(latestState);
-      }
-      return latestState;
-    }
-    return deviceState;
+    return await synchronizeAppState(deviceState);
   } catch (error) {
     if (deviceState) {
       console.warn('Unable to load cloud data; using the local cache.', error);
@@ -488,9 +722,21 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
 
 export const saveAppState = async (
   state: PersistedAppState,
-): Promise<void> => {
+): Promise<PersistedAppState> => {
+  const writeGeneration = ++deviceWriteGeneration;
   await saveDeviceState(state);
-  if (isRemoteAuthConfigured) {
-    await saveRemoteAppState(state);
+  if (!isRemoteAuthConfigured) {
+    return state;
   }
+
+  const queuedSave = remoteSaveQueue.then(() => saveRemoteKnownState(state));
+  remoteSaveQueue = queuedSave.then(
+    () => undefined,
+    () => undefined,
+  );
+  const synchronized = await queuedSave;
+  if (writeGeneration === deviceWriteGeneration) {
+    await saveDeviceState(synchronized);
+  }
+  return synchronized;
 };

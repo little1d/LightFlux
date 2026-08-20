@@ -24,6 +24,8 @@ services:
       APP_WEB_URL: http://localhost:8081
       CORS_ORIGIN: http://localhost:8081
       DATABASE_URL: postgresql://lightflux:lightflux@postgres:5432/lightflux
+      NODE_ENV: development
+      OTP_DELIVERY: log
       PORT: 8787
       PUBLIC_BASE_URL: http://localhost:8787
       SESSION_SECRET: local-development-session-secret-change-me

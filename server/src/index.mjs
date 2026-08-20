@@ -9,18 +9,44 @@ import { createServer } from 'node:http';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
+
 import { createAgentService } from './agent.mjs';
+import {
+  createEmailAuth,
+  EMAIL_AUTH_BASE_PATH,
+  EMAIL_AUTH_PROVIDER,
+} from './email-auth.mjs';
 import { publicHttpError } from './http-errors.mjs';
+import {
+  createOtpEmailSender,
+  otpEmailConfigFromEnvironment,
+} from './otp-email.mjs';
 import { postgresConfigFromEnvironment } from './postgres/config.mjs';
 import { createPostgresPool } from './postgres/pool.mjs';
 import { createPostgresRepository } from './postgres/repository.mjs';
+
+const environmentList = (value) =>
+  String(value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 const config = {
   port: Number(process.env.PORT ?? 8787),
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? 'http://localhost:8787',
   appWebUrl: process.env.APP_WEB_URL ?? 'http://localhost:8081',
-  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:8081',
+  corsOrigins: environmentList(
+    process.env.CORS_ORIGIN ?? 'http://localhost:8081',
+  ),
   sessionSecret: process.env.SESSION_SECRET ?? '',
+  betterAuthSecret:
+    process.env.BETTER_AUTH_SECRET ?? process.env.SESSION_SECRET ?? '',
+  authIpAddressHeaders: environmentList(
+    process.env.AUTH_IP_ADDRESS_HEADERS,
+  ),
+  authTrustedProxies: environmentList(process.env.AUTH_TRUSTED_PROXIES),
+  authTrustedOrigins: environmentList(process.env.AUTH_TRUSTED_ORIGINS),
   uploadDir: resolve(process.env.UPLOAD_DIR ?? './data/uploads'),
   uploadAllowAnonymous: process.env.UPLOAD_ALLOW_ANONYMOUS === 'true',
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 8 * 1024 * 1024),
@@ -64,9 +90,32 @@ for (const [name, value] of [
 }
 
 const agentService = createAgentService(config.ai);
+const pool = createPostgresPool(postgresConfigFromEnvironment());
 const database = createPostgresRepository({
-  pool: createPostgresPool(postgresConfigFromEnvironment()),
+  pool,
 });
+const otpEmailSender = createOtpEmailSender(
+  otpEmailConfigFromEnvironment(),
+);
+const emailAuth = createEmailAuth({
+  baseUrl: config.publicBaseUrl,
+  database: pool,
+  ipAddressHeaders: config.authIpAddressHeaders,
+  secret: config.betterAuthSecret,
+  sendOtp: otpEmailSender.send,
+  trustedProxies: config.authTrustedProxies,
+  trustedOrigins: [
+    config.appWebUrl,
+    ...config.corsOrigins,
+    'http://localhost:1420',
+    'http://tauri.localhost',
+    'https://tauri.localhost',
+    'tauri://localhost',
+    'lightflux://',
+    ...config.authTrustedOrigins,
+  ],
+});
+const emailAuthHandler = toNodeHandler(emailAuth);
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -309,9 +358,32 @@ const requestToken = (request) => {
 };
 
 const currentSession = async (request) => {
+  const emailSession = await emailAuth.api.getSession({
+    headers: fromNodeHeaders(request.headers),
+  });
+  if (emailSession?.user?.id) {
+    const user = await database.upsertFederatedUser({
+      provider: EMAIL_AUTH_PROVIDER,
+      subject: emailSession.user.id,
+      email: emailSession.user.email,
+      displayName: emailSession.user.name,
+      avatarUrl: emailSession.user.image,
+    });
+    return {
+      provider: EMAIL_AUTH_PROVIDER,
+      session: emailSession.session,
+      user,
+    };
+  }
+
   const token = requestToken(request);
   if (!token) return null;
-  return database.findSessionByTokenHash(tokenHash(token));
+  const legacySession = await database.findSessionByTokenHash(
+    tokenHash(token),
+  );
+  return legacySession
+    ? { ...legacySession, provider: 'wechat' }
+    : null;
 };
 
 const cookieHeader = (token, maxAge = SESSION_TTL_MS / 1000) => {
@@ -331,13 +403,20 @@ const agentOwnerId = (request, auth) =>
   auth?.user.id ??
   `anonymous:${request.socket.remoteAddress ?? 'unknown'}`;
 
-const handleRequest = async (request, response) => {
-  const url = new URL(request.url, config.publicBaseUrl);
-  const corsHeaders = {
+const corsHeadersForRequest = (request) => {
+  const origin = request.headers.origin;
+  return {
     'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Allow-Origin': config.corsOrigin,
+    ...(origin && config.corsOrigins.includes(origin)
+      ? { 'Access-Control-Allow-Origin': origin }
+      : {}),
     Vary: 'Origin',
   };
+};
+
+const handleRequest = async (request, response) => {
+  const url = new URL(request.url, config.publicBaseUrl);
+  const corsHeaders = corsHeadersForRequest(request);
 
   if (request.method === 'OPTIONS') {
     response.writeHead(204, {
@@ -349,12 +428,27 @@ const handleRequest = async (request, response) => {
     return;
   }
 
+  if (
+    url.pathname === EMAIL_AUTH_BASE_PATH ||
+    url.pathname.startsWith(`${EMAIL_AUTH_BASE_PATH}/`)
+  ) {
+    for (const [name, value] of Object.entries(corsHeaders)) {
+      response.setHeader(name, value);
+    }
+    await emailAuthHandler(request, response);
+    return;
+  }
+
   if (url.pathname === '/health' && request.method === 'GET') {
     await database.healthcheck();
     json(response, 200, {
       status: 'ok',
       database: 'postgresql',
       aiConfigured: agentService.isConfigured(),
+      emailAuth: {
+        configured: true,
+        delivery: otpEmailSender.mode,
+      },
       wechat: {
         webConfigured: Boolean(config.web.appId && config.web.appSecret),
         mobileConfigured: Boolean(
@@ -525,7 +619,7 @@ const handleRequest = async (request, response) => {
 
   if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
     const auth = await currentSession(request);
-    if (auth) {
+    if (auth?.provider === 'wechat') {
       await database.deleteSession(auth.session.id);
     }
     json(response, 200, { ok: true }, {
@@ -600,7 +694,10 @@ const handleRequest = async (request, response) => {
     json(
       response,
       200,
-      { state: await database.getAppState(auth.user.id) },
+      {
+        ...(await database.getAppStateSnapshot(auth.user.id)),
+        ownerId: auth.user.id,
+      },
       corsHeaders,
     );
     return;
@@ -621,20 +718,27 @@ const handleRequest = async (request, response) => {
       json(response, 400, { error: 'Invalid app state.' }, corsHeaders);
       return;
     }
-    const result = await database.putAppState(auth.user.id, body.state);
+    const result = await database.putAppState(
+      auth.user.id,
+      body.state,
+      body.baseRevision,
+    );
     if (!result.updated) {
       json(
         response,
         409,
         {
           error: 'A newer app state already exists.',
+          ownerId: auth.user.id,
+          revision: result.currentRevision,
+          state: result.currentState,
           currentUpdatedAt: result.currentUpdatedAt,
         },
         corsHeaders,
       );
       return;
     }
-    json(response, 200, { ok: true }, corsHeaders);
+    json(response, 200, { ok: true, revision: result.revision }, corsHeaders);
     return;
   }
 
@@ -657,11 +761,7 @@ const server = createServer((request, response) => {
       response,
       status,
       { error: publicError.message },
-      {
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Origin': config.corsOrigin,
-        Vary: 'Origin',
-      },
+      corsHeadersForRequest(request),
     );
   });
 });
@@ -672,6 +772,7 @@ server.listen(config.port, () => {
 
 const shutdown = () => {
   server.close(async () => {
+    otpEmailSender.close();
     await database.close();
     process.exit(0);
   });

@@ -49,15 +49,21 @@ test(
         groups: [],
       };
       const stale = { ...current, updatedAt: 1 };
-      assert.equal(
-        (await repository.putAppState(userId, current)).updated,
-        true,
+      const firstWrite = await repository.putAppState(userId, current, 0);
+      assert.equal(firstWrite.revision, 1);
+      assert.deepEqual(
+        await repository.putAppState(userId, stale, 0),
+        {
+          conflict: true,
+          currentRevision: 1,
+          currentState: current,
+          updated: false,
+        },
       );
-      assert.deepEqual(await repository.putAppState(userId, stale), {
-        updated: false,
-        currentUpdatedAt: 2,
+      assert.deepEqual(await repository.getAppStateSnapshot(userId), {
+        revision: 1,
+        state: current,
       });
-      assert.deepEqual(await repository.getAppState(userId), current);
     } finally {
       if (userId) {
         await pool.query('DELETE FROM users WHERE id = $1', [userId]);

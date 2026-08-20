@@ -176,8 +176,20 @@ export interface Translation {
     title: string;
     description: string;
     continue: string;
-    wechat: string;
-    wechatError: string;
+    emailPlaceholder: string;
+    sendCode: string;
+    sendingCode: string;
+    codeDescription: (email: string) => string;
+    codePlaceholder: string;
+    verifyCode: string;
+    verifyingCode: string;
+    resendCode: string;
+    changeEmail: string;
+    codeSent: string;
+    invalidEmail: string;
+    invalidCode: string;
+    requestError: string;
+    verifyError: string;
   };
   notifications: {
     orderUpdated: string;

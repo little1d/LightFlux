@@ -269,15 +269,21 @@ export const createPostgresRepository = ({ pool }) => {
     await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
   };
 
-  const getAppState = async (userId) => {
+  const getAppStateSnapshot = async (userId) => {
     const result = await pool.query(
-      'SELECT state FROM app_states WHERE user_id = $1',
+      'SELECT state, revision FROM app_states WHERE user_id = $1',
       [userId],
     );
-    return result.rows[0]?.state ?? null;
+    const row = result.rows[0];
+    return row
+      ? { state: row.state, revision: Number(row.revision) }
+      : { state: null, revision: 0 };
   };
 
-  const putAppState = async (userId, state) => {
+  const getAppState = async (userId) =>
+    (await getAppStateSnapshot(userId)).state;
+
+  const putAppState = async (userId, state, baseRevision) => {
     const stateUpdatedAt = Number(state?.updatedAt);
     if (
       !Number.isFinite(stateUpdatedAt) ||
@@ -288,13 +294,21 @@ export const createPostgresRepository = ({ pool }) => {
       error.status = 400;
       throw error;
     }
+    if (
+      baseRevision !== undefined &&
+      (!Number.isSafeInteger(baseRevision) || baseRevision < 0)
+    ) {
+      const error = new Error('App state has an invalid baseRevision value.');
+      error.status = 400;
+      throw error;
+    }
 
     return transaction(pool, async (client) => {
       await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
         `app-state:${userId}`,
       ]);
       const current = await client.query(
-        `SELECT state_updated_at
+        `SELECT state, state_updated_at, revision
          FROM app_states
          WHERE user_id = $1
          FOR UPDATE`,
@@ -304,31 +318,58 @@ export const createPostgresRepository = ({ pool }) => {
         current.rowCount > 0
           ? Number(current.rows[0].state_updated_at)
           : null;
+      const currentRevision =
+        current.rowCount > 0 ? Number(current.rows[0].revision) : 0;
       if (
+        baseRevision !== undefined &&
+        baseRevision !== currentRevision
+      ) {
+        return {
+          conflict: true,
+          currentRevision,
+          currentState: current.rows[0]?.state ?? null,
+          updated: false,
+        };
+      }
+      if (
+        baseRevision === undefined &&
         currentUpdatedAt !== null &&
         currentUpdatedAt > stateUpdatedAt
       ) {
-        return { updated: false, currentUpdatedAt };
+        return {
+          conflict: true,
+          currentRevision,
+          currentState: current.rows[0]?.state ?? null,
+          currentUpdatedAt,
+          updated: false,
+        };
       }
 
+      const nextRevision = currentRevision + 1;
       if (currentUpdatedAt === null) {
         await client.query(
           `INSERT INTO app_states (
-             user_id, state, state_updated_at, updated_at
-           ) VALUES ($1, $2::jsonb, $3, now())`,
-          [userId, JSON.stringify(state), stateUpdatedAt],
+             user_id, state, state_updated_at, revision, updated_at
+           ) VALUES ($1, $2::jsonb, $3, $4, now())`,
+          [userId, JSON.stringify(state), stateUpdatedAt, nextRevision],
         );
       } else {
         await client.query(
           `UPDATE app_states
            SET state = $2::jsonb,
                state_updated_at = $3,
+               revision = $4,
                updated_at = now()
            WHERE user_id = $1`,
-          [userId, JSON.stringify(state), stateUpdatedAt],
+          [userId, JSON.stringify(state), stateUpdatedAt, nextRevision],
         );
       }
-      return { updated: true, currentUpdatedAt: stateUpdatedAt };
+      return {
+        conflict: false,
+        currentUpdatedAt: stateUpdatedAt,
+        revision: nextRevision,
+        updated: true,
+      };
     });
   };
 
@@ -446,6 +487,7 @@ export const createPostgresRepository = ({ pool }) => {
     deleteSession,
     findSessionByTokenHash,
     getAppState,
+    getAppStateSnapshot,
     healthcheck,
     importLegacySnapshot,
     putAppState,

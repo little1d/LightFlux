@@ -8,6 +8,7 @@ import {
   getAgentContextForMessage,
   previewAgentProposal,
 } from '../agent/todoCommandStoreAdapter';
+import { authenticatedFetch } from './authApi';
 
 const publicEnvironment = process.env as Record<string, string | undefined>;
 const agentApiUrl = (
@@ -82,13 +83,15 @@ export const submitAgentTurn = async ({
     timeZone,
     context: getAgentContextForMessage(normalizedMessage, now),
   };
-  const response = await fetch(`${configuredApiUrl()}/api/ai/turns`, {
-    body: JSON.stringify(request),
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    method: 'POST',
-    signal,
-  });
+  const response = await authenticatedFetch(
+    `${configuredApiUrl()}/api/ai/turns`,
+    {
+      body: JSON.stringify(request),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      signal,
+    },
+  );
   const body = (await response.json()) as AgentTurnResponse & {
     error?: string;
   };
@@ -113,7 +116,7 @@ export const reportAgentProposalResult = async (
   result: AgentExecutionResult,
   signal?: AbortSignal,
 ): Promise<void> => {
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `${configuredApiUrl()}/api/ai/proposals/${encodeURIComponent(
       result.proposalId,
     )}/result`,
@@ -123,7 +126,6 @@ export const reportAgentProposalResult = async (
         afterRevision: result.afterRevision,
         operations: result.operations,
       }),
-      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
       method: 'POST',

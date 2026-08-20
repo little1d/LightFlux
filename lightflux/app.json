@@ -2,6 +2,7 @@
   "expo": {
     "name": "lightflux",
     "slug": "lightflux",
+    "scheme": "lightflux",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,7 +16,8 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "expo-secure-store"
     ],
     "ios": {
       "supportsTablet": true

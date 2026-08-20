@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-desktop-web/
 desktop-dist/
 web-build/
 

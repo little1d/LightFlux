@@ -181,3 +181,23 @@ Use this format:
 - Context: Quick creation had a broad dimmed backdrop and duplicate footer actions despite a close icon and keyboard submit; the AI prompt needed the same lightweight bottom-sheet interaction.
 - Rule: For focused mobile prompt sheets, keep the source context visible, close through an explicit icon or platform back gesture, and submit direct text entry through its natural input action. Do not add backdrop dismissal or redundant footer buttons unless dismissal safety requires it.
 - Evidence: `lightflux/components/tasks/QuickAddTaskSheet.tsx`, `components/agent/AgentCommandPanel.tsx`; typecheck, tests, and Web export passed.
+
+### 2026-08-20 - Phone layouts remove explanatory duplication
+- Context: At 402 px, Settings repeated control descriptions, task details nested a bordered editor card inside a sheet, and Calendar repeated the selected date above a second task/composer card.
+- Rule: Below phone-width breakpoints, omit copy that restates a control and treat bounded workspaces as one surface. On Calendar, let the selected cell carry date context, create through one selected-date add action, and show matching task rows directly below the month grid.
+- Evidence: `lightflux/components/SettingsScreen.tsx`, `components/editor/TaskEditorScreen.web.tsx`, `TaskEditorScreen.native.tsx`, `components/CalendarScreen.tsx`; verified at 402 px and 1200 px plus tests, typecheck, and Web export.
+
+### 2026-08-20 - Narrow task actions use explicit bottom sheets
+- Context: Phone-width task rows exposed a desktop ellipsis menu and cascading group flyout; a swipe-only replacement would conflict with drag gestures and hide important actions.
+- Rule: Below the desktop breakpoint, use a visible task-adjustment icon and a keyboard-safe bottom sheet. Keep date, group, and priority as icon-led first-level controls, open their choices as in-sheet sublayers, make tall layers scrollable, and preserve anchored/cascading menus for desktop only.
+- Evidence: `lightflux/components/tasks/TaskRowControls.tsx`, `TaskActionMenu.tsx`, `components/ui/MenuSurface.tsx`; verified date rescheduling, priority updates, group sublayer, and full action visibility at 402 px.
+
+### 2026-08-20 - Cloud sync uses revision CAS and a persisted base
+- Context: Device clocks and aggregate `updatedAt` values cannot reliably order concurrent offline edits, and a 409 without the prior cloud baseline cannot distinguish deletion from unchanged data.
+- Rule: Every new client app-state write includes its last server revision. Persist the matching cloud base per authenticated owner, recover 409 responses with a three-way merge, retry against the returned revision, and never reuse one owner's local cache as another owner's initial state.
+- Evidence: `server/migrations/003_app_state_revision.sql`, `server/src/postgres/repository.mjs`, `lightflux/services/todoStorage.ts`, `services/appStateMerge.ts`; `syncConflict.test.ts` and live PostgreSQL/API checks.
+
+### 2026-08-20 - Native auth must prove session restoration
+- Context: An OTP sign-in response can succeed before a native credential is available to subsequent sync, upload, and Agent requests.
+- Rule: Store Expo native auth cookies in SecureStore, forward the recovered cookie through the shared authenticated fetch boundary, verify `getSession()` after OTP sign-in, and finish account-scoped cloud reconciliation before revealing task data.
+- Evidence: `lightflux/services/authClient.native.ts`, `authApi.ts`, `SignedOutScreen.tsx`, `App.tsx`; `authenticatedFetch.test.ts` and server email-auth tests.

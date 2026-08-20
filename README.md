@@ -12,15 +12,15 @@
 - 搜索任务标题、正文和分组名称
 - Web 右键 / 移动端长按任务菜单，可创建子任务
 - 可恢复垃圾桶、永久删除和清空垃圾桶
-- 宽屏按需显示可拖拽详情栏，窄屏使用全屏详情
+- 宽屏按需显示可拖拽详情栏，窄屏使用保留列表上下文的底部详情面板
 - Ionicons 桌面导航、账户菜单和任务内容类型提示
 - Tiptap 富文本正文，支持 Markdown 输入规则、图片和代码块
 - 任务详情自动保存，无需手动点击保存
-- 设置页提供中文 / English 下拉切换与快捷键说明
+- 设置页提供语言、统计入口和可选导航页面配置
 - 本地会话退出与重新进入，不删除设备上的任务
 - iOS、Android 使用本地文件持久化，Web 使用 localStorage
 - 版本化本地数据结构，支持旧数据迁移
-- Node 认证 API 支持微信网站扫码和移动端授权码交换
+- Node API 使用 PostgreSQL，支持微信登录、云状态同步和 AI 代理
 
 ## 运行
 
@@ -41,17 +41,20 @@ npm run typecheck
 
 ## 数据持久化
 
-任务数据使用 `schemaVersion: 7` 的 JSON 结构。Web 写入
+任务数据使用 `schemaVersion: 10` 的 JSON 结构。Web 写入
 IndexedDB（不可用时回退到 `localStorage`），iOS/Android 写入应用文档目录。每个任务包含稳定 ID、
 父任务 ID、分组 ID、完成/删除时间、富文本 JSON 和持久化排序字段
 `sortOrder`；应用状态包含全局更新时间以协调本地与云端版本，任务分组也包含独立顺序字段。状态管理使用 Zustand，存储通过独立 service
-隔离；后续切换云数据库时无需改动页面数据结构。
+隔离；登录后以完整版本化聚合同步到 PostgreSQL `JSONB`，未登录时仍
+完全使用设备本地数据。
 
 ## 微信登录
 
 ```bash
 cd server
 cp .env.example .env
+npm install
+npm run db:migrate
 npm run dev
 ```
 
@@ -63,5 +66,6 @@ EXPO_PUBLIC_AUTH_API_URL=http://localhost:8787
 
 微信开放平台应用审核完成前，认证接口会返回明确的未配置错误。服务端
 负责使用 AppSecret 换取微信 token、首次登录自动注册用户、UnionID
-账号合并和会话管理。服务端配置见 `server/README.md`，申请材料和审核步骤见
+账号合并、哈希会话和云状态管理。服务端配置见 `server/README.md`，
+PostgreSQL 设计见 [`docs/backend-postgresql.md`](docs/backend-postgresql.md)，申请材料和审核步骤见
 [`docs/wechat-open-platform/README.md`](docs/wechat-open-platform/README.md)。

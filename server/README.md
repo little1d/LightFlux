@@ -1,42 +1,107 @@
-# LightFlux Auth API
+# LightFlux API
 
-Node.js authentication service for WeChat website and native app login.
-It uses only Node built-ins and keeps `AppSecret` values on the server.
+Node.js backend for WeChat authentication, PostgreSQL-backed cloud state,
+image uploads, and the AI Agent proxy.
 
-## Setup
+## Local setup
+
+PostgreSQL 15 or newer is required. The included Compose file starts both
+PostgreSQL and the API:
 
 ```bash
+docker compose up --build
+```
+
+To run Node.js on the host and only PostgreSQL in Docker:
+
+```bash
+docker compose up -d postgres
 cp .env.example .env
+npm install
+npm run db:migrate
 npm run dev
 ```
 
-`SESSION_SECRET` must contain at least 32 random characters. The service
-starts without WeChat credentials so `/health` can be used during setup, but
-authorization endpoints return `503` until the relevant application is
-configured.
+`SESSION_SECRET` must contain at least 32 random characters. `DATABASE_URL` is
+required. Set `DATABASE_SSL=true` for a hosted database, and keep certificate
+verification enabled in production.
 
-For local image-paste development without WeChat authentication, set
-`UPLOAD_ALLOW_ANONYMOUS=true`. Keep it disabled in any shared or production
-environment. Uploaded files are written beneath `UPLOAD_DIR`.
+The API deliberately does not run migrations during ordinary startup.
+Deployments must run `npm run db:migrate` before starting new application
+instances. The migration runner uses a PostgreSQL advisory lock and verifies
+the checksum of every applied SQL file.
 
-The text Agent uses an OpenAI-compatible chat-completions endpoint. Configure
-`AI_BASE_URL` at the API root before `/chat/completions`, plus `AI_API_KEY` and
-`AI_MODEL`. For example, DeepSeek uses `https://api.deepseek.com`, while OpenAI
-typically uses a base ending in `/v1`. Anonymous Agent access is disabled by
-default because every request consumes paid model quota;
-`AI_ALLOW_ANONYMOUS=true` is only intended for isolated local development.
-Provider requests time out after `AI_REQUEST_TIMEOUT_MS` (30 seconds by
-default). `AI_RATE_LIMIT_MAX_REQUESTS` limits each authenticated user or
-anonymous IP within `AI_RATE_LIMIT_WINDOW_MS`.
+## Database model
+
+- `users`: LightFlux user profiles.
+- `auth_identities`: WeChat AppID/OpenID identities and optional UnionID
+  linkage.
+- `sessions`: SHA-256 hashes of cookie or bearer tokens. Raw tokens are never
+  persisted.
+- `app_states`: one versioned JSONB aggregate per user.
+
+Task state remains local-first. The server stores the client's complete,
+versioned aggregate instead of duplicating task, group, milestone, and event
+rules in a second domain model. Writes older than the current
+`state.updatedAt` are rejected with HTTP `409`, preventing a stale device from
+overwriting newer cloud state.
+
+Uploaded image bytes remain beneath `UPLOAD_DIR`; they do not belong in
+PostgreSQL. The client stores returned URLs, so this boundary can later move to
+S3-compatible object storage without rewriting task documents.
+
+## Importing the old JSON repository
+
+Run migrations first, stop the old API process, then import its schema-v1
+snapshot:
+
+```bash
+npm run db:migrate
+npm run db:import-json -- ./data/auth.json
+```
+
+The import is idempotent. It preserves existing user IDs, identity links,
+session token hashes, and app state. It never writes raw session tokens.
+Keep the JSON file until user, identity, session, and app-state counts have
+been checked in PostgreSQL.
 
 ## WeChat applications
 
-- Web: approved Website Application, callback domain and
+- Web: approved Website Application, callback domain, and
   `WECHAT_WEB_REDIRECT_URI`.
 - iOS/Android: approved Mobile Application, iOS Universal Link, Android
-  package name and release signing fingerprint.
+  package name, and release signing fingerprint.
 - `AppSecret` values belong only in `server/.env`, never in Expo public
   environment variables.
+
+The service starts without WeChat credentials so `/health` can be used during
+setup, but authorization endpoints return `503` until the relevant application
+is configured.
+
+## AI Agent
+
+Configure an OpenAI-compatible chat-completions endpoint with `AI_BASE_URL`,
+`AI_API_KEY`, and `AI_MODEL`. Anonymous access is disabled by default because
+each request consumes paid model quota.
+
+The Agent interprets text and returns validated proposals. It never mutates
+app state directly. Confirmed proposals execute in the client command layer,
+then the client reports operation IDs and revisions.
+
+## Uploads
+
+For isolated local image-paste development, set
+`UPLOAD_ALLOW_ANONYMOUS=true`. Keep it disabled in shared and production
+environments. Supported formats are PNG, JPEG, WebP, GIF, and AVIF.
+
+## Verification
+
+The default suite uses an in-memory PostgreSQL-compatible engine. Run the
+repository smoke test against a migrated disposable PostgreSQL database:
+
+```bash
+TEST_DATABASE_URL=postgresql://... npm run test:postgres
+```
 
 ## Endpoints
 
@@ -53,25 +118,3 @@ anonymous IP within `AI_RATE_LIMIT_WINDOW_MS`.
 - `GET /uploads/:filename`
 - `POST /api/ai/turns`
 - `POST /api/ai/proposals/:id/result`
-
-The first successful WeChat authorization creates a user automatically.
-When WeChat returns a `UnionID`, identities from the website and mobile
-applications are linked to the same user.
-
-Task state is stored per authenticated user through `/api/app-state`; users
-on the same device never share the same task collection. Without
-`EXPO_PUBLIC_AUTH_API_URL`, the client keeps using its existing device-local
-storage.
-
-The included JSON repository is suitable for local development and a
-single-process deployment. Replace it with a transactional database before
-running multiple API instances.
-
-The included upload repository is also for local development. The client
-stores only the returned image URL, so `/api/uploads` can later be replaced
-with an object-storage adapter without migrating rich-text documents.
-
-The Agent service only interprets text and returns validated proposals. It
-never mutates app state on the server. Confirmed proposals execute through the
-client command layer, then the client reports operation IDs and revisions back
-to the Agent conversation.

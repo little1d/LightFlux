@@ -3,7 +3,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import React, {
+import {
   useCallback,
   useEffect,
   useState,
@@ -33,16 +33,19 @@ import TaskEditorMetadata from './TaskEditorMetadata';
 import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const EDITOR_CSS = `
+  .lightflux-tiptap,
+  .lightflux-tiptap:focus,
+  .lightflux-tiptap:focus-visible,
+  .lightflux-tiptap.ProseMirror-focused {
+    border: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+  }
   .lightflux-tiptap {
     min-height: 120px;
     padding: 16px;
-    outline: none;
     color: #303145;
     font: 15px/1.7 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  }
-  .lightflux-tiptap:focus {
-    outline: none;
-    box-shadow: none;
   }
   .lightflux-tiptap > *:first-child { margin-top: 0; }
   .lightflux-tiptap p { margin: 0 0 0.85em; }

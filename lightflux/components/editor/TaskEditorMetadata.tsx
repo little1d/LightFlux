@@ -5,6 +5,7 @@ import {
   useState,
 } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -49,6 +50,17 @@ const MetadataChip = ({
   const [hovered, setHovered] = useState(false);
 
   const open = () => {
+    if (Platform.OS === 'web') {
+      const element = ref.current as unknown as HTMLElement | null;
+      const bounds = element?.getBoundingClientRect?.();
+      if (bounds) {
+        onPress({
+          x: bounds.left,
+          y: bounds.bottom + 6,
+        });
+        return;
+      }
+    }
     ref.current?.measureInWindow((x, y, _width, height) => {
       onPress({ x, y: y + height + 6 });
     });

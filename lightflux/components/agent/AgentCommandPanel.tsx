@@ -57,9 +57,10 @@ const AgentCommandPanel = ({
 }: AgentCommandPanelProps) => {
   const language = useTodoStore((state) => state.language);
   const labels = translations[language].agent;
-  const { width } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const compact = width < 700;
   const nativeWorkspace = Platform.OS !== 'web';
+  const compactPanelHeight = Math.max(420, Math.round(height * 0.78));
   const progress = useRef(new Animated.Value(0)).current;
   const requestController = useRef<AbortController | null>(null);
   const [conversationId, setConversationId] = useState<string>();
@@ -339,6 +340,9 @@ const AgentCommandPanel = ({
                 : compact
                   ? styles.panelCompact
                   : styles.panelWide,
+              compact && !nativeWorkspace
+                ? { height: compactPanelHeight }
+                : null,
               {
                 opacity: progress,
                 transform: [
@@ -364,7 +368,7 @@ const AgentCommandPanel = ({
             </View>
             <View style={styles.headerText}>
               <Text style={styles.title}>{labels.title}</Text>
-              {!nativeWorkspace ? (
+              {!nativeWorkspace && !compact ? (
                 <Text style={styles.shortcut}>{labels.shortcut}</Text>
               ) : null}
             </View>
@@ -717,22 +721,19 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
-    bottom: 0,
-    height: '80%',
-    left: 0,
-    maxHeight: undefined,
+    maxHeight: '100%',
     minHeight: undefined,
-    position: 'absolute',
-    right: 0,
+    width: '100%',
   },
   panelNative: {
-    borderColor: '#E2E0E8',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    height: '78%',
-    maxHeight: undefined,
+    borderColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
+    flex: 1,
+    height: '100%',
+    maxHeight: '100%',
     minHeight: undefined,
-    shadowOpacity: 0.15,
+    shadowOpacity: 0,
     width: '100%',
   },
   header: {

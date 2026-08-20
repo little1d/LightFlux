@@ -212,10 +212,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    zIndex: 2000,
+    // RNW renders Modal hosts at z-index 9999. Menus opened from a modal must
+    // stay above that host so their options receive pointer events.
+    zIndex: 11000,
   },
   position: {
     position: 'absolute',
+    zIndex: 1,
   },
   anchoredPosition: {},
   mobilePosition: {
@@ -230,6 +233,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     overflow: 'hidden',
     width: '100%',
+    zIndex: 1,
   },
   sheetKeyboardAvoider: {
     flex: 1,

@@ -7,9 +7,13 @@ import {
 } from 'node:crypto';
 import { createServer } from 'node:http';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { resolve } from 'node:path';
 
 import { createAgentService } from './agent.mjs';
+import { publicHttpError } from './http-errors.mjs';
+import { postgresConfigFromEnvironment } from './postgres/config.mjs';
+import { createPostgresPool } from './postgres/pool.mjs';
+import { createPostgresRepository } from './postgres/repository.mjs';
 
 const config = {
   port: Number(process.env.PORT ?? 8787),
@@ -17,7 +21,6 @@ const config = {
   appWebUrl: process.env.APP_WEB_URL ?? 'http://localhost:8081',
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:8081',
   sessionSecret: process.env.SESSION_SECRET ?? '',
-  dataFile: resolve(process.env.DATA_FILE ?? './data/auth.json'),
   uploadDir: resolve(process.env.UPLOAD_DIR ?? './data/uploads'),
   uploadAllowAnonymous: process.env.UPLOAD_ALLOW_ANONYMOUS === 'true',
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES ?? 8 * 1024 * 1024),
@@ -61,49 +64,13 @@ for (const [name, value] of [
 }
 
 const agentService = createAgentService(config.ai);
+const database = createPostgresRepository({
+  pool: createPostgresPool(postgresConfigFromEnvironment()),
+});
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const STATE_TTL_MS = 10 * 60 * 1000;
 const COOKIE_NAME = 'lightflux_session';
-
-const emptyDatabase = () => ({
-  schemaVersion: 1,
-  users: [],
-  identities: [],
-  sessions: [],
-});
-
-let database = emptyDatabase();
-let writeQueue = Promise.resolve();
-
-const loadDatabase = async () => {
-  try {
-    const parsed = JSON.parse(await readFile(config.dataFile, 'utf8'));
-    if (
-      parsed?.schemaVersion === 1 &&
-      Array.isArray(parsed.users) &&
-      Array.isArray(parsed.identities) &&
-      Array.isArray(parsed.sessions)
-    ) {
-      database = parsed;
-    }
-  } catch (error) {
-    if (error?.code !== 'ENOENT') {
-      throw error;
-    }
-  }
-};
-
-const persistDatabase = async () => {
-  const snapshot = JSON.stringify(database, null, 2);
-  writeQueue = writeQueue.then(async () => {
-    await mkdir(dirname(config.dataFile), { recursive: true });
-    const temporaryFile = `${config.dataFile}.${process.pid}.tmp`;
-    await writeFile(temporaryFile, snapshot, { mode: 0o600 });
-    await rename(temporaryFile, config.dataFile);
-  });
-  return writeQueue;
-};
 
 const json = (response, status, body, headers = {}) => {
   response.writeHead(status, {
@@ -305,57 +272,7 @@ const exchangeWechatCode = async (platform, code) => {
 };
 
 const upsertWechatUser = async (platform, profile) => {
-  const timestamp = Date.now();
-  let identity =
-    (profile.unionId &&
-      database.identities.find(
-        (item) =>
-          item.provider === 'wechat' && item.unionId === profile.unionId,
-      )) ||
-    database.identities.find(
-      (item) =>
-        item.provider === 'wechat' &&
-        item.appId === profile.appId &&
-        item.openId === profile.openId,
-    );
-  let user = identity
-    ? database.users.find((item) => item.id === identity.userId)
-    : null;
-
-  if (!user) {
-    user = {
-      id: randomUUID(),
-      displayName: profile.displayName,
-      avatarUrl: profile.avatarUrl,
-      appState: null,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    };
-    database.users.push(user);
-  } else {
-    user.displayName = profile.displayName || user.displayName;
-    user.avatarUrl = profile.avatarUrl || user.avatarUrl;
-    user.updatedAt = timestamp;
-  }
-
-  if (!identity) {
-    identity = {
-      id: randomUUID(),
-      provider: 'wechat',
-      platform,
-      appId: profile.appId,
-      openId: profile.openId,
-      unionId: profile.unionId,
-      userId: user.id,
-      createdAt: timestamp,
-    };
-    database.identities.push(identity);
-  } else if (!identity.unionId && profile.unionId) {
-    identity.unionId = profile.unionId;
-  }
-
-  await persistDatabase();
-  return user;
+  return database.upsertWechatUser(platform, profile);
 };
 
 const tokenHash = (token) =>
@@ -364,17 +281,13 @@ const tokenHash = (token) =>
 const createSession = async (userId) => {
   const token = randomBytes(32).toString('base64url');
   const timestamp = Date.now();
-  database.sessions = database.sessions.filter(
-    (session) => session.expiresAt > timestamp,
-  );
-  database.sessions.push({
+  await database.createSession({
     id: randomUUID(),
     userId,
     tokenHash: tokenHash(token),
     createdAt: timestamp,
     expiresAt: timestamp + SESSION_TTL_MS,
   });
-  await persistDatabase();
   return token;
 };
 
@@ -395,16 +308,10 @@ const requestToken = (request) => {
   return parseCookies(request)[COOKIE_NAME] ?? null;
 };
 
-const currentSession = (request) => {
+const currentSession = async (request) => {
   const token = requestToken(request);
   if (!token) return null;
-  const session = database.sessions.find(
-    (item) =>
-      item.tokenHash === tokenHash(token) && item.expiresAt > Date.now(),
-  );
-  if (!session) return null;
-  const user = database.users.find((item) => item.id === session.userId);
-  return user ? { session, user } : null;
+  return database.findSessionByTokenHash(tokenHash(token));
 };
 
 const cookieHeader = (token, maxAge = SESSION_TTL_MS / 1000) => {
@@ -443,8 +350,10 @@ const handleRequest = async (request, response) => {
   }
 
   if (url.pathname === '/health' && request.method === 'GET') {
+    await database.healthcheck();
     json(response, 200, {
       status: 'ok',
+      database: 'postgresql',
       aiConfigured: agentService.isConfigured(),
       wechat: {
         webConfigured: Boolean(config.web.appId && config.web.appSecret),
@@ -483,7 +392,7 @@ const handleRequest = async (request, response) => {
   }
 
   if (url.pathname === '/api/uploads' && request.method === 'POST') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     if (!auth && !config.uploadAllowAnonymous) {
       json(response, 401, { error: 'Authentication required.' }, corsHeaders);
       return;
@@ -602,7 +511,7 @@ const handleRequest = async (request, response) => {
   }
 
   if (url.pathname === '/api/auth/session' && request.method === 'GET') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     json(
       response,
       auth ? 200 : 401,
@@ -615,12 +524,9 @@ const handleRequest = async (request, response) => {
   }
 
   if (url.pathname === '/api/auth/logout' && request.method === 'POST') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     if (auth) {
-      database.sessions = database.sessions.filter(
-        (session) => session.id !== auth.session.id,
-      );
-      await persistDatabase();
+      await database.deleteSession(auth.session.id);
     }
     json(response, 200, { ok: true }, {
       ...corsHeaders,
@@ -630,7 +536,7 @@ const handleRequest = async (request, response) => {
   }
 
   if (url.pathname === '/api/ai/turns' && request.method === 'POST') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     if (!auth && !config.ai.allowAnonymous) {
       json(response, 401, { error: 'Authentication required.' }, corsHeaders);
       return;
@@ -657,7 +563,7 @@ const handleRequest = async (request, response) => {
     /^\/api\/ai\/proposals\/([^/]+)\/result$/,
   );
   if (proposalResultMatch && request.method === 'POST') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     if (!auth && !config.ai.allowAnonymous) {
       json(response, 401, { error: 'Authentication required.' }, corsHeaders);
       return;
@@ -686,7 +592,7 @@ const handleRequest = async (request, response) => {
   }
 
   if (url.pathname === '/api/app-state' && request.method === 'GET') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     if (!auth) {
       json(response, 401, { error: 'Authentication required.' }, corsHeaders);
       return;
@@ -694,14 +600,14 @@ const handleRequest = async (request, response) => {
     json(
       response,
       200,
-      { state: auth.user.appState ?? null },
+      { state: await database.getAppState(auth.user.id) },
       corsHeaders,
     );
     return;
   }
 
   if (url.pathname === '/api/app-state' && request.method === 'PUT') {
-    const auth = currentSession(request);
+    const auth = await currentSession(request);
     if (!auth) {
       json(response, 401, { error: 'Authentication required.' }, corsHeaders);
       return;
@@ -715,9 +621,19 @@ const handleRequest = async (request, response) => {
       json(response, 400, { error: 'Invalid app state.' }, corsHeaders);
       return;
     }
-    auth.user.appState = body.state;
-    auth.user.updatedAt = Date.now();
-    await persistDatabase();
+    const result = await database.putAppState(auth.user.id, body.state);
+    if (!result.updated) {
+      json(
+        response,
+        409,
+        {
+          error: 'A newer app state already exists.',
+          currentUpdatedAt: result.currentUpdatedAt,
+        },
+        corsHeaders,
+      );
+      return;
+    }
     json(response, 200, { ok: true }, corsHeaders);
     return;
   }
@@ -725,20 +641,22 @@ const handleRequest = async (request, response) => {
   json(response, 404, { error: 'Not found.' }, corsHeaders);
 };
 
-await loadDatabase();
+await database.healthcheck();
 
-createServer((request, response) => {
+const server = createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
     if (response.destroyed || response.writableEnded) {
       return;
     }
-    if (!error.status || error.status >= 500) {
+    const publicError = publicHttpError(error);
+    const { status } = publicError;
+    if (status >= 500) {
       console.error(error);
     }
     json(
       response,
-      error.status ?? 400,
-      { error: error.message || 'Unexpected server error.' },
+      status,
+      { error: publicError.message },
       {
         'Access-Control-Allow-Credentials': 'true',
         'Access-Control-Allow-Origin': config.corsOrigin,
@@ -746,6 +664,18 @@ createServer((request, response) => {
       },
     );
   });
-}).listen(config.port, () => {
+});
+
+server.listen(config.port, () => {
   console.log(`LightFlux auth API listening on ${config.publicBaseUrl}`);
 });
+
+const shutdown = () => {
+  server.close(async () => {
+    await database.close();
+    process.exit(0);
+  });
+};
+
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

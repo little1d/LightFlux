@@ -1,0 +1,49 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: lightflux
+      POSTGRES_PASSWORD: lightflux
+      POSTGRES_USER: lightflux
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lightflux -d lightflux"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - lightflux-postgres:/var/lib/postgresql/data
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_WEB_URL: http://localhost:8081
+      CORS_ORIGIN: http://localhost:8081
+      DATABASE_URL: postgresql://lightflux:lightflux@postgres:5432/lightflux
+      PORT: 8787
+      PUBLIC_BASE_URL: http://localhost:8787
+      SESSION_SECRET: local-development-session-secret-change-me
+      UPLOAD_ALLOW_ANONYMOUS: "true"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "8787:8787"
+    volumes:
+      - lightflux-uploads:/app/data/uploads
+
+volumes:
+  lightflux-postgres:
+  lightflux-uploads:

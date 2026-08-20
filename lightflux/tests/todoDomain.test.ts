@@ -9,6 +9,7 @@ import {
   orderWithSubtasks,
   reorderList,
   restoreTodoBranch,
+  searchResultView,
   selectActiveTodos,
 } from '../store/todoDomain';
 import { Todo } from '../types/todo';
@@ -33,6 +34,13 @@ const todo = (
   updatedAt: 1,
   ...overrides,
   milestoneId: overrides.milestoneId ?? null,
+});
+
+describe('search result routing', () => {
+  it('opens completed and active tasks on their owning surfaces', () => {
+    expect(searchResultView({ completed: true })).toBe('completed');
+    expect(searchResultView({ completed: false })).toBe('groups');
+  });
 });
 
 describe('todo trash operations', () => {

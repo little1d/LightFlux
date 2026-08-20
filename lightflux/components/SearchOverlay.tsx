@@ -226,8 +226,8 @@ const SearchOverlay = ({
   }
 
   const openTask = (id: string) => {
-    onClose();
     onOpenTask(id);
+    onClose();
   };
 
   return (
@@ -399,15 +399,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 96,
     pointerEvents: 'box-none',
+    zIndex: 1,
   },
   compactPosition: {
     flex: 1,
     justifyContent: 'flex-end',
     pointerEvents: 'box-none',
+    zIndex: 1,
   },
   nativePosition: {
     backgroundColor: '#F6F5F8',
     flex: 1,
+    zIndex: 1,
   },
   panel: {
     backgroundColor: '#FFFFFF',

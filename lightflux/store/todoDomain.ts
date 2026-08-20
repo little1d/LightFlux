@@ -1,5 +1,9 @@
 import { Todo } from '../types/todo';
 
+export const searchResultView = (
+  todo: Pick<Todo, 'completed'>,
+): 'completed' | 'groups' => (todo.completed ? 'completed' : 'groups');
+
 // Move `id` to `targetIndex` within `order`, clamping the target into range.
 // Returns the same array reference when the move is a no-op so callers can
 // skip redundant state updates.

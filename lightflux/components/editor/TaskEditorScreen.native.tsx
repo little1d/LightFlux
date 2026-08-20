@@ -129,7 +129,7 @@ const TaskEditorScreen = ({
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-white">
       <SafeAreaView
         className="flex-1"
         edges={embedded ? [] : ['top', 'bottom']}
@@ -138,65 +138,69 @@ const TaskEditorScreen = ({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="flex-1"
         >
-        <View className="flex-row items-start bg-white px-5 pb-3 pt-4">
-          <View className="flex-1">
-            {readOnly ? (
-              <Text className="border-b border-[#DDDBE7] pb-3 text-[25px] font-extrabold text-[#252638]">
-                {todo.title}
-              </Text>
-            ) : (
-              <TextInput
-                {...inputAccentProps}
-                accessibilityLabel={labels.editor.titlePlaceholder}
-                className="min-h-[48px] border-b border-[#DDDBE7] py-1 text-[25px] font-extrabold text-[#252638]"
-                maxLength={160}
-                onChangeText={(value) => {
-                  setTitle(value);
-                  setTitleError('');
-                  if (value.trim()) {
-                    updateTodo(todo.id, { title: value });
-                  }
+          {embedded ? <View style={styles.sheetHandle} /> : null}
+          <View className="flex-row items-start bg-white px-5 pb-2 pt-1">
+            <View className="flex-1">
+              {readOnly ? (
+                <Text className="border-b border-[#DDDBE7] pb-2 text-[23px] font-extrabold text-[#252638]">
+                  {todo.title}
+                </Text>
+              ) : (
+                <TextInput
+                  {...inputAccentProps}
+                  accessibilityLabel={labels.editor.titlePlaceholder}
+                  className="min-h-[44px] border-b border-[#DDDBE7] py-1 text-[23px] font-extrabold text-[#252638]"
+                  maxLength={160}
+                  onChangeText={(value) => {
+                    setTitle(value);
+                    setTitleError('');
+                    if (value.trim()) {
+                      updateTodo(todo.id, { title: value });
+                    }
+                  }}
+                  placeholder={labels.editor.titlePlaceholder}
+                  placeholderTextColor="#A5A6B1"
+                  value={title}
+                />
+              )}
+              {titleError ? (
+                <Text className="mt-2 text-xs font-semibold text-[#D45C6A]">
+                  {titleError}
+                </Text>
+              ) : null}
+            </View>
+            <View className="ml-2 mt-1">
+              <IconButton
+                icon={embedded ? 'chevron-down' : 'chevron-back'}
+                label={labels.editor.close}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  void closeEditor();
                 }}
-                placeholder={labels.editor.titlePlaceholder}
-                placeholderTextColor="#A5A6B1"
-                value={title}
+                showTooltip={false}
+                size="small"
+                variant="transparent"
               />
-            )}
-            {titleError ? (
-              <Text className="mt-2 text-xs font-semibold text-[#D45C6A]">
-                {titleError}
-              </Text>
-            ) : null}
+            </View>
           </View>
-          <View className="ml-3 mt-1.5">
-            <IconButton
-              icon="close"
-              label={labels.editor.close}
-              onPress={(event) => {
-                event.stopPropagation();
-                void closeEditor();
-              }}
+
+          <View className="mx-5">
+            <TaskEditorMetadata
+              groupName={groupName}
+              labels={labels}
+              language={language}
+              todo={todo}
             />
           </View>
-        </View>
 
-        <View className="mx-5">
-          <TaskEditorMetadata
-            groupName={groupName}
-            labels={labels}
-            language={language}
-            todo={todo}
-          />
-        </View>
-
-        <View className="relative mx-4 mb-3 flex-1 overflow-hidden rounded-[14px] border border-[#E2E1E9] bg-white">
-          {showBodyPlaceholder ? (
-            <Text style={styles.bodyPlaceholder}>
-              {labels.editor.bodyPlaceholder}
-            </Text>
-          ) : null}
-          <RichText editor={editor} style={styles.richText} />
-        </View>
+          <View className="relative mb-3 flex-1 overflow-hidden bg-white">
+            {showBodyPlaceholder ? (
+              <Text style={styles.bodyPlaceholder}>
+                {labels.editor.bodyPlaceholder}
+              </Text>
+            ) : null}
+            <RichText editor={editor} style={styles.richText} />
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -214,8 +218,17 @@ const styles = StyleSheet.create({
     left: 20,
     pointerEvents: 'none',
     position: 'absolute',
-    top: 20,
+    top: 14,
     zIndex: 2,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    backgroundColor: '#D8D6DF',
+    borderRadius: 2,
+    height: 4,
+    marginBottom: 7,
+    marginTop: 8,
+    width: 34,
   },
 });
 

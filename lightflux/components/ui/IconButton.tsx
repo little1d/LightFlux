@@ -14,6 +14,7 @@ interface IconButtonProps {
   icon: ComponentProps<typeof Ionicons>['name'];
   label: string;
   onPress: (event: GestureResponderEvent) => void;
+  showTooltip?: boolean;
   size?: 'compact' | 'small' | 'medium' | 'large';
   tooltipPosition?: TooltipPosition;
   variant?: 'neutral' | 'primary' | 'transparent' | 'solid';
@@ -24,6 +25,7 @@ const IconButton = ({
   icon,
   label,
   onPress,
+  showTooltip = true,
   size = 'medium',
   tooltipPosition = 'top',
   variant = 'neutral',
@@ -79,11 +81,13 @@ const IconButton = ({
           }
         />
       </Pressable>
-      <Tooltip
-        label={label}
-        position={tooltipPosition}
-        visible={(hovered || focused) && !disabled}
-      />
+      {showTooltip ? (
+        <Tooltip
+          label={label}
+          position={tooltipPosition}
+          visible={(hovered || focused) && !disabled}
+        />
+      ) : null}
     </View>
   );
 };

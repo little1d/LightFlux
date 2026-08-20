@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -35,6 +36,7 @@ interface MenuSurfaceProps {
   estimatedHeight?: number;
   onClose: () => void;
   position?: MenuSurfacePosition;
+  presentation?: 'menu' | 'sheet';
   width?: number;
 }
 
@@ -45,11 +47,13 @@ const MenuSurface = ({
   estimatedHeight = 220,
   onClose,
   position,
+  presentation = 'menu',
   width = 220,
 }: MenuSurfaceProps) => {
   const opacity = useRef(new Animated.Value(0)).current;
   const motion = useRef(new Animated.Value(0)).current;
   const viewport = useWindowDimensions();
+  const isSheet = presentation === 'sheet';
 
   useEffect(() => {
     const useNativeDriver = Platform.OS !== 'web';
@@ -88,7 +92,7 @@ const MenuSurface = ({
     Math.max(0, viewport.width - 24),
   );
   const surfacePosition =
-    position
+    position && !isSheet
       ? (() => {
           const clamped = clampMenuPosition(
             position,
@@ -99,53 +103,75 @@ const MenuSurface = ({
           return { left: clamped.x, top: clamped.y };
         })()
       : undefined;
-  const isAnchored = Boolean(position);
+  const isAnchored = Boolean(position) && !isSheet;
+
+  const surface = (
+    <SafeAreaView
+      edges={isSheet ? ['bottom'] : []}
+      style={[
+        !isSheet && styles.position,
+        isSheet
+          ? styles.sheetPosition
+          : isAnchored
+            ? styles.anchoredPosition
+            : styles.mobilePosition,
+        {
+          width: isAnchored ? resolvedWebWidth : undefined,
+        },
+        surfacePosition,
+      ]}
+    >
+      <Animated.View
+        accessibilityRole="menu"
+        style={[
+          styles.surface,
+          isSheet && styles.sheetSurface,
+          allowOverflow && styles.surfaceOverflow,
+          {
+            maxHeight: isSheet
+              ? Math.max(240, Math.round(viewport.height * 0.82))
+              : undefined,
+            opacity,
+            transform: [
+              {
+                translateY: motion.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [isSheet ? 22 : -8, 0],
+                }),
+              },
+              {
+                scale: motion.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.975, 1],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </SafeAreaView>
+  );
 
   const content = (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, isSheet && styles.sheetOverlay]}>
       <Pressable
         accessibilityLabel={closeLabel}
         onPress={onClose}
         style={StyleSheet.absoluteFill}
       />
-      <SafeAreaView
-        edges={[]}
-        style={[
-          styles.position,
-          isAnchored ? styles.anchoredPosition : styles.mobilePosition,
-          {
-            width: isAnchored ? resolvedWebWidth : undefined,
-          },
-          surfacePosition,
-        ]}
-      >
-        <Animated.View
-          accessibilityRole="menu"
-          style={[
-            styles.surface,
-            allowOverflow && styles.surfaceOverflow,
-            {
-              opacity,
-              transform: [
-                {
-                  translateY: motion.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [-8, 0],
-                  }),
-                },
-                {
-                  scale: motion.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.975, 1],
-                  }),
-                },
-              ],
-            },
-          ]}
+      {isSheet ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          pointerEvents="box-none"
+          style={styles.sheetKeyboardAvoider}
         >
-          {children}
-        </Animated.View>
-      </SafeAreaView>
+          {surface}
+        </KeyboardAvoidingView>
+      ) : (
+        surface
+      )}
     </View>
   );
 
@@ -177,6 +203,9 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
   },
+  sheetOverlay: {
+    backgroundColor: 'rgba(31, 30, 43, 0.18)',
+  },
   webOverlay: {
     bottom: 0,
     left: 0,
@@ -195,6 +224,17 @@ const styles = StyleSheet.create({
     right: 16,
     width: undefined,
   },
+  sheetPosition: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  sheetKeyboardAvoider: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   surface: {
     backgroundColor: '#FFFFFF',
     borderColor: '#E1E0E7',
@@ -209,6 +249,18 @@ const styles = StyleSheet.create({
   },
   surfaceOverflow: {
     overflow: 'visible',
+  },
+  sheetSurface: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderBottomWidth: 0,
+    borderLeftWidth: 0,
+    borderRightWidth: 0,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    paddingBottom: 12,
+    paddingHorizontal: 12,
+    paddingTop: 8,
   },
 });
 

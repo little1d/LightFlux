@@ -364,6 +364,7 @@ const AgentCommandPanel = ({
               icon="close"
               label={labels.close}
               onPress={closePanel}
+              showTooltip={false}
               size="small"
               tooltipPosition="bottom"
             />

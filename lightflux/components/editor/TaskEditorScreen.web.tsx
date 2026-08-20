@@ -13,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -33,7 +34,7 @@ import { TaskEditorScreenProps } from './TaskEditorScreen.types';
 
 const EDITOR_CSS = `
   .lightflux-tiptap {
-    min-height: 390px;
+    min-height: 160px;
     padding: 22px;
     outline: none;
     color: #303145;
@@ -97,6 +98,12 @@ const EDITOR_CSS = `
   .lightflux-tiptap[contenteditable="false"] {
     cursor: default;
   }
+  @media (max-width: 899px) {
+    .lightflux-tiptap {
+      min-height: 120px;
+      padding: 4px 2px 24px;
+    }
+  }
 `;
 
 const TaskEditorScreen = ({
@@ -105,6 +112,8 @@ const TaskEditorScreen = ({
   embedded = false,
   readOnly = false,
 }: TaskEditorScreenProps) => {
+  const { width } = useWindowDimensions();
+  const compact = width < 900;
   const {
     groups,
     language,
@@ -281,24 +290,40 @@ const TaskEditorScreen = ({
             : labels.editor.imageUploadFailed;
 
   return (
-    <View className={`flex-1 ${embedded ? 'bg-white' : 'bg-canvas'}`}>
+    <View
+      className={`flex-1 ${
+        compact || embedded ? 'bg-white' : 'bg-canvas'
+      }`}
+    >
       <SafeAreaView className="flex-1">
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            compact && styles.contentCompact,
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="mb-3 flex-row items-start">
+          {compact ? <View style={styles.sheetHandle} /> : null}
+          <View className={`${compact ? 'mb-2' : 'mb-3'} flex-row items-start`}>
             <View className="flex-1">
               {readOnly ? (
-                <Text className="border-b border-[#DDDBE7] px-1 pb-3 text-[28px] font-extrabold text-[#252638]">
+                <Text
+                  className={`border-b border-[#DDDBE7] px-1 font-extrabold text-[#252638] ${
+                    compact ? 'pb-2 text-[23px]' : 'pb-3 text-[28px]'
+                  }`}
+                >
                   {todo.title}
                 </Text>
               ) : (
                 <TextInput
                   {...inputAccentProps}
                   accessibilityLabel={labels.editor.titlePlaceholder}
-                  className="min-h-[52px] border-b border-[#DDDBE7] px-1 py-1 text-[28px] font-extrabold text-[#252638]"
+                  className={`border-b border-[#DDDBE7] px-1 py-1 font-extrabold text-[#252638] ${
+                    compact
+                      ? 'min-h-[44px] text-[23px]'
+                      : 'min-h-[52px] text-[28px]'
+                  }`}
                   maxLength={160}
                   nativeID="task-title-input"
                   onChangeText={(value) => {
@@ -319,14 +344,17 @@ const TaskEditorScreen = ({
                 </Text>
               ) : null}
             </View>
-            <View className="ml-3 mt-2">
+            <View className={compact ? 'ml-2 mt-1' : 'ml-3 mt-2'}>
               <IconButton
-                icon="close"
+                icon={compact ? 'chevron-down' : 'close'}
                 label={labels.editor.close}
                 onPress={(event) => {
                   event.stopPropagation();
                   closeEditor();
                 }}
+                showTooltip={false}
+                size={compact ? 'small' : 'medium'}
+                variant={compact ? 'transparent' : 'neutral'}
               />
             </View>
           </View>
@@ -339,11 +367,15 @@ const TaskEditorScreen = ({
           />
 
           <View
-            className={`min-h-[440px] overflow-hidden rounded-[16px] border bg-white ${
-              readOnly ? 'border-[#ECEBF0]' : 'border-[#E2E1E9]'
-            }`}
+            className={
+              compact
+                ? 'min-h-[120px]'
+                : `min-h-[200px] overflow-hidden rounded-[16px] border bg-white ${
+                    readOnly ? 'border-[#ECEBF0]' : 'border-[#E2E1E9]'
+                  }`
+            }
             nativeID="task-rich-editor"
-            style={readOnly ? undefined : styles.editorShadow}
+            style={readOnly || compact ? undefined : styles.editorShadow}
           >
             {imageUploadStatus ? (
               <View
@@ -387,11 +419,24 @@ const styles = StyleSheet.create({
     padding: 20,
     width: '100%',
   },
+  contentCompact: {
+    paddingBottom: 28,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
   editorShadow: {
     shadowColor: '#424057',
     shadowOffset: { height: 8, width: 0 },
     shadowOpacity: 0.08,
     shadowRadius: 18,
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    backgroundColor: '#D8D6DF',
+    borderRadius: 2,
+    height: 4,
+    marginBottom: 8,
+    width: 34,
   },
   uploadStatus: {
     alignItems: 'center',

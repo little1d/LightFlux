@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -31,13 +32,17 @@ import { TASK_PRIORITY_THEME, TaskPriorityIcon } from './TaskPriorityIndicator';
 type Picker = 'date' | 'group' | 'priority' | null;
 
 const QuickAddTaskSheet = ({
+  initialDate,
   onClose,
   visible,
 }: {
+  initialDate?: string;
   onClose: () => void;
   visible: boolean;
 }) => {
   const inputRef = useRef<TextInput>(null);
+  const { width } = useWindowDimensions();
+  const wide = width >= 900;
   const {
     addTodo,
     groups,
@@ -61,6 +66,16 @@ const QuickAddTaskSheet = ({
   const orderedGroups = [...groups].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
   );
+
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    const nextDate = initialDate ?? todayKey();
+    setDate(nextDate);
+    setMonth(fromDateKey(nextDate));
+  }, [initialDate, visible]);
 
   if (!visible) {
     return null;
@@ -93,25 +108,29 @@ const QuickAddTaskSheet = ({
 
   return (
     <Modal
-      animationType="slide"
+      animationType={Platform.OS === 'web' ? 'none' : 'slide'}
       onRequestClose={resetAndClose}
       presentationStyle="overFullScreen"
       transparent
       visible
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, wide && styles.overlayWide]}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoider}
         >
-          <SafeAreaView edges={['bottom']} style={styles.safeArea}>
-            <View style={styles.sheet}>
+          <SafeAreaView
+            edges={['bottom']}
+            style={[styles.safeArea, wide && styles.safeAreaWide]}
+          >
+            <View style={[styles.sheet, wide && styles.sheetWide]}>
               <View style={styles.header}>
                 <Text style={styles.title}>{labels.addTask}</Text>
                 <IconButton
                   icon="close"
                   label={labels.cancel}
                   onPress={resetAndClose}
+                  showTooltip={false}
                   size="small"
                   variant="transparent"
                 />
@@ -349,11 +368,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
+  overlayWide: {
+    backgroundColor: 'rgba(31, 30, 43, 0.12)',
+  },
   keyboardAvoider: {
     justifyContent: 'flex-end',
   },
   safeArea: {
     width: '100%',
+  },
+  safeAreaWide: {
+    alignItems: 'center',
   },
   sheet: {
     backgroundColor: '#F6F5F8',
@@ -363,6 +388,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingTop: 10,
+  },
+  sheetWide: {
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    marginBottom: 24,
+    maxWidth: 520,
+    width: '100%',
   },
   header: {
     alignItems: 'center',

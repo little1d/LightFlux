@@ -60,6 +60,41 @@ Uploaded image bytes remain beneath `UPLOAD_DIR`; they do not belong in
 PostgreSQL. The client stores returned URLs, so this boundary can later move to
 S3-compatible object storage without rewriting task documents.
 
+## Database migrations
+
+LightFlux has one PostgreSQL database schema. The files in `migrations/` are
+ordered changes to that schema, not separate databases. `npm run db:migrate`
+creates `lightflux_schema_migrations`, then applies only files whose numeric ID
+has not been recorded.
+
+Each applied row stores the migration ID, name, SHA-256 checksum, and timestamp.
+The runner executes every new file in a transaction and uses a PostgreSQL
+advisory lock so two deployments cannot migrate concurrently. Renaming or
+editing an applied file fails checksum validation by design.
+
+Current history:
+
+- `001_initial.sql`: internal users, legacy identities and sessions, and the
+  per-user JSONB app-state aggregate.
+- `002_email_auth.sql`: Better Auth users, sessions, credential accounts,
+  verifications, rate limits, and internal-user mapping.
+- `003_app_state_revision.sql`: monotonic revisions for compare-and-swap cloud
+  synchronization.
+- `004_email_auth_accounts_issuer.sql`: aligns the credential-account unique
+  key and nullable issuer with Better Auth's actual account model.
+
+For a schema change, add the next `NNN_description.sql`, migrate the development
+database, and run the server tests before deployment. Never rewrite an applied
+migration just to make the history look shorter: existing databases would not
+re-run it, while checksum verification would reject the changed file.
+
+During early development, migrations may be squashed into a new baseline only
+at an explicit reset point where every affected database can be discarded and
+recreated and no environment contains data that must survive. Once a shared,
+staging, or production database has applied a migration, use forward-only
+changes. The number of migration files does not add runtime query complexity;
+they run during deployment, not on ordinary API requests.
+
 ## Email OTP authentication
 
 The client requests a six-digit code, valid for five minutes and three

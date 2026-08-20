@@ -129,8 +129,8 @@ Use this format:
 
 ### 2026-08-14 - Manual pointer-drag listeners attach synchronously
 - Context: Sidebar reorder used `draggable`/HTML5 DnD, then window `mousemove`/`mouseup` listeners registered from a `useEffect` keyed on a `dragging` state. Fast or synthetic events fired before the effect ran, so the drag silently no-opped.
-- Rule: For custom pointer drags, attach window listeners synchronously inside the `onMouseDown` handler (not from an effect), read live props/index via refs, clear any click-suppression flag at drag start, and clean up on unmount. Native HTML5 DnD is unreliable inside the Tauri WebView.
-- Evidence: `lightflux/components/navigation/DraggableNavigationItem.web.tsx`; pure reorder logic extracted to `reorderList` in `lightflux/store/todoDomain.ts` and covered by `lightflux/tests/todoDomain.test.ts`.
+- Rule: For custom pointer drags, attach window listeners synchronously inside the pointer/mouse-down handler (not from an effect), read live props/index via refs, clear click suppression at drag start, and clean up on unmount. Keep previews sibling-scoped and displace surrounding rows by the rendered row step, including inter-row margin. Native HTML5 DnD is unreliable inside the Tauri WebView.
+- Evidence: `lightflux/components/navigation/DraggableNavigationItem.web.tsx`, `lightflux/components/tasks/DraggableTaskRow.web.tsx`, `DraggableTaskRow.native.tsx`, and `taskDrag.ts`; `lightflux/tests/todoDomain.test.ts` and `taskDrag.test.ts`.
 
 ### 2026-08-14 - Cascading submenus flyout, never replace in place
 - Context: "Move to group" replaced the whole action menu on hover, which mismatched the requested right-side cascade and let a pointer heading toward "移至垃圾桶" accidentally swap the menu.
@@ -157,10 +157,20 @@ Use this format:
 - Rule: Keep AI/search business behavior shared, but render focused native text-entry workflows as full-screen safe-area workspaces with explicit close controls. Keep Web/Tauri keyboard shortcuts and compact overlays; expose mobile search through an accessible icon rather than a persistent navigation item.
 - Evidence: `lightflux/components/agent/AgentCommandPanel.tsx`, `lightflux/components/SearchOverlay.tsx`, `lightflux/App.tsx`; verified narrow Web entry flow and `npm run typecheck`.
 
-### 2026-08-19 - Mobile utilities belong only on primary workspaces
-- Context: A global right-side cluster for account, search, and AI obscured page-owned controls such as Trash's empty action, while its controls used mismatched shapes and colors.
-- Rule: On mobile, render account/settings only on a designated primary workspace and render search/AI only on primary task workspaces. Do not overlay utility controls on pages that own their own header actions. Use the shared `IconButton` size and shape; reserve violet fills for active state rather than separate control classes.
-- Evidence: `lightflux/App.tsx`, `lightflux/components/GroupsScreen.tsx`, `lightflux/components/account/AccountMenu.tsx`; verified Groups and Trash at 627px, plus `npm test` and `npm run desktop:web`.
+### 2026-08-21 - Mobile utilities belong to the routed shell
+- Context: Restricting settings, search, and AI to Today and Groups made the six primary routes inconsistent, while repeating page titles consumed the space needed for a stable shared header.
+- Rule: On narrow layouts, render settings, search, and AI from the routed shell on every primary navigation route; page surfaces reserve that space and omit redundant top-level titles. Never render application shell chrome, navigation, FAB, search, or Agent underneath `/login`.
+- Evidence: `lightflux/app/_layout.tsx`, `lightflux/components/GroupsScreen.tsx`, `CompletedScreen.tsx`, `CalendarScreen.tsx`, `MilestonesScreen.tsx`, and `TrashScreen.tsx`; verified every primary route at 402x874 and 858x781.
+
+### 2026-08-21 - Authentication routes preserve the Router Slot
+- Context: Navigating from Settings to `/login` briefly reached the route, then reset through `/` to `/today` because the root layout replaced the tree and unmounted Expo Router's `<Slot />`.
+- Rule: Keep the root `<Slot />` at a stable mount position across authenticated and authentication states. Hide the routed content host and omit shell chrome on `/login`; do not early-return a replacement tree that removes the Slot.
+- Evidence: `lightflux/app/_layout.tsx`, `lightflux/app/login.tsx`; verified Settings to `/login`, reload, cancel to `/today`, and signed-out shell suppression at 402x874 and 858x781.
+
+### 2026-08-21 - Composite rows cannot be HTML buttons
+- Context: A Calendar task row used an outer `Pressable` and contained checkbox and menu `Pressable` controls, producing `<button><button>` and a hydration error on Web.
+- Rule: Use a non-interactive `View` for composite rows that contain independent controls, then make only the intended title/content region pressable. Validate populated Web routes with `document.querySelectorAll('button button')`.
+- Evidence: `lightflux/components/CalendarScreen.tsx`, `lightflux/components/ui/IconButton.tsx`; populated-route browser checks reported zero nested buttons and no hydration errors.
 
 ### 2026-08-19 - Navigation visibility is a V10 preference
 - Context: Optional navigation views need to be hidden without deleting their local data or destroying desktop navigation order.

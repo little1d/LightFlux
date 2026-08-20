@@ -646,14 +646,16 @@ const AppContent = () => {
   const activeScreen =
     activeView === 'statistics' ? (
       <StatisticsScreen
-        onBack={() => changeView('settings')}
+        onBack={() => changeView(usesDesktopLayout ? 'settings' : 'groups')}
         onOpenGroups={() => changeView('groups')}
       />
     ) : activeView === 'settings' ? (
       <SettingsScreen
+        currentUser={currentUser}
         hiddenNavigationItems={hiddenNavigationItems}
         onNavigationVisibilityChange={setNavigationVisible}
         onOpenStatistics={() => changeView('statistics')}
+        onSignOut={signOut}
       />
     ) : activeView === 'today' ? (
       <TodoScreen
@@ -672,6 +674,10 @@ const AppContent = () => {
       />
     ) : activeView === 'calendar' ? (
       <CalendarScreen
+        onAddTask={(dateKey) => {
+          setQuickAddInitialDate(dateKey);
+          setQuickAddOpen(true);
+        }}
         onOpenTaskMenu={openTaskMenu}
         onEditTask={openActiveTask}
         selectedTaskId={selectedTaskId}
@@ -897,6 +903,7 @@ const AppContent = () => {
 
       {accountMenuOpen && usesDesktopLayout ? (
         <AccountMenu
+          currentUser={currentUser}
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
           position={
@@ -954,11 +961,16 @@ const AppContent = () => {
         >
           <SafeAreaView style={styles.settingsPanelSafeArea}>
             <SettingsScreen
+              currentUser={currentUser}
               hiddenNavigationItems={hiddenNavigationItems}
               onNavigationVisibilityChange={setNavigationVisible}
               onOpenStatistics={() => {
                 setSettingsPanelOpen(false);
                 changeView('statistics');
+              }}
+              onSignOut={() => {
+                setSettingsPanelOpen(false);
+                signOut();
               }}
             />
           </SafeAreaView>

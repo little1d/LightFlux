@@ -41,6 +41,11 @@ export interface Translation {
   };
   settings: {
     title: string;
+    accountTitle: string;
+    signedInAs: string;
+    localOnly: string;
+    localOnlyDescription: string;
+    signOut: string;
     languageTitle: string;
     chinese: string;
     english: string;
@@ -48,7 +53,6 @@ export interface Translation {
     statisticsTitle: string;
     statisticsDescription: string;
     visibleViewsTitle: string;
-    visibleViewsDescription: (view: string) => string;
   };
   desktop: {
     newVersionAvailable: (version: string) => string;
@@ -224,10 +228,7 @@ export interface Translation {
     previousMonth: string;
     nextMonth: string;
     today: string;
-    selectedDate: string;
     tasksForDate: (count: number) => string;
-    empty: string;
-    inputPlaceholder: string;
   };
   groups: {
     title: string;

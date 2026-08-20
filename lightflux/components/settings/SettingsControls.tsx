@@ -21,13 +21,15 @@ export interface SettingOption<T extends string> {
 
 export const SettingRow = ({
   children,
+  compact = false,
   description,
   focused = false,
   stacked,
   title,
 }: {
   children: React.ReactNode;
-  description: string;
+  compact?: boolean;
+  description?: string;
   focused?: boolean;
   stacked: boolean;
   title: string;
@@ -36,12 +38,23 @@ export const SettingRow = ({
     style={[
       styles.settingRow,
       stacked && styles.settingRowStacked,
+      !description && styles.settingRowSimple,
+      compact && styles.settingRowCompact,
       focused && styles.settingRowFocused,
     ]}
   >
-    <View style={[styles.settingCopy, stacked && styles.settingCopyStacked]}>
+    <View
+      style={[
+        styles.settingCopy,
+        stacked && styles.settingCopyStacked,
+        !description && styles.settingCopySimple,
+        compact && styles.settingCopyCompact,
+      ]}
+    >
       <Text style={styles.settingTitle}>{title}</Text>
-      <Text style={styles.settingDescription}>{description}</Text>
+      {description ? (
+        <Text style={styles.settingDescription}>{description}</Text>
+      ) : null}
     </View>
     <View style={[styles.settingControl, stacked && styles.controlStacked]}>
       {children}
@@ -51,6 +64,7 @@ export const SettingRow = ({
 
 export const SettingSelect = <T extends string>({
   closeLabel,
+  compact = false,
   onFocusChange,
   onSelect,
   options,
@@ -58,6 +72,7 @@ export const SettingSelect = <T extends string>({
   width,
 }: {
   closeLabel: string;
+  compact?: boolean;
   onFocusChange: (focused: boolean) => void;
   onSelect: (value: T) => void;
   options: SettingOption<T>[];
@@ -97,6 +112,7 @@ export const SettingSelect = <T extends string>({
         ref={targetRef}
         style={({ pressed }) => [
           styles.select,
+          compact && styles.selectCompact,
           { width },
           hovered && styles.selectHovered,
           open && styles.selectOpen,

@@ -17,17 +17,31 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     paddingHorizontal: 20,
   },
+  contentCompact: {
+    paddingBottom: 22,
+    paddingHorizontal: 18,
+  },
   header: {
     paddingBottom: 16,
     paddingTop: 16,
+  },
+  headerCompact: {
+    paddingBottom: 13,
+    paddingTop: 10,
   },
   title: {
     color: '#28293A',
     fontSize: 24,
     fontWeight: '800',
   },
+  titleCompact: {
+    fontSize: 22,
+  },
   section: {
     marginBottom: 20,
+  },
+  sectionCompact: {
+    marginBottom: 15,
   },
   sectionTitle: {
     color: '#303143',
@@ -36,12 +50,22 @@ const styles = StyleSheet.create({
     marginBottom: 7,
     marginLeft: 3,
   },
+  sectionTitleCompact: {
+    fontSize: 13,
+    marginBottom: 5,
+    marginLeft: 1,
+  },
   sectionCard: {
     backgroundColor: '#FFFFFF',
     borderColor: '#E3E2E9',
     borderRadius: 12,
     borderWidth: 1,
     overflow: 'hidden',
+  },
+  sectionCardCompact: {
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    borderWidth: 0,
   },
   settingRow: {
     alignItems: 'center',
@@ -51,6 +75,15 @@ const styles = StyleSheet.create({
     minHeight: 82,
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  settingRowCompact: {
+    minHeight: 46,
+    paddingHorizontal: 2,
+    paddingVertical: 8,
+  },
+  settingRowSimple: {
+    minHeight: 58,
+    paddingVertical: 10,
   },
   settingRowStacked: {
     alignItems: 'stretch',
@@ -65,6 +98,12 @@ const styles = StyleSheet.create({
   settingCopy: {
     flex: 1,
     marginRight: 24,
+  },
+  settingCopyCompact: {
+    marginRight: 12,
+  },
+  settingCopySimple: {
+    marginRight: 16,
   },
   settingCopyStacked: {
     marginBottom: 14,
@@ -98,6 +137,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     minHeight: 46,
     paddingHorizontal: 15,
+  },
+  selectCompact: {
+    borderRadius: 10,
+    minHeight: 38,
+    paddingHorizontal: 11,
   },
   selectHovered: {
     backgroundColor: '#FFFFFF',
@@ -157,6 +201,11 @@ const styles = StyleSheet.create({
     minHeight: 88,
     paddingHorizontal: 17,
   },
+  linkRowCompact: {
+    borderLeftWidth: 0,
+    minHeight: 50,
+    paddingHorizontal: 2,
+  },
   linkRowHovered: {
     backgroundColor: '#F8F7FB',
   },
@@ -171,6 +220,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 13,
     width: 42,
+  },
+  linkIconCompact: {
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    height: 28,
+    marginRight: 8,
+    width: 28,
   },
   linkCopy: {
     flex: 1,

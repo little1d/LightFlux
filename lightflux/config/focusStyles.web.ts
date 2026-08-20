@@ -37,9 +37,11 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
       box-shadow: 0 2px 0 rgba(103, 89, 232, 0.16);
     }
 
-    #task-rich-editor:focus-within {
-      border-color: rgba(103, 89, 232, 0.62) !important;
-      box-shadow: 0 0 0 3px rgba(103, 89, 232, 0.1);
+    @media (min-width: 900px) {
+      #task-rich-editor:focus-within {
+        border-color: rgba(103, 89, 232, 0.62) !important;
+        box-shadow: 0 0 0 3px rgba(103, 89, 232, 0.1);
+      }
     }
 
     #today-task-composer:focus-within,

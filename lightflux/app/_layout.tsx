@@ -1,8 +1,10 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { Slot, usePathname, useRouter } from 'expo-router';
 import React, {
   ComponentProps,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -22,64 +24,65 @@ import {
 } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
-import CalendarScreen from './components/CalendarScreen';
-import CompletedScreen from './components/CompletedScreen';
-import GroupsScreen from './components/GroupsScreen';
-import MilestonesScreen from './components/MilestonesScreen';
-import SearchOverlay from './components/SearchOverlay';
-import SettingsScreen from './components/SettingsScreen';
-import SignedOutScreen from './components/SignedOutScreen';
-import StatisticsScreen from './components/StatisticsScreen';
-import TrashScreen from './components/TrashScreen';
-import TodoScreen from './components/TodoScreen';
-import AccountMenu from './components/account/AccountMenu';
-import AgentCommandPanel from './components/agent/AgentCommandPanel';
-import DesktopUpdateMenu from './components/desktop/DesktopUpdateMenu';
-import TaskEditorScreen from './components/editor/TaskEditorScreen';
-import ResizableDivider from './components/layout/ResizableDivider';
-import DraggableNavigationItem from './components/navigation/DraggableNavigationItem';
-import { NavigationDragState } from './components/navigation/navigationDrag';
-import TaskActionMenu from './components/tasks/TaskActionMenu';
-import QuickAddTaskSheet from './components/tasks/QuickAddTaskSheet';
+import '../config/focusStyles';
+import '../config/nativewind';
+
+import SearchOverlay from '../components/SearchOverlay';
+import SettingsScreen from '../components/SettingsScreen';
+import SignedOutScreen from '../components/SignedOutScreen';
+import AccountMenu from '../components/account/AccountMenu';
+import AgentCommandPanel from '../components/agent/AgentCommandPanel';
+import DesktopUpdateMenu from '../components/desktop/DesktopUpdateMenu';
+import TaskEditorScreen from '../components/editor/TaskEditorScreen';
+import ResizableDivider from '../components/layout/ResizableDivider';
+import DraggableNavigationItem from '../components/navigation/DraggableNavigationItem';
+import { NavigationDragState } from '../components/navigation/navigationDrag';
+import TaskActionMenu from '../components/tasks/TaskActionMenu';
+import QuickAddTaskSheet from '../components/tasks/QuickAddTaskSheet';
 import {
   OpenTaskMenu,
   TaskMenuPosition,
-} from './components/tasks/useTaskContextMenu';
-import IconButton from './components/ui/IconButton';
-import Tooltip from './components/ui/Tooltip';
+} from '../components/tasks/useTaskContextMenu';
+import IconButton from '../components/ui/IconButton';
+import Tooltip from '../components/ui/Tooltip';
 import {
   ConfirmationProvider,
   useConfirmation,
-} from './components/ui/ConfirmationProvider';
+} from '../components/ui/ConfirmationProvider';
 import {
   ToastProvider,
   useToast,
-} from './components/ui/ToastProvider';
-import { useCurrentDateKey } from './hooks/useCurrentDateKey';
+} from '../components/ui/ToastProvider';
+import {
+  AppShellProvider,
+  AppShellValue,
+  AppView,
+} from '../components/appShellContext';
+import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import {
   listenForTrayActions,
   quitDesktop,
-} from './services/desktopRuntime';
-import { useDesktopStore } from './store/desktopStore';
+} from '../services/desktopRuntime';
+import { useDesktopStore } from '../store/desktopStore';
 import {
   flushAppState,
   TodoProvider,
   useTodoStore,
-} from './store/todoStore';
-import { searchResultView } from './store/todoDomain';
-import { translations } from './content';
-import { getRemoteUser } from './services/authApi';
+} from '../store/todoStore';
+import { searchResultView } from '../store/todoDomain';
+import { translations } from '../content';
+import { getRemoteUser } from '../services/authApi';
 import {
   loadSessionState,
   saveSessionState,
-} from './services/sessionStorage';
+} from '../services/sessionStorage';
 import {
   NavigationItemId,
   OptionalNavigationItemId,
-} from './types/todo';
+} from '../types/todo';
 
-type AppView = NavigationItemId | 'settings' | 'statistics';
 type NavigationView = NavigationItemId;
+
 type SelectedTask = {
   id: string;
   readOnly: boolean;
@@ -101,6 +104,26 @@ const NAV_ICONS: Record<
   milestones: 'hourglass-outline',
   groups: 'albums-outline',
   trash: 'trash-outline',
+};
+
+const NAVIGABLE_VIEWS: AppView[] = [
+  'today',
+  'completed',
+  'calendar',
+  'milestones',
+  'groups',
+  'trash',
+  'settings',
+  'statistics',
+];
+
+// Derive the active view from the current route so navigation highlighting and
+// selection guards stay in sync with the URL. Unknown paths fall back to the
+// default surface.
+const viewFromPathname = (pathname: string): AppView => {
+  const segment = pathname.replace(/^\/+/, '').split('/')[0];
+  const match = NAVIGABLE_VIEWS.find((view) => view === segment);
+  return match ?? 'groups';
 };
 
 const DesktopNavigationButton = ({
@@ -183,10 +206,12 @@ const AccountTrigger = ({
   );
 };
 
-const AppContent = () => {
+const AppShell = () => {
   const requestConfirmation = useConfirmation();
   const notify = useToast();
-  const [activeView, setActiveView] = useState<AppView>('groups');
+  const router = useRouter();
+  const pathname = usePathname();
+  const activeView = viewFromPathname(pathname);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
@@ -357,22 +382,41 @@ const AppContent = () => {
       requestId: Date.now(),
     });
   }, []);
-  const openSearchTask = useCallback((id: string) => {
-    const todo = useTodoStore
-      .getState()
-      .todos.find((item) => item.id === id);
-    if (!todo) {
-      return;
-    }
-    setActiveView(searchResultView(todo));
-    setAccountMenuOpen(false);
-    setTaskMenu(null);
-    setSelectedTask({
-      id,
-      readOnly: false,
-      requestId: Date.now(),
-    });
-  }, []);
+  // Navigate imperatively; on narrow layouts settings is a slide-over panel
+  // rather than a route so the underlying task surface stays mounted behind it.
+  const changeView = useCallback(
+    (view: AppView) => {
+      if (!usesDesktopLayout && view === 'settings') {
+        setAccountMenuOpen(false);
+        setSettingsPanelOpen(true);
+        return;
+      }
+      setAccountMenuOpen(false);
+      setSelectedTask(null);
+      setTaskMenu(null);
+      router.push(`/${view}`);
+    },
+    [router, usesDesktopLayout],
+  );
+  const openSearchTask = useCallback(
+    (id: string) => {
+      const todo = useTodoStore
+        .getState()
+        .todos.find((item) => item.id === id);
+      if (!todo) {
+        return;
+      }
+      setAccountMenuOpen(false);
+      setTaskMenu(null);
+      router.push(`/${searchResultView(todo)}`);
+      setSelectedTask({
+        id,
+        readOnly: false,
+        requestId: Date.now(),
+      });
+    },
+    [router],
+  );
   const openTrashedTask = useCallback((id: string) => {
     setSelectedTask({
       id,
@@ -383,16 +427,10 @@ const AppContent = () => {
   const closeSelectedTask = useCallback(() => {
     setSelectedTask(null);
   }, []);
-  const changeView = useCallback((view: AppView) => {
-    if (!usesDesktopLayout && view === 'settings') {
-      setSettingsPanelOpen(true);
-      return;
-    }
-    setActiveView(view);
-    setAccountMenuOpen(false);
-    setSelectedTask(null);
-    setTaskMenu(null);
-  }, [usesDesktopLayout]);
+  const openCalendarAdd = useCallback((dateKey: string) => {
+    setQuickAddInitialDate(dateKey);
+    setQuickAddOpen(true);
+  }, []);
   useEffect(() => {
     Animated.timing(settingsSlideAnim, {
       toValue: settingsPanelOpen ? 0 : -width,
@@ -635,7 +673,7 @@ const AppContent = () => {
     persistenceErrorAt,
   ]);
 
-  const signOut = () => {
+  const signOut = useCallback(() => {
     setAccountMenuOpen(false);
     requestConfirmation({
       cancelText: labels.cancel,
@@ -650,7 +688,13 @@ const AppContent = () => {
       },
       title: labels.account.signOutTitle,
     });
-  };
+  }, [
+    labels.account.signOut,
+    labels.account.signOutMessage,
+    labels.account.signOutTitle,
+    labels.cancel,
+    requestConfirmation,
+  ]);
 
   const continueSession = async () => {
     await syncRemote();
@@ -658,7 +702,7 @@ const AppContent = () => {
     setCurrentUser(user);
     setSignedIn(true);
     setAuthOpen(false);
-    setActiveView('groups');
+    router.replace('/groups');
     await saveSessionState('authenticated');
   };
 
@@ -666,77 +710,43 @@ const AppContent = () => {
     setCurrentUser(null);
     setSignedIn(true);
     setAuthOpen(false);
-    setActiveView('groups');
+    router.replace('/groups');
     await saveSessionState('local');
   };
 
-  if (signedIn === null) {
-    return <View className="flex-1 bg-canvas" />;
-  }
+  const shellValue = useMemo<AppShellValue>(
+    () => ({
+      selectedTaskId,
+      quickCreateRequestId,
+      openTaskMenu,
+      openActiveTask,
+      openTrashedTask,
+      openCalendarAdd,
+      notify,
+      changeView,
+      currentUser,
+      hiddenNavigationItems,
+      setNavigationVisible,
+      openAuthentication,
+      signOut,
+    }),
+    [
+      changeView,
+      currentUser,
+      hiddenNavigationItems,
+      notify,
+      openActiveTask,
+      openAuthentication,
+      openCalendarAdd,
+      openTaskMenu,
+      openTrashedTask,
+      quickCreateRequestId,
+      selectedTaskId,
+      setNavigationVisible,
+      signOut,
+    ],
+  );
 
-  if (!signedIn) {
-    return (
-      <SignedOutScreen
-        onContinue={continueSession}
-        onContinueLocally={continueLocally}
-      />
-    );
-  }
-
-  const activeScreen =
-    activeView === 'statistics' ? (
-      <StatisticsScreen
-        onBack={() => changeView(usesDesktopLayout ? 'settings' : 'groups')}
-        onOpenGroups={() => changeView('groups')}
-      />
-    ) : activeView === 'settings' ? (
-      <SettingsScreen
-        currentUser={currentUser}
-        hiddenNavigationItems={hiddenNavigationItems}
-        onNavigationVisibilityChange={setNavigationVisible}
-        onOpenStatistics={() => changeView('statistics')}
-        onSignIn={openAuthentication}
-        onSignOut={signOut}
-      />
-    ) : activeView === 'today' ? (
-      <TodoScreen
-        focusComposerRequestId={quickCreateRequestId}
-        onOpenTaskMenu={openTaskMenu}
-        onEditTask={openActiveTask}
-        onNotify={notify}
-        onOpenMilestones={() => changeView('milestones')}
-        selectedTaskId={selectedTaskId}
-      />
-    ) : activeView === 'completed' ? (
-      <CompletedScreen
-        onOpenTaskMenu={openTaskMenu}
-        onEditTask={openActiveTask}
-        selectedTaskId={selectedTaskId}
-      />
-    ) : activeView === 'calendar' ? (
-      <CalendarScreen
-        onAddTask={(dateKey) => {
-          setQuickAddInitialDate(dateKey);
-          setQuickAddOpen(true);
-        }}
-        onOpenTaskMenu={openTaskMenu}
-        onEditTask={openActiveTask}
-        selectedTaskId={selectedTaskId}
-      />
-    ) : activeView === 'milestones' ? (
-      <MilestonesScreen />
-    ) : activeView === 'groups' ? (
-      <GroupsScreen
-        onOpenTaskMenu={openTaskMenu}
-        onEditTask={openActiveTask}
-        selectedTaskId={selectedTaskId}
-      />
-    ) : (
-      <TrashScreen
-        onPreviewTask={openTrashedTask}
-        selectedTaskId={selectedTaskId}
-      />
-    );
   const showSidebarUpdate =
     Boolean(updateInfo) &&
     desktopPreferences.updateReminder !== 'settings-only' &&
@@ -839,7 +849,11 @@ const AppContent = () => {
             : styles.fullPane
         }
       >
-        <View className="flex-1">{activeScreen}</View>
+        <View className="flex-1">
+          <AppShellProvider value={shellValue}>
+            <Slot />
+          </AppShellProvider>
+        </View>
 
         {!usesDesktopLayout && activeView !== 'statistics' ? (
           <SafeAreaView
@@ -1092,11 +1106,25 @@ const AppContent = () => {
         </View>
       </Modal>
     ) : null}
+    {signedIn === null ? (
+      <View style={[StyleSheet.absoluteFill, styles.bootOverlay]} />
+    ) : null}
+    {signedIn === false ? (
+      <View style={StyleSheet.absoluteFill}>
+        <SignedOutScreen
+          onContinue={continueSession}
+          onContinueLocally={continueLocally}
+        />
+      </View>
+    ) : null}
     </>
   );
 };
 
 const styles = StyleSheet.create({
+  bootOverlay: {
+    backgroundColor: '#F3F2F7',
+  },
   desktopAccountPosition: {
     marginBottom: 28,
   },
@@ -1240,30 +1268,15 @@ const styles = StyleSheet.create({
   settingsPanelSafeArea: {
     flex: 1,
   },
-  settingsPanelHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 6,
-  },
-  settingsPanelHeaderSpacer: {
-    width: 32,
-  },
-  settingsPanelTitle: {
-    color: '#303145',
-    fontSize: 20,
-    fontWeight: '800',
-  },
 });
 
-export default function App() {
+export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <TodoProvider>
         <ConfirmationProvider>
           <ToastProvider>
-            <AppContent />
+            <AppShell />
           </ToastProvider>
         </ConfirmationProvider>
       </TodoProvider>

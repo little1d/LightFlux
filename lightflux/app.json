@@ -17,7 +17,8 @@
         }
       ],
       "expo-notifications",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-router"
     ],
     "ios": {
       "supportsTablet": true
@@ -29,7 +30,8 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single"
     }
   }
 }

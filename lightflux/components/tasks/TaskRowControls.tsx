@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -80,17 +81,22 @@ export const TaskMoreButton = ({
 }: {
   label: string;
   onPress: (event: GestureResponderEvent) => void;
-}) => (
-  <View style={styles.moreButtonPosition}>
-    <IconButton
-      icon="ellipsis-horizontal"
-      label={label}
-      onPress={onPress}
-      size="compact"
-      variant="transparent"
-    />
-  </View>
-);
+}) => {
+  const { width } = useWindowDimensions();
+  const narrow = width < 900;
+
+  return (
+    <View style={styles.moreButtonPosition}>
+      <IconButton
+        icon={narrow ? 'options-outline' : 'ellipsis-horizontal'}
+        label={label}
+        onPress={onPress}
+        size="compact"
+        variant={narrow ? 'primary' : 'transparent'}
+      />
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   checkboxWrapper: {

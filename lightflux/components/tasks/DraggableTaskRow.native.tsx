@@ -24,33 +24,56 @@ const DraggableTaskRow = ({
   nested,
   onMove,
 }: DraggableTaskRowProps) => {
-  const rowStep = nested ? 42 : 52;
+  const defaultRowStep = nested ? 42 : 52;
   const [dragOffset, setDragOffset] = useState(0);
   const latestOffset = useRef(0);
-  latestOffset.current = dragOffset;
+  const rowStep = useRef(defaultRowStep);
+
+  const resetDrag = () => {
+    latestOffset.current = 0;
+    setDragOffset(0);
+  };
 
   const responder = useMemo(
     () =>
       PanResponder.create({
         onMoveShouldSetPanResponder: (_, gesture) =>
-          Math.abs(gesture.dy) > 5,
-        onPanResponderGrant: () => setDragOffset(0),
-        onPanResponderMove: (_, gesture) => setDragOffset(gesture.dy),
+          Math.abs(gesture.dy) > 4,
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          Math.abs(gesture.dy) > 4,
+        onPanResponderGrant: () => {
+          latestOffset.current = 0;
+          setDragOffset(0);
+        },
+        onPanResponderMove: (_, gesture) => {
+          latestOffset.current = gesture.dy;
+          setDragOffset(gesture.dy);
+        },
         onPanResponderRelease: () => {
           const targetIndex =
-            index + Math.round(latestOffset.current / rowStep);
-          setDragOffset(0);
-          onMove(id, targetIndex);
+            index + Math.round(latestOffset.current / rowStep.current);
+          resetDrag();
+          if (targetIndex !== index) {
+            onMove(id, targetIndex);
+          }
         },
-        onPanResponderTerminate: () => setDragOffset(0),
+        onPanResponderTerminate: resetDrag,
+        onPanResponderTerminationRequest: () => false,
         onStartShouldSetPanResponder: () => true,
+        onShouldBlockNativeResponder: () => true,
       }),
-    [id, index, onMove, rowStep],
+    [id, index, onMove],
   );
 
   return (
     <View
       accessibilityLabel={label}
+      onLayout={(event) => {
+        rowStep.current = Math.max(
+          1,
+          event.nativeEvent.layout.height + styles.container.marginBottom,
+        );
+      }}
       style={[
         styles.container,
         dragOffset !== 0 && styles.dragging,
@@ -67,11 +90,21 @@ const DraggableTaskRow = ({
         {...responder.panHandlers}
         accessibilityLabel={label}
         accessibilityRole="adjustable"
+        accessibilityActions={[
+          { name: 'decrement', label },
+          { name: 'increment', label },
+        ]}
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === 'decrement') {
+            onMove(id, index - 1);
+          } else if (event.nativeEvent.actionName === 'increment') {
+            onMove(id, index + 1);
+          }
+        }}
         style={[
           styles.handle,
           {
-            left: nested ? 0 : -14,
-            width: nested ? 22 : 14,
+            left: nested ? -2 : -14,
           },
         ]}
       >
@@ -100,10 +133,11 @@ const styles = StyleSheet.create({
   },
   handle: {
     alignItems: 'center',
-    height: 28,
+    height: 36,
     justifyContent: 'center',
     position: 'absolute',
-    top: 7,
+    top: 3,
+    width: 28,
     zIndex: 2,
   },
   handleText: {

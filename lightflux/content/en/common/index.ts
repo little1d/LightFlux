@@ -33,7 +33,7 @@ export const common: CommonContent = {
   },
   signedOut: {
     title: 'Sign in to LightFlux',
-    description: 'Use an email code to securely sync tasks across devices.',
+    description: 'Use a password or email code to securely sync tasks across devices.',
     continue: 'Continue locally',
     passwordMethod: 'Password',
     otpMethod: 'Email code',

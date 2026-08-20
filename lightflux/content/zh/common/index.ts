@@ -33,7 +33,7 @@ export const common: CommonContent = {
   },
   signedOut: {
     title: '登录 LightFlux',
-    description: '通过邮箱验证码登录，在不同设备间安全同步任务。',
+    description: '使用邮箱密码或验证码登录，在不同设备间安全同步任务。',
     continue: '进入本地模式',
     passwordMethod: '密码',
     otpMethod: '验证码',

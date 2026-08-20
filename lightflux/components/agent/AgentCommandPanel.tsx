@@ -317,11 +317,19 @@ const AgentCommandPanel = ({
         ) : null}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={nativeWorkspace && styles.nativeKeyboardAvoider}
+          style={
+            nativeWorkspace || compact
+              ? styles.workspaceKeyboardAvoider
+              : undefined
+          }
         >
           <SafeAreaView
-            edges={nativeWorkspace ? ['top', 'bottom'] : []}
-            style={nativeWorkspace && styles.nativeSafeArea}
+            edges={nativeWorkspace ? ['top'] : []}
+            style={
+              nativeWorkspace || compact
+                ? styles.workspaceSafeArea
+                : undefined
+            }
           >
             <Animated.View
             style={[
@@ -533,44 +541,49 @@ const AgentCommandPanel = ({
             ) : null}
           </ScrollView>
 
-          <View style={styles.composer}>
-            <TextInput
-              {...inputAccentProps}
-              accessibilityLabel={labels.inputPlaceholder}
-              autoFocus
-              editable={!loading}
-              maxLength={1200}
-              multiline
-              onChangeText={setDraft}
-              placeholder={labels.inputPlaceholder}
-              placeholderTextColor="#9B9CA8"
-              style={styles.input}
-              value={draft}
-            />
-            <View style={styles.sendButtonPosition}>
-              <IconButton
-                disabled={!draft.trim() || loading}
-                icon="arrow-up"
-                label={labels.send}
-                onPress={() => void send()}
-                size="medium"
-                variant="solid"
+          <SafeAreaView
+            edges={nativeWorkspace ? ['bottom'] : []}
+            style={styles.composerSafeArea}
+          >
+            <View style={styles.composer}>
+              <TextInput
+                {...inputAccentProps}
+                accessibilityLabel={labels.inputPlaceholder}
+                autoFocus
+                editable={!loading}
+                maxLength={1200}
+                multiline
+                onChangeText={setDraft}
+                placeholder={labels.inputPlaceholder}
+                placeholderTextColor="#9B9CA8"
+                style={styles.input}
+                value={draft}
               />
+              <View style={styles.sendButtonPosition}>
+                <IconButton
+                  disabled={!draft.trim() || loading}
+                  icon="arrow-up"
+                  label={labels.send}
+                  onPress={() => void send()}
+                  size="medium"
+                  variant="solid"
+                />
+              </View>
             </View>
-          </View>
-          {undoAvailable ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={undo}
-              style={({ pressed }) => [
-                styles.undoButton,
-                pressed && styles.undoPressed,
-              ]}
-            >
-              <Ionicons color="#6759E8" name="arrow-undo" size={14} />
-              <Text style={styles.undoText}>{labels.undo}</Text>
-            </Pressable>
-          ) : null}
+            {undoAvailable ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={undo}
+                style={({ pressed }) => [
+                  styles.undoButton,
+                  pressed && styles.undoPressed,
+                ]}
+              >
+                <Ionicons color="#6759E8" name="arrow-undo" size={14} />
+                <Text style={styles.undoText}>{labels.undo}</Text>
+              </Pressable>
+            ) : null}
+          </SafeAreaView>
             </Animated.View>
           </SafeAreaView>
         </KeyboardAvoidingView>
@@ -670,18 +683,23 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
-  nativeSafeArea: {
-    width: '100%',
-  },
-  nativeKeyboardAvoider: {
+  workspaceSafeArea: {
     flex: 1,
     justifyContent: 'flex-end',
+    width: '100%',
+  },
+  workspaceKeyboardAvoider: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    width: '100%',
   },
   panel: {
     backgroundColor: '#FFFFFF',
     borderColor: '#DEDEE7',
     borderWidth: 1,
-    maxHeight: '82%',
+    flexDirection: 'column',
+    height: 560,
+    maxHeight: '85%',
     overflow: 'hidden',
     shadowColor: '#262438',
     shadowOffset: { height: 14, width: 0 },
@@ -691,8 +709,8 @@ const styles = StyleSheet.create({
   panelWide: {
     alignSelf: 'center',
     borderRadius: 18,
-    maxWidth: 620,
-    width: '94%',
+    maxWidth: 680,
+    width: '92%',
   },
   panelCompact: {
     borderBottomLeftRadius: 0,
@@ -700,8 +718,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
     bottom: 0,
+    height: '80%',
     left: 0,
-    maxHeight: '88%',
+    maxHeight: undefined,
+    minHeight: undefined,
     position: 'absolute',
     right: 0,
   },
@@ -709,8 +729,9 @@ const styles = StyleSheet.create({
     borderColor: '#E2E0E8',
     borderTopLeftRadius: 18,
     borderTopRightRadius: 18,
-    height: '72%',
+    height: '78%',
     maxHeight: undefined,
+    minHeight: undefined,
     shadowOpacity: 0.15,
     width: '100%',
   },
@@ -974,6 +995,9 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 17,
     marginLeft: 7,
+  },
+  composerSafeArea: {
+    backgroundColor: '#FFFFFF',
   },
   composer: {
     alignItems: 'flex-end',

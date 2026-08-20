@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { translations } from '../content';
 import { useTodoStore } from '../store/todoStore';
@@ -27,8 +28,8 @@ import MilestoneEditorCard from './milestones/MilestoneEditorCard';
 import { OpenMilestoneMenu } from './milestones/useMilestoneContextMenu';
 import MenuItem from './ui/MenuItem';
 import MenuSurface, { MenuSurfacePosition } from './ui/MenuSurface';
-import Toast from './ui/Toast';
 import IconButton from './ui/IconButton';
+import { useToast } from './ui/ToastProvider';
 
 type MilestoneFilter = 'all' | MilestoneType | 'archived';
 
@@ -50,6 +51,7 @@ const TEMPLATES: MilestoneType[] = [
 ];
 
 const MilestonesScreen = () => {
+  const notify = useToast();
   const {
     language,
     milestones,
@@ -69,7 +71,7 @@ const MilestonesScreen = () => {
   );
   const labels = translations[language].milestones;
   const { width: viewportWidth } = useWindowDimensions();
-  const compactHeader = viewportWidth < 900;
+  const compactHeader = viewportWidth < DESKTOP_LAYOUT_BREAKPOINT;
   const dateKey = useCurrentDateKey();
   const referenceDate = useMemo(() => fromDateKey(dateKey), [dateKey]);
   const addButtonRef = useRef<View>(null);
@@ -87,7 +89,6 @@ const MilestonesScreen = () => {
     milestoneId: string;
     position?: MenuSurfacePosition;
   } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const columns = contentWidth >= 980 ? 3 : contentWidth >= 620 ? 2 : 1;
 
   const openTemplateMenu = () => {
@@ -148,10 +149,10 @@ const MilestonesScreen = () => {
   const saveEditor = (value: NewMilestone) => {
     if (editingMilestone) {
       updateMilestone(editingMilestone.id, value);
-      setToast(labels.updated);
+      notify(labels.updated);
     } else {
       addMilestone(value);
-      setToast(labels.created);
+      notify(labels.created);
     }
     setEditor(null);
   };
@@ -161,11 +162,14 @@ const MilestonesScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View style={styles.screen}>
       <ExpoStatusBar style="dark" />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            compactHeader && styles.contentCompact,
+          ]}
           keyboardShouldPersistTaps="handled"
           onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)}
           showsVerticalScrollIndicator={false}
@@ -177,14 +181,16 @@ const MilestonesScreen = () => {
               compactHeader && styles.headerCompact,
             ]}
           >
-            <View>
-              <Text style={styles.title}>{labels.title}</Text>
-              {milestones.length > 0 ? (
-                <Text style={styles.count}>
-                  {labels.count(milestones.length)}
-                </Text>
-              ) : null}
-            </View>
+            {!compactHeader ? (
+              <View>
+                <Text style={styles.title}>{labels.title}</Text>
+                {milestones.length > 0 ? (
+                  <Text style={styles.count}>
+                    {labels.count(milestones.length)}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
             <View
               style={[
                 styles.headerActions,
@@ -252,6 +258,7 @@ const MilestonesScreen = () => {
           {editor ? (
             <MilestoneEditorCard
               initial={editingMilestone}
+              key={`${editor.milestoneId ?? 'new'}-${editor.template}`}
               labels={labels}
               onCancel={() => setEditor(null)}
               onSave={saveEditor}
@@ -356,16 +363,8 @@ const MilestonesScreen = () => {
               });
             }
           }}
-          onNotify={setToast}
+          onNotify={notify}
           position={actionMenu.position}
-        />
-      ) : null}
-
-      {toast ? (
-        <Toast
-          key={toast}
-          message={toast}
-          onDismiss={() => setToast(null)}
         />
       ) : null}
     </View>
@@ -373,14 +372,26 @@ const MilestonesScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: '#F5F5FA',
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
   scroll: {
     alignSelf: 'center',
+    flex: 1,
     maxWidth: 1120,
     width: '100%',
   },
   content: {
+    flexGrow: 1,
     paddingBottom: 34,
     paddingHorizontal: 20,
+  },
+  contentCompact: {
+    paddingTop: 70,
   },
   header: {
     alignItems: 'center',
@@ -392,7 +403,6 @@ const styles = StyleSheet.create({
   headerCompact: {
     alignItems: 'stretch',
     flexDirection: 'column',
-    paddingRight: 96,
   },
   title: {
     color: '#262738',
@@ -410,7 +420,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   headerActionsCompact: {
-    marginTop: 12,
     paddingRight: 0,
   },
   search: {
@@ -441,6 +450,8 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.94 }],
   },
   filters: {
+    flexGrow: 0,
+    height: 40,
     marginBottom: 15,
   },
   filter: {

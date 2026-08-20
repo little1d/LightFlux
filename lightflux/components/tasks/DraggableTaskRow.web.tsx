@@ -1,11 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 
+import {
+  taskDragDisplacement,
+  type TaskDragState,
+} from './taskDrag';
+
 interface DraggableTaskRowProps {
   children: React.ReactNode;
+  dragState: TaskDragState | null;
   id: string;
   index: number;
+  itemCount: number;
   label: string;
   nested: boolean;
+  onDragStateChange: (state: TaskDragState | null) => void;
   onMove: (id: string, targetIndex: number) => void;
   scopeId: string;
 }
@@ -14,16 +22,18 @@ const DRAG_TYPE = 'text/lightflux-task-id';
 
 const DraggableTaskRow = ({
   children,
+  dragState,
   id,
   index,
+  itemCount,
   label,
   nested,
+  onDragStateChange,
   onMove,
   scopeId,
 }: DraggableTaskRowProps) => {
   const [dragging, setDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
-  const [dropTargeted, setDropTargeted] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
   const cleanupDrag = useRef<(() => void) | null>(null);
   const suppressClick = useRef(false);
@@ -63,26 +73,16 @@ const DraggableTaskRow = ({
       .filter((target) => Number.isFinite(target.index));
     let activated = false;
     let targetIndex = index;
-    let targetElement: HTMLElement | null = null;
     let finished = false;
 
-    const clearTarget = () => {
-      if (targetElement) {
-        targetElement.style.boxShadow = '';
-        targetElement = null;
-      }
-    };
     const setTarget = (nextTarget: (typeof targets)[number]) => {
-      if (targetElement === nextTarget.element) {
-        targetIndex = nextTarget.index;
-        return;
-      }
-      clearTarget();
-      targetIndex = nextTarget.index;
-      if (nextTarget.element !== rowRef.current) {
-        targetElement = nextTarget.element;
-        targetElement.style.boxShadow = 'inset 0 2px 0 #8B7EFF';
-      }
+      targetIndex = Math.max(0, Math.min(nextTarget.index, itemCount - 1));
+      onDragStateChange({
+        id,
+        scopeId,
+        sourceIndex: index,
+        targetIndex,
+      });
     };
     const finish = (commit: boolean) => {
       if (finished) {
@@ -94,10 +94,10 @@ const DraggableTaskRow = ({
       window.removeEventListener('pointercancel', cancel);
       document.body.style.userSelect = previousUserSelect;
       document.body.style.cursor = previousCursor;
-      clearTarget();
       cleanupDrag.current = null;
       setDragOffset(0);
       setDragging(false);
+      onDragStateChange(null);
       if (activated) {
         suppressClick.current = true;
         window.setTimeout(() => {
@@ -122,6 +122,12 @@ const DraggableTaskRow = ({
         document.body.style.userSelect = 'none';
         document.body.style.cursor = 'grabbing';
         setDragging(true);
+        onDragStateChange({
+          id,
+          scopeId,
+          sourceIndex: index,
+          targetIndex: index,
+        });
       }
       setDragOffset(nextOffset);
       const nextTarget = targets.reduce((closest, candidate) =>
@@ -149,20 +155,43 @@ const DraggableTaskRow = ({
     cleanupDrag.current = () => finish(false);
   };
 
+  const displacement = taskDragDisplacement({
+    dragState,
+    id,
+    index,
+    nested,
+    scopeId,
+  });
+  const targeted =
+    Boolean(dragState) &&
+    dragState?.id !== id &&
+    dragState?.scopeId === scopeId &&
+    dragState?.targetIndex === index;
+  const targetAfter =
+    targeted &&
+    (dragState?.targetIndex ?? 0) > (dragState?.sourceIndex ?? 0);
+
   return (
     <div
       aria-label={label}
       data-task-drag-index={index}
       data-task-drag-scope={scopeId}
-      onDragEnter={() => setDropTargeted(true)}
-      onDragLeave={() => setDropTargeted(false)}
+      onDragEnter={() => {
+        if (!dragState || dragState.scopeId !== scopeId) {
+          return;
+        }
+        onDragStateChange({
+          ...dragState,
+          targetIndex: index,
+        });
+      }}
       onDragOver={(event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'move';
       }}
       onDrop={(event) => {
         event.preventDefault();
-        setDropTargeted(false);
+        onDragStateChange(null);
         try {
           const payload = JSON.parse(
             event.dataTransfer.getData(DRAG_TYPE),
@@ -184,13 +213,11 @@ const DraggableTaskRow = ({
         borderRadius: nested ? 9 : 12,
         boxShadow: dragging
           ? '0 9px 22px rgba(58, 49, 120, 0.2)'
-          : dropTargeted
-            ? 'inset 0 2px 0 #8B7EFF'
-            : 'none',
+          : 'none',
         marginBottom: 2,
         opacity: dragging ? 0.96 : 1,
         position: 'relative',
-        transform: `translateY(${dragOffset}px) scale(${dragging ? 1.012 : 1})`,
+        transform: `translateY(${dragging ? dragOffset : displacement}px) scale(${dragging ? 1.012 : 1})`,
         transition:
           dragging
             ? 'none'
@@ -198,6 +225,24 @@ const DraggableTaskRow = ({
         zIndex: dragging ? 10 : 0,
       }}
     >
+      {targeted ? (
+        <div
+          aria-hidden
+          style={{
+            backgroundColor: '#786AF0',
+            borderRadius: 2,
+            boxShadow: '0 0 0 2px rgba(120, 106, 240, 0.12)',
+            height: 2,
+            left: nested ? 22 : 4,
+            pointerEvents: 'none',
+            position: 'absolute',
+            right: 4,
+            top: targetAfter ? 'auto' : -2,
+            bottom: targetAfter ? -2 : 'auto',
+            zIndex: 20,
+          }}
+        />
+      ) : null}
       <div
         aria-label={label}
         draggable
@@ -220,6 +265,7 @@ const DraggableTaskRow = ({
         onDragEnd={() => {
           setDragOffset(0);
           setDragging(false);
+          onDragStateChange(null);
         }}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move';
@@ -228,6 +274,12 @@ const DraggableTaskRow = ({
             JSON.stringify({ id, scopeId }),
           );
           setDragging(true);
+          onDragStateChange({
+            id,
+            scopeId,
+            sourceIndex: index,
+            targetIndex: index,
+          });
         }}
         onPointerDown={beginDrag}
         role="button"

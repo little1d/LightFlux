@@ -1,6 +1,12 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   FlatList,
   Keyboard,
@@ -18,6 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { Translation, translations } from '../content';
 import {
@@ -29,6 +36,7 @@ import { Milestone, Todo } from '../types/todo';
 import { fromDateKey } from '../utils/date';
 import { getMilestoneOccurrence, milestoneOccursOn } from '../utils/milestoneDate';
 import InlineTaskTitle from './tasks/InlineTaskTitle';
+import DraggableTaskRow from './tasks/DraggableTaskRow';
 import TaskIndicators from './tasks/TaskIndicators';
 import TaskPriorityIndicator, {
   TASK_PRIORITY_THEME,
@@ -41,6 +49,7 @@ import {
 import TaskSelectionMarker, {
   TASK_SELECTED_ROW_STYLE,
 } from './tasks/TaskSelectionMarker';
+import { TaskDragState } from './tasks/taskDrag';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -238,12 +247,14 @@ const TodoScreen = ({
   selectedTaskId: string | null;
 }) => {
   const [draft, setDraft] = useState('');
+  const [taskDrag, setTaskDrag] = useState<TaskDragState | null>(null);
   const composerRef = useRef<TextInput>(null);
   const {
     language,
     todos: allTodos,
     milestones,
     addTodo: createTodo,
+    reorderTask,
     toggleTodo,
     updateTodo,
   } = useTodoStore(
@@ -252,6 +263,7 @@ const TodoScreen = ({
       todos: state.todos,
       milestones: state.milestones,
       addTodo: state.addTodo,
+      reorderTask: state.reorderTask,
       toggleTodo: state.toggleTodo,
       updateTodo: state.updateTodo,
     })),
@@ -266,6 +278,31 @@ const TodoScreen = ({
     () => new Set(activeTodos.map((todo) => todo.id)),
     [activeTodos],
   );
+  const dragMetaById = useMemo(() => {
+    const siblingsByScope = new Map<string, Todo[]>();
+    activeTodos.forEach((todo) => {
+      const scopeId = todo.parentId
+        ? `today:${dateKey}:parent:${todo.parentId}`
+        : `today:${dateKey}:group:${todo.groupId ?? 'ungrouped'}:root`;
+      const siblings = siblingsByScope.get(scopeId) ?? [];
+      siblings.push(todo);
+      siblingsByScope.set(scopeId, siblings);
+    });
+    const result = new Map<
+      string,
+      { index: number; itemCount: number; scopeId: string }
+    >();
+    siblingsByScope.forEach((siblings, scopeId) => {
+      siblings.forEach((todo, index) => {
+        result.set(todo.id, {
+          index,
+          itemCount: siblings.length,
+          scopeId,
+        });
+      });
+    });
+    return result;
+  }, [activeTodos, dateKey]);
   const todayMilestones = useMemo(() => {
     const referenceDate = fromDateKey(dateKey);
     return milestones
@@ -284,7 +321,7 @@ const TodoScreen = ({
 
   const labels = translations[language];
   const { width } = useWindowDimensions();
-  const showBrandHeader = width >= 900;
+  const showBrandHeader = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const canAddTodo = draft.trim().length > 0;
 
   useEffect(() => {
@@ -346,6 +383,48 @@ const TodoScreen = ({
   const handleRename = (id: string, title: string) => {
     updateTodo(id, { title });
   };
+
+  const moveTask = useCallback(
+    (id: string, targetIndex: number) => {
+      const dragged = activeTodos.find((todo) => todo.id === id);
+      if (!dragged) {
+        return;
+      }
+      const visibleSiblings = activeTodos.filter(
+        (todo) =>
+          todo.parentId === dragged.parentId &&
+          todo.groupId === dragged.groupId,
+      );
+      const boundedTarget = Math.max(
+        0,
+        Math.min(targetIndex, visibleSiblings.length - 1),
+      );
+      const target = visibleSiblings[boundedTarget];
+      if (!target || target.id === id) {
+        return;
+      }
+      const persistedSiblings = allTodos.filter(
+        (todo) =>
+          todo.parentId === dragged.parentId &&
+          todo.groupId === dragged.groupId,
+      );
+      const persistedTargetIndex = persistedSiblings.findIndex(
+        (todo) => todo.id === target.id,
+      );
+      reorderTask(
+        id,
+        persistedTargetIndex >= 0 ? persistedTargetIndex : boundedTarget,
+      );
+      onNotify(labels.notifications.orderUpdated);
+    },
+    [
+      activeTodos,
+      allTodos,
+      labels.notifications.orderUpdated,
+      onNotify,
+      reorderTask,
+    ],
+  );
 
   const listHeader = (
     <>
@@ -473,21 +552,37 @@ const TodoScreen = ({
               </View>
             }
             ListHeaderComponent={listHeader}
-            renderItem={({ item }) => (
-              <TodoRow
-                childCount={childCountByParent.get(item.id) ?? 0}
-                labels={labels}
-                nested={Boolean(
-                  item.parentId && activeTodoIds.has(item.parentId),
-                )}
-                onEdit={onEditTask}
-                onOpenMenu={onOpenTaskMenu}
-                onRename={handleRename}
-                onToggle={handleToggle}
-                selected={selectedTaskId === item.id}
-                todo={item}
-              />
-            )}
+            renderItem={({ item }) => {
+              const nested = Boolean(
+                item.parentId && activeTodoIds.has(item.parentId),
+              );
+              const dragMeta = dragMetaById.get(item.id);
+              return dragMeta ? (
+                <DraggableTaskRow
+                  dragState={taskDrag}
+                  id={item.id}
+                  index={dragMeta.index}
+                  itemCount={dragMeta.itemCount}
+                  label={`${labels.groups.reorderTask}: ${item.title}`}
+                  nested={nested}
+                  onDragStateChange={setTaskDrag}
+                  onMove={moveTask}
+                  scopeId={dragMeta.scopeId}
+                >
+                  <TodoRow
+                    childCount={childCountByParent.get(item.id) ?? 0}
+                    labels={labels}
+                    nested={nested}
+                    onEdit={onEditTask}
+                    onOpenMenu={onOpenTaskMenu}
+                    onRename={handleRename}
+                    onToggle={handleToggle}
+                    selected={selectedTaskId === item.id}
+                    todo={item}
+                  />
+                </DraggableTaskRow>
+              ) : null;
+            }}
             showsVerticalScrollIndicator={false}
             style={styles.list}
           />

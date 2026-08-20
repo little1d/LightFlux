@@ -1,11 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Keyboard,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -26,16 +30,23 @@ import {
   isValidMilestoneStartYear,
 } from '../../utils/milestoneDate';
 import ActionButton from '../ui/ActionButton';
+import MenuItem from '../ui/MenuItem';
+import MenuSurface, {
+  MenuSurfacePosition,
+} from '../ui/MenuSurface';
 
-const TYPES: MilestoneType[] = [
-  'anniversary',
-  'countdown',
-  'birthday',
-  'holiday',
-  'custom',
-];
 const COLORS = ['#F28B82', '#F2A65A', '#55B9A5', '#6D8DF5', '#8B7EFF'];
 const REMINDERS = [0, 1, 3, 7, 30];
+const TYPE_ICONS: Record<
+  MilestoneType,
+  React.ComponentProps<typeof Ionicons>['name']
+> = {
+  anniversary: 'heart-outline',
+  countdown: 'hourglass-outline',
+  birthday: 'gift-outline',
+  holiday: 'balloon-outline',
+  custom: 'sparkles-outline',
+};
 
 interface MilestoneEditorCardProps {
   initial?: Milestone;
@@ -53,10 +64,12 @@ const MilestoneEditorCard = ({
   template,
 }: MilestoneEditorCardProps) => {
   const now = useMemo(() => new Date(), []);
+  const entrance = useRef(new Animated.Value(0)).current;
+  const { width } = useWindowDimensions();
+  const compact = width < 560;
   const initialRule = initial?.dateRule;
-  const initialType = initial?.type ?? template;
+  const type = initial?.type ?? template;
   const [title, setTitle] = useState(initial?.title ?? '');
-  const [type, setType] = useState<MilestoneType>(initialType);
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>(
     initialRule?.calendar ?? 'solar',
   );
@@ -95,11 +108,23 @@ const MilestoneEditorCard = ({
       : 'feb-28',
   );
   const [color, setColor] = useState(
-    initial?.color ?? MILESTONE_TYPE_THEME[initialType].color,
+    initial?.color ?? MILESTONE_TYPE_THEME[type].color,
   );
+  const [picker, setPicker] = useState<'calendar' | 'repeat' | null>(null);
+  const [pickerPosition, setPickerPosition] =
+    useState<MenuSurfacePosition>();
   const [error, setError] = useState('');
   const [isRequestingPermission, setIsRequestingPermission] =
     useState(false);
+
+  useEffect(() => {
+    Animated.timing(entrance, {
+      duration: 170,
+      easing: Easing.out(Easing.cubic),
+      toValue: 1,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start();
+  }, [entrance]);
 
   const dateRule = (): MilestoneDateRule => {
     const base = {
@@ -128,7 +153,7 @@ const MilestoneEditorCard = ({
     setError('');
     const normalizedTitle = title.trim();
     const rule = dateRule();
-    const normalizedStartYear = startYear.trim()
+    const normalizedStartYear = recurring && startYear.trim()
       ? Number(startYear)
       : null;
     if (
@@ -163,13 +188,6 @@ const MilestoneEditorCard = ({
     Keyboard.dismiss();
   };
 
-  const selectType = (nextType: MilestoneType) => {
-    setType(nextType);
-    if (!initial || color === MILESTONE_TYPE_THEME[type].color) {
-      setColor(MILESTONE_TYPE_THEME[nextType].color);
-    }
-  };
-
   const toggleReminder = (offset: number) =>
     setReminderOffsets((current) =>
       current.includes(offset)
@@ -178,15 +196,47 @@ const MilestoneEditorCard = ({
     );
 
   return (
-    <View style={styles.card}>
+    <Animated.View
+      style={[
+        styles.card,
+        compact && styles.cardCompact,
+        {
+          opacity: entrance,
+          transform: [
+            {
+              translateY: entrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [12, 0],
+              }),
+            },
+            {
+              scale: entrance.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.99, 1],
+              }),
+            },
+          ],
+        },
+      ]}
+    >
       <View style={styles.header}>
-        <View>
-          <Text style={styles.eyebrow}>
-            {initial ? labels.edit : labels.addTemplate}
-          </Text>
-          <Text style={styles.heading}>
-            {labels.templates[type]}
-          </Text>
+        <View style={styles.headerIdentity}>
+          <View
+            style={[
+              styles.typeIcon,
+              { backgroundColor: `${color}1F` },
+            ]}
+          >
+            <Ionicons color={color} name={TYPE_ICONS[type]} size={20} />
+          </View>
+          <View>
+            <Text style={styles.eyebrow}>
+              {initial ? labels.edit : labels.add}
+            </Text>
+            <Text style={styles.heading}>
+              {labels.templates[type]}
+            </Text>
+          </View>
         </View>
         <Pressable
           accessibilityLabel={labels.cancel}
@@ -201,126 +251,117 @@ const MilestoneEditorCard = ({
         </Pressable>
       </View>
 
-      <TextInput
-        {...inputAccentProps}
-        accessibilityLabel={labels.titlePlaceholder}
-        autoFocus
-        maxLength={120}
-        onChangeText={setTitle}
-        placeholder={labels.titlePlaceholder}
-        placeholderTextColor="#9B9CA8"
-        style={styles.titleInput}
-        value={title}
-      />
+      <View style={styles.titleField}>
+        <Ionicons color="#9693A5" name="create-outline" size={17} />
+        <TextInput
+          {...inputAccentProps}
+          accessibilityLabel={labels.titlePlaceholder}
+          autoFocus
+          maxLength={120}
+          onChangeText={setTitle}
+          placeholder={labels.titlePlaceholder}
+          placeholderTextColor="#9B9CA8"
+          style={styles.titleInput}
+          value={title}
+        />
+      </View>
 
-      <View style={styles.typeRow}>
-        {TYPES.map((item) => (
-          <Segment
-            key={item}
-            label={labels.templates[item]}
-            onPress={() => selectType(item)}
-            selected={type === item}
+      <View style={styles.formSection}>
+        <View style={styles.selectRow}>
+          <SelectField
+            icon="calendar-outline"
+            label={labels.calendar}
+            onOpen={(position) => {
+              setPickerPosition(position);
+              setPicker('calendar');
+            }}
+            value={calendar === 'solar' ? labels.solar : labels.lunar}
           />
-        ))}
-      </View>
-
-      <View style={styles.formRow}>
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{labels.calendar}</Text>
-          <View style={styles.segmentGroup}>
-            <Segment
-              label={labels.solar}
-              onPress={() => setCalendar('solar')}
-              selected={calendar === 'solar'}
-            />
-            <Segment
-              label={labels.lunar}
-              onPress={() => setCalendar('lunar')}
-              selected={calendar === 'lunar'}
-            />
-          </View>
+          <SelectField
+            icon="repeat-outline"
+            label={labels.repeat}
+            onOpen={(position) => {
+              setPickerPosition(position);
+              setPicker('repeat');
+            }}
+            value={recurring ? labels.repeatYearly : labels.oneTime}
+          />
         </View>
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>{labels.repeat}</Text>
-          <View style={styles.segmentGroup}>
-            <Segment
-              label={labels.repeatYearly}
-              onPress={() => setRecurring(true)}
-              selected={recurring}
-            />
-            <Segment
-              label={labels.oneTime}
-              onPress={() => setRecurring(false)}
-              selected={!recurring}
-            />
-          </View>
-        </View>
-      </View>
 
-      <View style={styles.dateRow}>
-        {!recurring ? (
+        <View style={styles.dateRow}>
+          {!recurring ? (
+            <NumberField
+              label={labels.year}
+              onChange={setYear}
+              value={year}
+              wide
+            />
+          ) : null}
           <NumberField
-            label={labels.year}
-            onChange={setYear}
-            value={year}
-            wide
+            label={labels.month}
+            onChange={setMonth}
+            value={month}
           />
+          <NumberField label={labels.day} onChange={setDay} value={day} />
+          {recurring ? (
+            <View style={styles.startYearField}>
+              <NumberField
+                label={labels.startYear}
+                onChange={setStartYear}
+                value={startYear}
+                wide
+              />
+            </View>
+          ) : null}
+        </View>
+
+        {calendar === 'lunar' ? (
+          <View style={styles.policyRow}>
+            {Number(day) === 30 ? (
+              <Text style={styles.policyHint}>{labels.lunarDayThirtySkip}</Text>
+            ) : null}
+            <ToggleChip
+              label={labels.leapMonth}
+              onPress={() => setIsLeapMonth((current) => !current)}
+              selected={isLeapMonth}
+            />
+            {isLeapMonth ? (
+              <>
+                <ToggleChip
+                  label={labels.leapMonthFallback}
+                  onPress={() => setMissingLeapMonthPolicy('regular-month')}
+                  selected={missingLeapMonthPolicy === 'regular-month'}
+                />
+                <ToggleChip
+                  label={labels.leapMonthSkip}
+                  onPress={() => setMissingLeapMonthPolicy('skip-year')}
+                  selected={missingLeapMonthPolicy === 'skip-year'}
+                />
+              </>
+            ) : null}
+          </View>
+        ) : Number(month) === 2 && Number(day) === 29 ? (
+          <View style={styles.policyRow}>
+            <Text style={styles.fieldLabel}>{labels.februaryFallback}</Text>
+            <ToggleChip
+              label={labels.february28}
+              onPress={() => setLeapDayPolicy('feb-28')}
+              selected={leapDayPolicy === 'feb-28'}
+            />
+            <ToggleChip
+              label={labels.march1}
+              onPress={() => setLeapDayPolicy('mar-1')}
+              selected={leapDayPolicy === 'mar-1'}
+            />
+          </View>
         ) : null}
-        <NumberField label={labels.month} onChange={setMonth} value={month} />
-        <NumberField label={labels.day} onChange={setDay} value={day} />
-        <View style={styles.startYearField}>
-          <NumberField
-            label={labels.startYear}
-            onChange={setStartYear}
-            value={startYear}
-            wide
-          />
-        </View>
       </View>
 
-      {calendar === 'lunar' ? (
-        <View style={styles.policyRow}>
-          {Number(day) === 30 ? (
-            <Text style={styles.policyHint}>{labels.lunarDayThirtySkip}</Text>
-          ) : null}
-          <ToggleChip
-            label={labels.leapMonth}
-            onPress={() => setIsLeapMonth((current) => !current)}
-            selected={isLeapMonth}
-          />
-          {isLeapMonth ? (
-            <>
-              <ToggleChip
-                label={labels.leapMonthFallback}
-                onPress={() => setMissingLeapMonthPolicy('regular-month')}
-                selected={missingLeapMonthPolicy === 'regular-month'}
-              />
-              <ToggleChip
-                label={labels.leapMonthSkip}
-                onPress={() => setMissingLeapMonthPolicy('skip-year')}
-                selected={missingLeapMonthPolicy === 'skip-year'}
-              />
-            </>
-          ) : null}
-        </View>
-      ) : Number(month) === 2 && Number(day) === 29 ? (
-        <View style={styles.policyRow}>
-          <Text style={styles.fieldLabel}>{labels.februaryFallback}</Text>
-          <ToggleChip
-            label={labels.february28}
-            onPress={() => setLeapDayPolicy('feb-28')}
-            selected={leapDayPolicy === 'feb-28'}
-          />
-          <ToggleChip
-            label={labels.march1}
-            onPress={() => setLeapDayPolicy('mar-1')}
-            selected={leapDayPolicy === 'mar-1'}
-          />
-        </View>
-      ) : null}
-
-      <View style={styles.section}>
-        <Text style={styles.fieldLabel}>{labels.reminders}</Text>
+      <View style={styles.formSection}>
+        <SectionLabel
+          icon="notifications-outline"
+          label={labels.reminders}
+        />
         <View style={styles.chipRow}>
           {REMINDERS.map((offset) => (
             <ToggleChip
@@ -333,8 +374,8 @@ const MilestoneEditorCard = ({
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.fieldLabel}>{labels.style}</Text>
+      <View style={styles.formSection}>
+        <SectionLabel icon="color-palette-outline" label={labels.style} />
         <View style={styles.colorRow}>
           {COLORS.map((item) => (
             <Pressable
@@ -348,14 +389,18 @@ const MilestoneEditorCard = ({
                 color === item && styles.colorOuterSelected,
               ]}
             >
-              <View style={[styles.colorInner, { backgroundColor: item }]} />
+              <View style={[styles.colorInner, { backgroundColor: item }]}>
+                {color === item ? (
+                  <Ionicons color="#FFFFFF" name="checkmark" size={12} />
+                ) : null}
+              </View>
             </Pressable>
           ))}
         </View>
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.fieldLabel}>{labels.notes}</Text>
+      <View style={styles.formSection}>
+        <SectionLabel icon="document-text-outline" label={labels.notes} />
         <TextInput
           {...inputAccentProps}
           accessibilityLabel={labels.notes}
@@ -383,9 +428,128 @@ const MilestoneEditorCard = ({
           onPress={save}
         />
       </View>
-    </View>
+
+      {picker === 'calendar' ? (
+        <MenuSurface
+          closeLabel={labels.cancel}
+          estimatedHeight={100}
+          onClose={() => setPicker(null)}
+          position={pickerPosition}
+          width={190}
+        >
+          <MenuItem
+            label={labels.solar}
+            onPress={() => {
+              setCalendar('solar');
+              setPicker(null);
+            }}
+            selected={calendar === 'solar'}
+          />
+          <MenuItem
+            label={labels.lunar}
+            onPress={() => {
+              setCalendar('lunar');
+              setPicker(null);
+            }}
+            selected={calendar === 'lunar'}
+          />
+        </MenuSurface>
+      ) : null}
+
+      {picker === 'repeat' ? (
+        <MenuSurface
+          closeLabel={labels.cancel}
+          estimatedHeight={100}
+          onClose={() => setPicker(null)}
+          position={pickerPosition}
+          width={190}
+        >
+          <MenuItem
+            label={labels.repeatYearly}
+            onPress={() => {
+              setRecurring(true);
+              setPicker(null);
+            }}
+            selected={recurring}
+          />
+          <MenuItem
+            label={labels.oneTime}
+            onPress={() => {
+              setRecurring(false);
+              setPicker(null);
+            }}
+            selected={!recurring}
+          />
+        </MenuSurface>
+      ) : null}
+    </Animated.View>
   );
 };
+
+const SelectField = ({
+  icon,
+  label,
+  onOpen,
+  value,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onOpen: (position: MenuSurfacePosition) => void;
+  value: string;
+}) => {
+  const ref = useRef<View>(null);
+
+  const open = () => {
+    if (Platform.OS === 'web') {
+      const element = ref.current as unknown as HTMLElement | null;
+      const bounds = element?.getBoundingClientRect?.();
+      if (bounds) {
+        onOpen({ x: bounds.left, y: bounds.bottom + 6 });
+        return;
+      }
+    }
+    ref.current?.measureInWindow((x, y, _width, height) => {
+      onOpen({ x, y: y + height + 6 });
+    });
+  };
+
+  return (
+    <Pressable
+      accessibilityLabel={`${label}: ${value}`}
+      accessibilityRole="button"
+      onPress={open}
+      ref={ref}
+      style={({ pressed }) => [
+        styles.selectField,
+        pressed && styles.pressed,
+      ]}
+    >
+      <View style={styles.selectLabelRow}>
+        <Ionicons color="#8A8798" name={icon} size={13} />
+        <Text style={styles.selectLabel}>{label}</Text>
+      </View>
+      <View style={styles.selectValueRow}>
+        <Text numberOfLines={1} style={styles.selectValue}>
+          {value}
+        </Text>
+        <Ionicons color="#AAA7B5" name="chevron-down" size={13} />
+      </View>
+    </Pressable>
+  );
+};
+
+const SectionLabel = ({
+  icon,
+  label,
+}: {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+}) => (
+  <View style={styles.sectionLabel}>
+    <Ionicons color="#767286" name={icon} size={14} />
+    <Text style={styles.sectionLabelText}>{label}</Text>
+  </View>
+);
 
 const Segment = ({
   label,
@@ -442,33 +606,49 @@ const NumberField = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#DCD9ED',
-    borderRadius: 18,
+    borderColor: '#D9D6E8',
+    borderRadius: 16,
     borderWidth: 1,
     marginBottom: 18,
-    padding: 16,
+    overflow: 'hidden',
+    padding: 18,
     shadowColor: '#403B64',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
+    shadowOffset: { height: 10, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+  },
+  cardCompact: {
+    borderRadius: 14,
+    padding: 14,
   },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 13,
+    marginBottom: 15,
+  },
+  headerIdentity: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  typeIcon: {
+    alignItems: 'center',
+    borderRadius: 12,
+    height: 40,
+    justifyContent: 'center',
+    marginRight: 11,
+    width: 40,
   },
   eyebrow: {
     color: '#8B8C99',
     fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   heading: {
     color: '#303145',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     marginTop: 2,
   },
   closeButton: {
@@ -479,30 +659,78 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 32,
   },
-  titleInput: {
+  titleField: {
+    alignItems: 'center',
     backgroundColor: '#F8F7FA',
     borderColor: '#DDD9EA',
     borderRadius: 11,
     borderWidth: 1,
+    flexDirection: 'row',
+    minHeight: 48,
+    paddingHorizontal: 13,
+  },
+  titleInput: {
     color: '#2E2F42',
+    flex: 1,
     fontSize: 15,
-    fontWeight: '600',
-    minHeight: 44,
-    paddingHorizontal: 12,
+    fontWeight: '700',
+    minHeight: 46,
+    outlineColor: 'transparent',
+    paddingHorizontal: 10,
   },
-  typeRow: {
+  selectRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    gap: 8,
+  },
+  selectField: {
+    backgroundColor: '#F8F7FA',
+    borderColor: '#E1DFE8',
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+    minHeight: 52,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+  },
+  selectLabelRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  selectLabel: {
+    color: '#8A8798',
+    fontSize: 9,
+    fontWeight: '700',
+    marginLeft: 5,
+  },
+  selectValueRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 3,
+  },
+  selectValue: {
+    color: '#3C3D50',
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '700',
+    marginRight: 5,
+  },
+  formSection: {
+    borderTopColor: '#ECEAF2',
+    borderTopWidth: 1,
     marginTop: 10,
+    paddingTop: 13,
   },
-  formRow: {
+  sectionLabel: {
+    alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
+    marginBottom: 8,
   },
-  fieldGroup: {
-    marginRight: 18,
-    marginTop: 8,
+  sectionLabelText: {
+    color: '#646174',
+    fontSize: 11,
+    fontWeight: '800',
+    marginLeft: 6,
   },
   fieldLabel: {
     color: '#7D7E8C',
@@ -510,12 +738,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 5,
   },
-  segmentGroup: {
-    flexDirection: 'row',
-  },
   segment: {
     backgroundColor: '#F3F2F6',
-    borderColor: 'transparent',
+    borderColor: '#F3F2F6',
     borderRadius: 9,
     borderWidth: 1,
     marginBottom: 5,
@@ -526,7 +751,7 @@ const styles = StyleSheet.create({
   },
   segmentSelected: {
     backgroundColor: '#F0EEFF',
-    borderColor: '#D7D1FF',
+    borderColor: '#BFB7F5',
   },
   segmentText: {
     color: '#686978',
@@ -544,7 +769,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 8,
+    marginTop: 7,
   },
   numberField: {
     marginRight: 8,
@@ -579,9 +804,6 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     marginRight: 10,
   },
-  section: {
-    marginTop: 12,
-  },
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -603,8 +825,10 @@ const styles = StyleSheet.create({
     borderColor: '#6759E8',
   },
   colorInner: {
+    alignItems: 'center',
     borderRadius: 9,
     height: 18,
+    justifyContent: 'center',
     width: 18,
   },
   notesInput: {
@@ -626,9 +850,12 @@ const styles = StyleSheet.create({
     marginTop: 9,
   },
   actions: {
+    borderTopColor: '#ECEAF2',
+    borderTopWidth: 1,
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    marginTop: 13,
+    marginTop: 15,
+    paddingTop: 13,
   },
   actionGap: {
     width: 6,

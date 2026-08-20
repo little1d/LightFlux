@@ -1,37 +1,76 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   PanResponder,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
+import {
+  taskDragDisplacement,
+  taskRowStep,
+  type TaskDragState,
+} from './taskDrag';
+
 interface DraggableTaskRowProps {
   children: React.ReactNode;
+  dragState: TaskDragState | null;
   id: string;
   index: number;
+  itemCount: number;
   label: string;
   nested: boolean;
+  onDragStateChange: (state: TaskDragState | null) => void;
   onMove: (id: string, targetIndex: number) => void;
   scopeId: string;
 }
 
 const DraggableTaskRow = ({
   children,
+  dragState,
   id,
   index,
+  itemCount,
   label,
   nested,
+  onDragStateChange,
   onMove,
+  scopeId,
 }: DraggableTaskRowProps) => {
-  const defaultRowStep = nested ? 42 : 52;
+  const defaultRowStep = taskRowStep(nested);
   const [dragOffset, setDragOffset] = useState(0);
   const latestOffset = useRef(0);
   const rowStep = useRef(defaultRowStep);
+  const shift = useRef(new Animated.Value(0)).current;
+  const displacement = taskDragDisplacement({
+    dragState,
+    id,
+    index,
+    nested,
+    scopeId,
+  });
+  const targeted =
+    Boolean(dragState) &&
+    dragState?.id !== id &&
+    dragState?.scopeId === scopeId &&
+    dragState?.targetIndex === index;
+  const targetAfter =
+    targeted &&
+    (dragState?.targetIndex ?? 0) > (dragState?.sourceIndex ?? 0);
+
+  useEffect(() => {
+    Animated.timing(shift, {
+      duration: 150,
+      toValue: displacement,
+      useNativeDriver: true,
+    }).start();
+  }, [displacement, shift]);
 
   const resetDrag = () => {
     latestOffset.current = 0;
     setDragOffset(0);
+    onDragStateChange(null);
   };
 
   const responder = useMemo(
@@ -44,10 +83,28 @@ const DraggableTaskRow = ({
         onPanResponderGrant: () => {
           latestOffset.current = 0;
           setDragOffset(0);
+          onDragStateChange({
+            id,
+            scopeId,
+            sourceIndex: index,
+            targetIndex: index,
+          });
         },
         onPanResponderMove: (_, gesture) => {
           latestOffset.current = gesture.dy;
           setDragOffset(gesture.dy);
+          onDragStateChange({
+            id,
+            scopeId,
+            sourceIndex: index,
+            targetIndex: Math.max(
+              0,
+              Math.min(
+                index + Math.round(gesture.dy / rowStep.current),
+                itemCount - 1,
+              ),
+            ),
+          });
         },
         onPanResponderRelease: () => {
           const targetIndex =
@@ -62,11 +119,18 @@ const DraggableTaskRow = ({
         onStartShouldSetPanResponder: () => true,
         onShouldBlockNativeResponder: () => true,
       }),
-    [id, index, onMove],
+    [
+      id,
+      index,
+      itemCount,
+      onDragStateChange,
+      onMove,
+      scopeId,
+    ],
   );
 
   return (
-    <View
+    <Animated.View
       accessibilityLabel={label}
       onLayout={(event) => {
         rowStep.current = Math.max(
@@ -80,12 +144,27 @@ const DraggableTaskRow = ({
         {
           borderRadius: nested ? 9 : 12,
           transform: [
-            { translateY: dragOffset },
+            {
+              translateY:
+                dragOffset !== 0 ? dragOffset : shift,
+            },
             { scale: dragOffset !== 0 ? 1.012 : 1 },
           ],
         },
       ]}
     >
+      {targeted ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.dropIndicator,
+            nested && styles.dropIndicatorNested,
+            targetAfter
+              ? styles.dropIndicatorAfter
+              : styles.dropIndicatorBefore,
+          ]}
+        />
+      ) : null}
       <View
         {...responder.panHandlers}
         accessibilityLabel={label}
@@ -111,7 +190,7 @@ const DraggableTaskRow = ({
         <Text style={styles.handleText}>⠿</Text>
       </View>
       {children}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -143,6 +222,24 @@ const styles = StyleSheet.create({
   handleText: {
     color: '#A3A2AD',
     fontSize: 12,
+  },
+  dropIndicator: {
+    backgroundColor: '#786AF0',
+    borderRadius: 2,
+    height: 2,
+    left: 4,
+    position: 'absolute',
+    right: 4,
+    zIndex: 20,
+  },
+  dropIndicatorNested: {
+    left: 22,
+  },
+  dropIndicatorBefore: {
+    top: -2,
+  },
+  dropIndicatorAfter: {
+    bottom: -2,
   },
 });
 

@@ -14,6 +14,7 @@ import { inputAccentProps } from '../../config/input';
 import { Translation } from '../../content';
 import { Todo } from '../../types/todo';
 import DraggableTaskRow from '../tasks/DraggableTaskRow';
+import { TaskDragState } from '../tasks/taskDrag';
 import { OpenTaskMenu } from '../tasks/useTaskContextMenu';
 import ActionButton from '../ui/ActionButton';
 import {
@@ -253,23 +254,26 @@ const GroupSectionCard = ({
   selectedTaskId: string | null;
   siblingIndexById: Map<string, number>;
   taskDraft: string;
-}) => (
-  <View
-    className="mb-3 overflow-hidden rounded-[20px] border border-[#E8E7EE] bg-white"
-    style={[styles.cardShadow, selected && styles.groupCardSelected]}
-  >
-    <GroupHeader
-      isExpanded={expanded}
-      labels={labels}
-      onAddTask={onOpenTaskComposer}
-      onOpenMenu={onOpenGroupMenu}
-      onToggle={onToggle}
-      section={section}
-      selected={selected}
-    />
+}) => {
+  const [taskDrag, setTaskDrag] = useState<TaskDragState | null>(null);
 
-    <CollapsibleGroupBody expanded={expanded}>
-      <View className="border-t border-[#ECEBF1] px-4 py-1.5">
+  return (
+    <View
+      className="mb-3 overflow-hidden rounded-[20px] border border-[#E8E7EE] bg-white"
+      style={[styles.cardShadow, selected && styles.groupCardSelected]}
+    >
+      <GroupHeader
+        isExpanded={expanded}
+        labels={labels}
+        onAddTask={onOpenTaskComposer}
+        onOpenMenu={onOpenGroupMenu}
+        onToggle={onToggle}
+        section={section}
+        selected={selected}
+      />
+
+      <CollapsibleGroupBody expanded={expanded}>
+        <View className="border-t border-[#ECEBF1] px-4 py-1.5">
         {activeComposer === section.id ? (
           <View
             className="mb-3 mt-3 rounded-[14px] border border-[#E0DDEE] bg-[#F8F7FB] p-3"
@@ -322,10 +326,17 @@ const GroupSectionCard = ({
             return (
               <React.Fragment key={todo.id}>
                 <DraggableTaskRow
+                  dragState={taskDrag}
                   id={todo.id}
                   index={siblingIndexById.get(todo.id) ?? 0}
+                  itemCount={
+                    section.todos.filter(
+                      (item) => item.parentId === todo.parentId,
+                    ).length
+                  }
                   label={`${labels.groups.reorderTask}: ${todo.title}`}
                   nested={nested}
+                  onDragStateChange={setTaskDrag}
                   onMove={onMoveTask}
                   scopeId={
                     todo.parentId
@@ -367,10 +378,11 @@ const GroupSectionCard = ({
             );
           })
         )}
-      </View>
-    </CollapsibleGroupBody>
-  </View>
-);
+        </View>
+      </CollapsibleGroupBody>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   cardShadow: {

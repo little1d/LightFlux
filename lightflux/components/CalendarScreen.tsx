@@ -1,5 +1,5 @@
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { translations } from '../content';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
@@ -189,16 +190,12 @@ const CalendarTask = ({
   );
 
   return (
-    <Pressable
-      accessibilityLabel={`${editLabel}: ${todo.title}`}
-      accessibilityRole="button"
-      onHoverIn={() => onHoverIn(todo.id)}
-      onHoverOut={onHoverOut}
-      onPress={() => onEdit(todo.id)}
-      onLongPress={openFromLongPress}
-      delayLongPress={350}
+    <View
+      accessibilityState={{ selected }}
+      onPointerEnter={() => onHoverIn(todo.id)}
+      onPointerLeave={onHoverOut}
       ref={targetRef}
-      style={({ pressed }) => [
+      style={[
         styles.taskRowBase,
         todo.parentId ? styles.taskRowChild : styles.taskRowRoot,
         todo.priority !== 'none' &&
@@ -207,7 +204,6 @@ const CalendarTask = ({
           },
         selected && styles.taskRowSelected,
         hovered && !selected && styles.taskRowHovered,
-        pressed && styles.taskRowPressed,
       ]}
     >
       <TaskSelectionMarker visible={selected} />
@@ -218,7 +214,17 @@ const CalendarTask = ({
         markComplete={markComplete}
         onPress={() => onToggle(todo.id)}
       />
-      <View style={styles.taskContent}>
+      <Pressable
+        accessibilityLabel={`${editLabel}: ${todo.title}`}
+        accessibilityRole="button"
+        delayLongPress={350}
+        onLongPress={openFromLongPress}
+        onPress={() => onEdit(todo.id)}
+        style={({ pressed }) => [
+          styles.taskContent,
+          pressed && styles.taskRowPressed,
+        ]}
+      >
         <Text
           style={[
             styles.taskTitle,
@@ -228,7 +234,7 @@ const CalendarTask = ({
         >
           {todo.title}
         </Text>
-      </View>
+      </Pressable>
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
       <View
@@ -238,7 +244,7 @@ const CalendarTask = ({
         label={moreActionsLabel}
         onPress={openFromButton}
       />
-    </Pressable>
+    </View>
   );
 };
 
@@ -280,7 +286,7 @@ const CalendarScreen = ({
   // is independent of that decision, so the thresholds stay stable.
   const showTaskTitles = viewportWidth >= 600;
   const compact = viewportWidth > 0 && viewportWidth < 560;
-  const mobileFab = width < 900;
+  const mobileFab = width < DESKTOP_LAYOUT_BREAKPOINT;
   const days = useMemo(() => monthGrid(visibleMonth), [visibleMonth]);
   // Chunk the flat day list into weeks so each row is a flex container whose
   // seven cells split the measured width evenly. Flex sizing (rather than a
@@ -347,7 +353,11 @@ const CalendarScreen = ({
       <ExpoStatusBar style="dark" />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={[styles.content, compact && styles.contentCompact]}
+          contentContainerStyle={[
+            styles.content,
+            mobileFab && styles.contentNarrow,
+            compact && styles.contentCompact,
+          ]}
           keyboardShouldPersistTaps="handled"
           onLayout={(event) => {
             const nextWidth = Math.round(event.nativeEvent.layout.width);
@@ -358,11 +368,11 @@ const CalendarScreen = ({
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View style={styles.header}>
-            <Text style={[styles.title, compact && styles.titleCompact]}>
-              {labels.calendar.title}
-            </Text>
-          </View>
+          {!mobileFab ? (
+            <View style={styles.header}>
+              <Text style={styles.title}>{labels.calendar.title}</Text>
+            </View>
+          ) : null}
 
           <View style={styles.workspace}>
             <View
@@ -507,10 +517,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
   },
+  contentNarrow: {
+    paddingTop: 70,
+  },
   contentCompact: {
     paddingBottom: 96,
     paddingHorizontal: 16,
-    paddingTop: 12,
   },
   header: {
     paddingBottom: 12,
@@ -520,10 +532,6 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: -0.5,
-  },
-  titleCompact: {
-    fontSize: 22,
-    letterSpacing: -0.3,
   },
   workspace: {
     width: '100%',

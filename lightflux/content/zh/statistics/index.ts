@@ -1,9 +1,9 @@
 import type { Translation } from '../../types';
 export const statistics: Translation['statistics'] = {
-  eyebrow: 'PERSONAL INSIGHTS',
+  eyebrow: '',
   title: '统计',
-  subtitle: '看清任务节奏，而不是给自己打分。',
-  back: '返回设置',
+  subtitle: '查看任务节奏与完成规律',
+  back: '返回',
   ranges: {
     '7d': '7 天',
     '30d': '30 天',

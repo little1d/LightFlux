@@ -1,9 +1,9 @@
 import type { Translation } from '../../types';
 export const statistics: Translation['statistics'] = {
-  eyebrow: 'PERSONAL INSIGHTS',
+  eyebrow: '',
   title: 'Statistics',
-  subtitle: 'Understand your task rhythm without scoring yourself.',
-  back: 'Back to settings',
+  subtitle: 'Review your task rhythm and completion patterns',
+  back: 'Back',
   ranges: {
     '7d': '7 days',
     '30d': '30 days',

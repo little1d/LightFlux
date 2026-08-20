@@ -472,6 +472,23 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     transform: [{ scale: 0.98 }],
   },
+  contentCompact: {
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  headerCompact: {
+    marginBottom: 16,
+    paddingRight: 0,
+  },
+  titleCompact: {
+    fontSize: 22,
+    letterSpacing: -0.4,
+  },
+  eyebrowCompact: {
+    fontSize: 10,
+    marginBottom: 3,
+  },
 });
 
 export default styles;

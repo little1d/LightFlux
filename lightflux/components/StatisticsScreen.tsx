@@ -61,6 +61,7 @@ const StatisticsScreen = ({
   const [range, setRange] = useState<StatisticsRange>('30d');
   const dateKey = useCurrentDateKey();
   const { width } = useWindowDimensions();
+  const compact = width < 520;
   const labels = translations[language].statistics;
   const metricWidth = (width >= 1040 ? '25%' : '50%') as
     | '25%'
@@ -105,11 +106,14 @@ const StatisticsScreen = ({
       <ExpoStatusBar style="dark" />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            compact && styles.contentCompact,
+          ]}
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View style={styles.header}>
+          <View style={[styles.header, compact && styles.headerCompact]}>
             <Pressable
               accessibilityLabel={labels.back}
               accessibilityRole="button"
@@ -122,9 +126,13 @@ const StatisticsScreen = ({
               <Ionicons color="#686979" name="chevron-back" size={20} />
             </Pressable>
             <View style={styles.headerText}>
-              <Text style={styles.eyebrow}>{labels.eyebrow}</Text>
-              <Text style={styles.title}>{labels.title}</Text>
-              <Text style={styles.subtitle}>{labels.subtitle}</Text>
+              {labels.eyebrow ? (
+                <Text style={[styles.eyebrow, compact && styles.eyebrowCompact]}>{labels.eyebrow}</Text>
+              ) : null}
+              <Text style={[styles.title, compact && styles.titleCompact]}>{labels.title}</Text>
+              {!compact ? (
+                <Text style={styles.subtitle}>{labels.subtitle}</Text>
+              ) : null}
             </View>
           </View>
 
@@ -253,21 +261,23 @@ const StatisticsScreen = ({
             </View>
           </View>
 
-          <View style={styles.definition}>
-            <View style={styles.definitionIcon}>
-              <Ionicons
-                color="#6759E8"
-                name="information"
-                size={14}
-              />
+          {!compact ? (
+            <View style={styles.definition}>
+              <View style={styles.definitionIcon}>
+                <Ionicons
+                  color="#6759E8"
+                  name="information"
+                  size={14}
+                />
+              </View>
+              <Text style={styles.definitionText}>
+                {labels.definition}
+                {analytics.estimated
+                  ? ` ${labels.estimatedDefinition}`
+                  : ''}
+              </Text>
             </View>
-            <Text style={styles.definitionText}>
-              {labels.definition}
-              {analytics.estimated
-                ? ` ${labels.estimatedDefinition}`
-                : ''}
-            </Text>
-          </View>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     </View>

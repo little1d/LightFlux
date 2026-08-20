@@ -61,6 +61,10 @@ jobs:
             platform: windows-latest
             rustTargets: ""
             args: --bundles nsis
+          - name: Linux x86_64
+            platform: ubuntu-22.04
+            rustTargets: ""
+            args: --bundles appimage,deb
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -71,6 +75,18 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: lightflux/package-lock.json
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -132,7 +148,8 @@ jobs:
             .version == "'"${VERSION}"'" and
             (.platforms["windows-x86_64"].signature | length > 0) and
             (.platforms["darwin-aarch64"].signature | length > 0) and
-            (.platforms["darwin-x86_64"].signature | length > 0)
+            (.platforms["darwin-x86_64"].signature | length > 0) and
+            (.platforms["linux-x86_64"].signature | length > 0)
           ' "${RELEASE_DIR}/latest.json"
           gh release edit "${TAG}" \
             --repo little1d/lightflux-releases \

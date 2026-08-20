@@ -24,6 +24,21 @@ export const requestEmailOtp = async (email: string): Promise<void> => {
   }
 };
 
+export const requestEmailVerificationOtp = async (
+  email: string,
+): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const result = await authClient.emailOtp.sendVerificationOtp({
+    email: email.trim().toLowerCase(),
+    type: 'email-verification',
+  });
+  if (result.error) {
+    throw authError(result.error, 'Unable to send the verification code.');
+  }
+};
+
 export const verifyEmailOtp = async (
   email: string,
   otp: string,
@@ -44,6 +59,71 @@ export const verifyEmailOtp = async (
   if (!session.data?.user) {
     throw new Error('The authenticated session could not be restored.');
   }
+};
+
+const requireRestoredSession = async (): Promise<void> => {
+  const session = await authClient.getSession();
+  if (!session.data?.user) {
+    throw new Error('The authenticated session could not be restored.');
+  }
+};
+
+export const signInWithEmailPassword = async (
+  email: string,
+  password: string,
+): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const result = await authClient.signIn.email({
+    email: email.trim().toLowerCase(),
+    password,
+    rememberMe: true,
+  });
+  if (result.error || !result.data?.user) {
+    throw authError(result.error, 'Unable to sign in with this password.');
+  }
+  await requireRestoredSession();
+};
+
+export const registerWithEmailPassword = async (
+  email: string,
+  password: string,
+): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  const result = await authClient.signUp.email({
+    email: normalizedEmail,
+    name: normalizedEmail.split('@')[0] || 'LightFlux user',
+    password,
+  });
+  if (result.error) {
+    throw authError(result.error, 'Unable to create this account.');
+  }
+};
+
+export const verifyPasswordRegistration = async (
+  email: string,
+  otp: string,
+  password: string,
+): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const normalizedEmail = email.trim().toLowerCase();
+  const verification = await authClient.emailOtp.verifyEmail({
+    email: normalizedEmail,
+    otp: otp.trim(),
+  });
+  if (verification.error || !verification.data?.status) {
+    throw authError(
+      verification.error,
+      'Unable to verify the registration code.',
+    );
+  }
+  await signInWithEmailPassword(normalizedEmail, password);
 };
 
 export const getRemoteSession = async (): Promise<boolean> => {

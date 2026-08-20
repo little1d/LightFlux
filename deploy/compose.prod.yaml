@@ -1,0 +1,33 @@
+# Production compose for the LightFlux API.
+#
+# This runs ONLY the Node API. PostgreSQL is hosted on Supabase and reached
+# through DATABASE_URL, so no database container is defined here. The API binds
+# to localhost; nginx terminates TLS and reverse-proxies to it.
+#
+# Build context is the sibling `server/` directory, which the deploy script
+# syncs next to this file on the server (see deploy/scripts/deploy.sh).
+services:
+  api:
+    build: ../server
+    env_file:
+      - ../server/.env
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - lightflux-uploads:/app/data/uploads
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:8787/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  lightflux-uploads:

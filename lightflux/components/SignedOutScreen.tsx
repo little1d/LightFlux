@@ -15,10 +15,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { translations } from '../content';
 import {
+  getPasswordStatus,
   isRemoteAuthConfigured,
   registerWithEmailPassword,
   requestEmailOtp,
   requestEmailVerificationOtp,
+  setAccountPassword,
   signInWithEmailPassword,
   verifyEmailOtp,
   verifyPasswordRegistration,
@@ -30,7 +32,11 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 
 type AuthMethod = 'password' | 'otp';
-type AuthStep = 'credentials' | 'otp-code' | 'registration-code';
+type AuthStep =
+  | 'credentials'
+  | 'otp-code'
+  | 'registration-code'
+  | 'set-password';
 
 const SignedOutScreen = ({
   onCancel,
@@ -53,15 +59,16 @@ const SignedOutScreen = ({
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [focusedField, setFocusedField] = useState<
-    'code' | 'email' | 'password' | null
+    'code' | 'confirm' | 'email' | 'password' | null
   >(null);
 
   useEffect(() => {
-    if (step === 'credentials') {
+    if (step !== 'otp-code' && step !== 'registration-code') {
       return;
     }
     const timer = setTimeout(() => codeInputRef.current?.focus(), 80);
@@ -89,6 +96,26 @@ const SignedOutScreen = ({
     }
   };
 
+  // After an OTP sign-in, offer to set a password when the account has none so
+  // the next sign-in can use email + password. Any status-check failure falls
+  // back to entering the app; the offer is a convenience, not a gate.
+  const continueOrOfferPassword = async () => {
+    let hasPassword = true;
+    try {
+      hasPassword = await getPasswordStatus();
+    } catch {
+      hasPassword = true;
+    }
+    if (hasPassword) {
+      await onContinue();
+      return;
+    }
+    setPassword('');
+    setConfirmPassword('');
+    setNotice('');
+    setStep('set-password');
+  };
+
   const verifyCode = async () => {
     setError('');
     setNotice('');
@@ -99,9 +126,40 @@ const SignedOutScreen = ({
     setBusy(true);
     try {
       await verifyEmailOtp(normalizedEmail, code);
-      await onContinue();
+      await continueOrOfferPassword();
     } catch {
       setError(labels.verifyError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitSetPassword = async () => {
+    setError('');
+    setNotice('');
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(labels.passwordTooShort);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(labels.passwordMismatch);
+      return;
+    }
+    setBusy(true);
+    try {
+      await setAccountPassword(password);
+      await onContinue();
+    } catch {
+      setError(labels.setPasswordError);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const skipSetPassword = async () => {
+    setBusy(true);
+    try {
+      await onContinue();
     } finally {
       setBusy(false);
     }
@@ -189,13 +247,20 @@ const SignedOutScreen = ({
 
   const primaryDisabled =
     busy ||
-    (step !== 'credentials'
-      ? code.length !== 6
-      : method === 'password'
-        ? normalizedEmail.length === 0 || password.length < MIN_PASSWORD_LENGTH
-        : normalizedEmail.length === 0);
+    (step === 'set-password'
+      ? password.length < MIN_PASSWORD_LENGTH ||
+        confirmPassword.length < MIN_PASSWORD_LENGTH
+      : step !== 'credentials'
+        ? code.length !== 6
+        : method === 'password'
+          ? normalizedEmail.length === 0 ||
+            password.length < MIN_PASSWORD_LENGTH
+          : normalizedEmail.length === 0);
 
   const submitPrimary = () => {
+    if (step === 'set-password') {
+      return submitSetPassword();
+    }
     if (step === 'registration-code') {
       return verifyRegistration();
     }
@@ -206,25 +271,29 @@ const SignedOutScreen = ({
   };
 
   const primaryLabel =
-    step === 'registration-code'
+    step === 'set-password'
       ? busy
-        ? labels.verifyingCode
-        : labels.verifyRegistration
-      : step === 'otp-code'
+        ? labels.settingPassword
+        : labels.setPasswordAction
+      : step === 'registration-code'
         ? busy
           ? labels.verifyingCode
-          : labels.verifyCode
-        : method === 'password'
-          ? passwordMode === 'register'
-            ? busy
-              ? labels.registeringWithPassword
-              : labels.registerWithPassword
+          : labels.verifyRegistration
+        : step === 'otp-code'
+          ? busy
+            ? labels.verifyingCode
+            : labels.verifyCode
+          : method === 'password'
+            ? passwordMode === 'register'
+              ? busy
+                ? labels.registeringWithPassword
+                : labels.registerWithPassword
+              : busy
+                ? labels.signingInWithPassword
+                : labels.signInWithPassword
             : busy
-              ? labels.signingInWithPassword
-              : labels.signInWithPassword
-          : busy
-            ? labels.sendingCode
-            : labels.sendCode;
+              ? labels.sendingCode
+              : labels.sendCode;
 
   return (
     <View style={styles.screen}>
@@ -240,7 +309,11 @@ const SignedOutScreen = ({
                 <IconButton
                   icon="close"
                   label={allLabels.cancel}
-                  onPress={onCancel}
+                  onPress={
+                    step === 'set-password'
+                      ? () => void skipSetPassword()
+                      : onCancel
+                  }
                   showTooltip={false}
                   size="small"
                   variant="transparent"
@@ -252,11 +325,13 @@ const SignedOutScreen = ({
             </View>
             <Text style={styles.title}>{labels.title}</Text>
             <Text style={styles.description}>
-              {step === 'registration-code'
-                ? labels.registrationCodeDescription(normalizedEmail)
-                : step === 'otp-code'
-                  ? labels.codeDescription(normalizedEmail)
-                  : labels.description}
+              {step === 'set-password'
+                ? labels.setPasswordDescription
+                : step === 'registration-code'
+                  ? labels.registrationCodeDescription(normalizedEmail)
+                  : step === 'otp-code'
+                    ? labels.codeDescription(normalizedEmail)
+                    : labels.description}
             </Text>
 
             {isRemoteAuthConfigured ? (
@@ -357,6 +432,63 @@ const SignedOutScreen = ({
                       />
                     ) : null}
                   </>
+                ) : step === 'set-password' ? (
+                  <>
+                    <TextInput
+                      accessibilityLabel={labels.passwordPlaceholder}
+                      autoCapitalize="none"
+                      autoComplete="new-password"
+                      autoCorrect={false}
+                      editable={!busy}
+                      maxLength={128}
+                      onBlur={() => setFocusedField(null)}
+                      onChangeText={(value) => {
+                        setError('');
+                        setPassword(value);
+                      }}
+                      onFocus={() => setFocusedField('password')}
+                      placeholder={labels.passwordPlaceholder}
+                      placeholderTextColor="#A2A3B0"
+                      returnKeyType="next"
+                      secureTextEntry
+                      style={[
+                        styles.input,
+                        focusedField === 'password' && styles.inputFocused,
+                      ]}
+                      textContentType="newPassword"
+                      value={password}
+                    />
+                    <TextInput
+                      accessibilityLabel={labels.passwordConfirmPlaceholder}
+                      autoCapitalize="none"
+                      autoComplete="new-password"
+                      autoCorrect={false}
+                      editable={!busy}
+                      maxLength={128}
+                      onBlur={() => setFocusedField(null)}
+                      onChangeText={(value) => {
+                        setError('');
+                        setConfirmPassword(value);
+                      }}
+                      onFocus={() => setFocusedField('confirm')}
+                      onSubmitEditing={() => {
+                        if (!primaryDisabled) {
+                          void submitSetPassword();
+                        }
+                      }}
+                      placeholder={labels.passwordConfirmPlaceholder}
+                      placeholderTextColor="#A2A3B0"
+                      returnKeyType="done"
+                      secureTextEntry
+                      style={[
+                        styles.input,
+                        styles.passwordInput,
+                        focusedField === 'confirm' && styles.inputFocused,
+                      ]}
+                      textContentType="newPassword"
+                      value={confirmPassword}
+                    />
+                  </>
                 ) : (
                   <TextInput
                     accessibilityLabel={labels.codePlaceholder}
@@ -408,7 +540,7 @@ const SignedOutScreen = ({
                   </Text>
                 </Pressable>
 
-                {step !== 'credentials' ? (
+                {step === 'otp-code' || step === 'registration-code' ? (
                   <View style={styles.secondaryActions}>
                     <Pressable
                       accessibilityRole="button"
@@ -438,6 +570,21 @@ const SignedOutScreen = ({
                       </Text>
                     </Pressable>
                   </View>
+                ) : null}
+                {step === 'set-password' ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={busy}
+                    onPress={() => void skipSetPassword()}
+                    style={({ pressed }) => [
+                      styles.localButton,
+                      pressed && styles.secondaryButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.localButtonText}>
+                      {labels.skipPassword}
+                    </Text>
+                  </Pressable>
                 ) : null}
                 {step === 'credentials' && method === 'password' ? (
                   <Pressable

@@ -134,6 +134,47 @@ export const getRemoteSession = async (): Promise<boolean> => {
   return Boolean(result.data?.user);
 };
 
+// Whether the signed-in email account already has a credential password. Used
+// after an OTP sign-in to decide whether to offer setting one, so the account
+// can sign in with email + password next time.
+export const getPasswordStatus = async (): Promise<boolean> => {
+  if (!isRemoteAuthConfigured) {
+    return true;
+  }
+  const response = await authenticatedFetch(
+    `${authApiUrl}/api/auth/password-status`,
+  );
+  if (!response.ok) {
+    throw new Error('Unable to check the password status.');
+  }
+  const body = (await response.json()) as { hasPassword?: boolean };
+  return Boolean(body.hasPassword);
+};
+
+// Set the credential password for the signed-in email account. Fails if a
+// password is already set (409) or the value is out of bounds (400).
+export const setAccountPassword = async (
+  password: string,
+): Promise<void> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const response = await authenticatedFetch(
+    `${authApiUrl}/api/auth/set-password`,
+    {
+      body: JSON.stringify({ password }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+    },
+  );
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    };
+    throw new Error(body.error || 'Unable to set the password.');
+  }
+};
+
 export interface RemoteUser {
   id: string;
   email: string;

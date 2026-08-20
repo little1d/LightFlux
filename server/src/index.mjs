@@ -629,6 +629,67 @@ const handleRequest = async (request, response) => {
     return;
   }
 
+  if (
+    url.pathname === '/api/auth/password-status' &&
+    request.method === 'GET'
+  ) {
+    const auth = await currentSession(request);
+    if (!auth || auth.provider !== EMAIL_AUTH_PROVIDER) {
+      json(response, 401, { error: 'Authentication required.' }, corsHeaders);
+      return;
+    }
+    const accounts = await emailAuth.api.listUserAccounts({
+      headers: fromNodeHeaders(request.headers),
+    });
+    const hasPassword = Array.isArray(accounts)
+      ? accounts.some((account) => account.providerId === 'credential')
+      : false;
+    json(response, 200, { hasPassword }, corsHeaders);
+    return;
+  }
+
+  if (
+    url.pathname === '/api/auth/set-password' &&
+    request.method === 'POST'
+  ) {
+    const auth = await currentSession(request);
+    if (!auth || auth.provider !== EMAIL_AUTH_PROVIDER) {
+      json(response, 401, { error: 'Authentication required.' }, corsHeaders);
+      return;
+    }
+    const body = await parseBody(request);
+    const newPassword =
+      typeof body.password === 'string' ? body.password : '';
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      json(
+        response,
+        400,
+        { error: 'Password must be between 8 and 128 characters.' },
+        corsHeaders,
+      );
+      return;
+    }
+    try {
+      await emailAuth.api.setPassword({
+        body: { newPassword },
+        headers: fromNodeHeaders(request.headers),
+      });
+    } catch (error) {
+      // Better Auth throws PASSWORD_ALREADY_SET when a credential password
+      // already exists; surface it as a conflict instead of a 500.
+      const status = error?.status === 'BAD_REQUEST' ? 409 : 400;
+      json(
+        response,
+        status,
+        { error: 'Unable to set the password.' },
+        corsHeaders,
+      );
+      return;
+    }
+    json(response, 200, { ok: true }, corsHeaders);
+    return;
+  }
+
   if (url.pathname === '/api/ai/turns' && request.method === 'POST') {
     const auth = await currentSession(request);
     if (!auth && !config.ai.allowAnonymous) {

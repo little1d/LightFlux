@@ -64,6 +64,14 @@ export const common: CommonContent = {
     invalidCode: 'Enter the complete 6-digit code.',
     requestError: 'Unable to send the code. Try again shortly.',
     verifyError: 'That code is invalid or expired. Try again.',
+    setPasswordDescription:
+      'Set a password so you can sign in with email and password next time.',
+    passwordConfirmPlaceholder: 'Confirm password',
+    setPasswordAction: 'Set password',
+    settingPassword: 'Setting password…',
+    skipPassword: 'Skip for now',
+    passwordMismatch: 'The passwords do not match.',
+    setPasswordError: 'Unable to set the password. Try again shortly.',
   },
   notifications: {
     orderUpdated: 'Order updated.',

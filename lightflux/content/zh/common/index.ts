@@ -64,6 +64,13 @@ export const common: CommonContent = {
     invalidCode: '请输入完整的 6 位验证码。',
     requestError: '验证码发送失败，请稍后重试。',
     verifyError: '验证码无效或已过期，请重新输入。',
+    setPasswordDescription: '设置一个密码，下次可直接用邮箱和密码登录。',
+    passwordConfirmPlaceholder: '再次输入密码',
+    setPasswordAction: '设置密码',
+    settingPassword: '正在设置…',
+    skipPassword: '暂不设置，直接进入',
+    passwordMismatch: '两次输入的密码不一致。',
+    setPasswordError: '密码设置失败，请稍后重试。',
   },
   notifications: {
     orderUpdated: '顺序已更新',

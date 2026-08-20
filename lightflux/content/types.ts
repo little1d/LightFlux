@@ -210,6 +210,13 @@ export interface Translation {
     invalidCode: string;
     requestError: string;
     verifyError: string;
+    setPasswordDescription: string;
+    passwordConfirmPlaceholder: string;
+    setPasswordAction: string;
+    settingPassword: string;
+    skipPassword: string;
+    passwordMismatch: string;
+    setPasswordError: string;
   };
   notifications: {
     orderUpdated: string;

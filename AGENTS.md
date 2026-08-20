@@ -143,9 +143,9 @@ Use this format:
 - Evidence: `lightflux/components/ui/MenuSurface.tsx` (`webFixedPosition`); verified the language, group, priority, and date pickers open on-screen directly below their trigger and both language directions switch the whole UI.
 
 ### 2026-08-18 - Web overlays must portal to document.body
-- Context: After the `position:fixed` fix the language dropdown still had its "English" option clipped/painted behind the statistics card. `position:fixed` positions against the viewport but does not escape ancestor stacking contexts: the Settings `sectionCard` uses `overflow:hidden`, and RNW wraps content in per-`View`/`Animated.View` stacking and transform contexts, so a `zIndex` set in-tree only competes within the nearest section.
-- Rule: Render web popovers/menus through a `Portal` into `document.body` so they live in the root stacking context; `position:fixed` alone is not enough when any ancestor clips overflow or creates a stacking/transform context. Keep a platform-split `Portal` (`.web` via `createPortal`, `.native` pass-through since `Modal` already escapes the tree) with a base re-export for TS resolution.
-- Evidence: `lightflux/components/ui/Portal.web.tsx`, `Portal.native.tsx`, `Portal.tsx`, `MenuSurface.tsx`; verified the language dropdown shows both options unobstructed and the move-to-group cascade flyout still expands without regression.
+- Context: After the `position:fixed` fix the language dropdown was still clipped behind a Settings card, and task-detail metadata menus later rendered visibly but could not receive clicks because their root Portal was below RNW's z-index 9999 `Modal` host.
+- Rule: Render web popovers/menus through a `Portal` into `document.body`; when a menu can open from an RNW `Modal`, its root overlay must also stack above the Modal host. Keep a platform-split `Portal` (`.web` via `createPortal`, `.native` pass-through since `Modal` already escapes the tree) with a base re-export for TS resolution.
+- Evidence: `lightflux/components/ui/Portal.web.tsx`, `Portal.native.tsx`, `Portal.tsx`, `MenuSurface.tsx`; verified the language dropdown, move-to-group cascade, and task-detail date/group/priority menus render and receive pointer input.
 
 ### 2026-08-19 - Native menus anchor to their trigger
 - Context: Native `MenuSurface` ignored a supplied position and always used its bottom-sheet fallback, so task, group, and milestone actions appeared detached from their trigger on iOS/Android.

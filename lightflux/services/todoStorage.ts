@@ -434,6 +434,7 @@ interface SyncMetadata {
 
 let syncMetadataCache: SyncMetadata | null | undefined;
 let activeRemoteOwnerId: string | null = null;
+let remoteSyncEnabled = false;
 let remoteSaveQueue: Promise<void> = Promise.resolve();
 let deviceWriteGeneration = 0;
 
@@ -650,6 +651,7 @@ export const synchronizeAppState = async (
     return localState;
   }
   activeRemoteOwnerId = snapshot.ownerId;
+  remoteSyncEnabled = true;
   const metadata = await loadSyncMetadata();
   const candidate = candidateForSnapshot(localState, snapshot, metadata);
   const baseState =
@@ -666,9 +668,11 @@ export const synchronizeAppState = async (
 const saveRemoteKnownState = async (
   state: PersistedAppState,
 ): Promise<PersistedAppState> => {
+  if (!activeRemoteOwnerId) {
+    return state;
+  }
   const metadata = await loadSyncMetadata();
   if (
-    !activeRemoteOwnerId ||
     !metadata ||
     metadata.ownerId !== activeRemoteOwnerId
   ) {
@@ -701,22 +705,20 @@ const saveRemoteKnownState = async (
 
 export const resetRemoteSyncContext = (): void => {
   activeRemoteOwnerId = null;
+  remoteSyncEnabled = false;
 };
 
 export const loadAppState = async (): Promise<PersistedAppState | null> => {
   const deviceState = await loadDeviceState();
-  if (!isRemoteAuthConfigured) {
+  if (!isRemoteAuthConfigured || !remoteSyncEnabled) {
     return deviceState;
   }
 
   try {
     return await synchronizeAppState(deviceState);
   } catch (error) {
-    if (deviceState) {
-      console.warn('Unable to load cloud data; using the local cache.', error);
-      return deviceState;
-    }
-    throw error;
+    console.warn('Unable to load cloud data; using the local cache.', error);
+    return deviceState;
   }
 };
 
@@ -725,7 +727,7 @@ export const saveAppState = async (
 ): Promise<PersistedAppState> => {
   const writeGeneration = ++deviceWriteGeneration;
   await saveDeviceState(state);
-  if (!isRemoteAuthConfigured) {
+  if (!isRemoteAuthConfigured || !remoteSyncEnabled) {
     return state;
   }
 

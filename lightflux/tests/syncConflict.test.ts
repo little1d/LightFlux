@@ -95,6 +95,26 @@ describe('revision conflict recovery', () => {
     saveRemoteAppState.mockReset();
   });
 
+  it('keeps local saves local until a remote owner is established', async () => {
+    vi.resetModules();
+    const local = state(20, 'Local edit', 'Second');
+    loadRemoteAppState.mockRejectedValue(new Error('offline'));
+    const { saveAppState } = await import('../services/todoStorage');
+
+    await expect(saveAppState(local)).resolves.toEqual(local);
+
+    expect(loadRemoteAppState).not.toHaveBeenCalled();
+    expect(saveRemoteAppState).not.toHaveBeenCalled();
+    expect(
+      JSON.parse(storage.get('lightflux.app-state.v1') ?? '{}'),
+    ).toMatchObject({
+      todos: [
+        expect.objectContaining({ title: 'Local edit' }),
+        expect.objectContaining({ title: 'Second' }),
+      ],
+    });
+  });
+
   it('three-way merges a 409 snapshot and retries with its revision', async () => {
     vi.resetModules();
     const base = state(10, 'First', 'Second');

@@ -7,6 +7,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Animated,
   Modal,
   Platform,
   Pressable,
@@ -66,7 +67,7 @@ import {
   useTodoStore,
 } from './store/todoStore';
 import { translations } from './content';
-import { isRemoteAuthConfigured } from './services/authApi';
+import { getRemoteUser, isRemoteAuthConfigured, logoutRemoteSession } from './services/authApi';
 import {
   loadSessionState,
   saveSessionState,
@@ -161,11 +162,13 @@ const AccountTrigger = ({
   label,
   onPress,
   tooltipPosition,
+  variant,
 }: {
   active: boolean;
   label: string;
   onPress: () => void;
   tooltipPosition: 'right' | 'bottom';
+  variant?: 'primary' | 'neutral';
 }) => {
   return (
     <IconButton
@@ -174,7 +177,7 @@ const AccountTrigger = ({
       onPress={onPress}
       size="large"
       tooltipPosition={tooltipPosition}
-      variant={active ? 'primary' : 'neutral'}
+      variant={variant ?? (active ? 'primary' : 'neutral')}
     />
   );
 };
@@ -185,13 +188,20 @@ const AppContent = () => {
   const [activeView, setActiveView] = useState<AppView>('groups');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ email: string; name?: string } | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickCreateRequestId, setQuickCreateRequestId] = useState(0);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [quickAddInitialDate, setQuickAddInitialDate] = useState<string | null>(
+    null,
+  );
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const { height, width } = useWindowDimensions();
+  const settingsSlideAnim = useRef(new Animated.Value(-width)).current;
   const [navigationDrag, setNavigationDrag] =
     useState<NavigationDragState | null>(null);
   const notifiedUpdateVersion = useRef<string | null>(null);
@@ -207,6 +217,7 @@ const AppContent = () => {
     persistenceErrorAt,
     reorderNavigationItem,
     setNavigationItemVisible,
+    syncRemote,
   } = useTodoStore(
     useShallow((state) => ({
       clearPersistenceError: state.clearPersistenceError,
@@ -216,6 +227,7 @@ const AppContent = () => {
       persistenceErrorAt: state.persistenceErrorAt,
       reorderNavigationItem: state.reorderNavigationItem,
       setNavigationItemVisible: state.setNavigationItemVisible,
+      syncRemote: state.syncRemote,
     })),
   );
   const {
@@ -278,7 +290,6 @@ const AppContent = () => {
     (state) =>
       state.trashedTodos.length + state.trashedMilestones.length,
   );
-  const { height, width } = useWindowDimensions();
   const labels = translations[language];
   const usesDesktopLayout = width >= 900;
   const selectedTaskId = taskMenu?.todoId ?? selectedTask?.id ?? null;
@@ -355,11 +366,22 @@ const AppContent = () => {
     setSelectedTask(null);
   }, []);
   const changeView = useCallback((view: AppView) => {
+    if (!usesDesktopLayout && view === 'settings') {
+      setSettingsPanelOpen(true);
+      return;
+    }
     setActiveView(view);
     setAccountMenuOpen(false);
     setSelectedTask(null);
     setTaskMenu(null);
-  }, []);
+  }, [usesDesktopLayout]);
+  useEffect(() => {
+    Animated.timing(settingsSlideAnim, {
+      toValue: settingsPanelOpen ? 0 : -width,
+      duration: 260,
+      useNativeDriver: true,
+    }).start();
+  }, [settingsPanelOpen, settingsSlideAnim, width]);
   const openSearch = useCallback(() => {
     setAccountMenuOpen(false);
     setAgentOpen(false);
@@ -497,9 +519,16 @@ const AppContent = () => {
   useEffect(() => {
     let active = true;
     loadSessionState()
-      .then((value) => {
-        if (active) {
-          setSignedIn(value);
+      .then(async (value) => {
+        if (!active) return;
+        if (value) {
+          const user = await getRemoteUser();
+          if (active) {
+            setCurrentUser(user);
+            setSignedIn(true);
+          }
+        } else {
+          setSignedIn(isRemoteAuthConfigured ? false : true);
         }
       })
       .catch(() => {
@@ -585,20 +614,25 @@ const AppContent = () => {
       cancelText: labels.cancel,
       confirmText: labels.account.signOut,
       message: labels.account.signOutMessage,
-      onConfirm: () => {
+      onConfirm: async () => {
         setSelectedTask(null);
         setTaskMenu(null);
+        setCurrentUser(null);
         setSignedIn(false);
+        void logoutRemoteSession().catch(() => {});
         void saveSessionState(false);
       },
       title: labels.account.signOutTitle,
     });
   };
 
-  const continueSession = () => {
+  const continueSession = async () => {
+    await syncRemote();
+    const user = await getRemoteUser();
+    setCurrentUser(user);
     setSignedIn(true);
     setActiveView('groups');
-    void saveSessionState(true);
+    await saveSessionState(true);
   };
 
   if (signedIn === null) {
@@ -638,6 +672,10 @@ const AppContent = () => {
       />
     ) : activeView === 'calendar' ? (
       <CalendarScreen
+        onAddTask={(dateKey) => {
+          setQuickAddInitialDate(dateKey);
+          setQuickAddOpen(true);
+        }}
         onOpenTaskMenu={openTaskMenu}
         onEditTask={openActiveTask}
         selectedTaskId={selectedTaskId}
@@ -689,7 +727,7 @@ const AppContent = () => {
                 active={
                   activeView === 'settings' || activeView === 'statistics'
                 }
-                label={labels.account.localAccount}
+                label={currentUser?.email || labels.account.localAccount}
                 onPress={() => setAccountMenuOpen((current) => !current)}
                 tooltipPosition="right"
               />
@@ -821,9 +859,9 @@ const AppContent = () => {
         <SafeAreaView style={styles.mobileUtilityOverlay}>
           <View style={styles.mobileUtilityRow}>
             <AccountTrigger
-              active={false}
+              active={settingsPanelOpen}
               label={labels.account.settings}
-              onPress={() => changeView('settings')}
+              onPress={() => setSettingsPanelOpen(true)}
               tooltipPosition="bottom"
             />
             <View style={styles.mobileUtilityActions}>
@@ -863,6 +901,7 @@ const AppContent = () => {
 
       {accountMenuOpen && usesDesktopLayout ? (
         <AccountMenu
+          currentUser={currentUser}
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
           position={
@@ -889,7 +928,10 @@ const AppContent = () => {
           <Pressable
             accessibilityLabel={labels.addTask}
             accessibilityRole="button"
-            onPress={() => setQuickAddOpen(true)}
+            onPress={() => {
+              setQuickAddInitialDate(null);
+              setQuickAddOpen(true);
+            }}
             style={({ pressed }) => [
               styles.mobileQuickAddButton,
               pressed && styles.mobileQuickAddPressed,
@@ -900,6 +942,45 @@ const AppContent = () => {
         </View>
       ) : null}
     </View>
+    {settingsPanelOpen && !usesDesktopLayout ? (
+      <View
+        pointerEvents="box-none"
+        style={StyleSheet.absoluteFill}
+      >
+        <Pressable
+          onPress={() => setSettingsPanelOpen(false)}
+          style={styles.settingsBackdrop}
+        />
+        <Animated.View
+          style={[
+            styles.settingsPanel,
+            { transform: [{ translateX: settingsSlideAnim }] },
+          ]}
+        >
+          <SafeAreaView style={styles.settingsPanelSafeArea}>
+            <View style={styles.settingsPanelHeader}>
+              <View style={styles.settingsPanelHeaderSpacer} />
+              <IconButton
+                icon="close"
+                label={labels.cancel}
+                onPress={() => setSettingsPanelOpen(false)}
+                showTooltip={false}
+                size="small"
+                variant="transparent"
+              />
+            </View>
+            <SettingsScreen
+              hiddenNavigationItems={hiddenNavigationItems}
+              onNavigationVisibilityChange={setNavigationVisible}
+              onOpenStatistics={() => {
+                setSettingsPanelOpen(false);
+                changeView('statistics');
+              }}
+            />
+          </SafeAreaView>
+        </Animated.View>
+      </View>
+    ) : null}
     <SearchOverlay
       onClose={() => setSearchOpen(false)}
       onOpenTask={openActiveTask}
@@ -912,12 +993,16 @@ const AppContent = () => {
       visible={agentOpen}
     />
     <QuickAddTaskSheet
-      onClose={() => setQuickAddOpen(false)}
+      initialDate={quickAddInitialDate ?? undefined}
+      onClose={() => {
+        setQuickAddOpen(false);
+        setQuickAddInitialDate(null);
+      }}
       visible={quickAddOpen}
     />
     {selectedTask && !usesDesktopLayout ? (
       <Modal
-        animationType="none"
+        animationType={Platform.OS === 'web' ? 'none' : 'slide'}
         onRequestClose={closeSelectedTask}
         presentationStyle="overFullScreen"
         transparent
@@ -1039,10 +1124,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   mobileEditorSheet: {
-    backgroundColor: '#F6F5F8',
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    height: '84%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    height: '88%',
+    maxHeight: 760,
     overflow: 'hidden',
   },
   mobileQuickAdd: {
@@ -1066,6 +1152,40 @@ const styles = StyleSheet.create({
   mobileQuickAddPressed: {
     backgroundColor: '#594CCD',
     transform: [{ scale: 0.94 }],
+  },
+  settingsBackdrop: {
+    backgroundColor: 'rgba(31, 30, 43, 0.25)',
+    flex: 1,
+  },
+  settingsPanel: {
+    backgroundColor: '#FFFFFF',
+    bottom: 0,
+    elevation: 24,
+    position: 'absolute',
+    shadowColor: '#000',
+    shadowOffset: { height: 0, width: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    top: 0,
+    width: '82%',
+  },
+  settingsPanelSafeArea: {
+    flex: 1,
+  },
+  settingsPanelHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 6,
+  },
+  settingsPanelHeaderSpacer: {
+    width: 32,
+  },
+  settingsPanelTitle: {
+    color: '#303145',
+    fontSize: 20,
+    fontWeight: '800',
   },
 });
 

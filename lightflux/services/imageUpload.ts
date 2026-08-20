@@ -1,9 +1,10 @@
 import { authenticatedFetch } from './authApi';
 
-const publicEnvironment = process.env as Record<string, string | undefined>;
+// Direct `process.env.EXPO_PUBLIC_*` access so Expo inlines the value at build
+// time; reading through an alias leaves it undefined in the web export.
 const uploadApiUrl = (
-  publicEnvironment.EXPO_PUBLIC_UPLOAD_API_URL ??
-  publicEnvironment.EXPO_PUBLIC_AUTH_API_URL ??
+  process.env.EXPO_PUBLIC_UPLOAD_API_URL ??
+  process.env.EXPO_PUBLIC_AUTH_API_URL ??
   ''
 ).replace(/\/$/, '');
 

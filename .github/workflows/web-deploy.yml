@@ -1,0 +1,62 @@
+name: Web deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "lightflux/**"
+      - "deploy/nginx/**"
+      - "deploy/scripts/deploy-web.sh"
+      - ".github/workflows/web-deploy.yml"
+
+concurrency:
+  group: web-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy Web
+    runs-on: ubuntu-latest
+    environment: production
+    defaults:
+      run:
+        working-directory: lightflux
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lightflux/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web export
+        # EXPO_PUBLIC_* values are inlined at build time, so the production
+        # origins must be present in the environment before `expo export` runs.
+        env:
+          EXPO_PUBLIC_AUTH_API_URL: ${{ vars.EXPO_PUBLIC_AUTH_API_URL }}
+          EXPO_PUBLIC_UPLOAD_API_URL: ${{ vars.EXPO_PUBLIC_UPLOAD_API_URL }}
+          EXPO_PUBLIC_AI_API_URL: ${{ vars.EXPO_PUBLIC_AI_API_URL }}
+        run: npm run desktop:web
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy over SSH
+        working-directory: .
+        env:
+          SSH_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_USER: ${{ secrets.DEPLOY_USER }}
+          SSH_OPTS: "-i ~/.ssh/deploy_key -o UserKnownHostsFile=~/.ssh/known_hosts"
+          SKIP_BUILD: "1"
+        run: bash deploy/scripts/deploy-web.sh

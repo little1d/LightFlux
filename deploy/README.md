@@ -107,7 +107,10 @@ the same origin.
 
 Pushes to `main` that touch `server/**` or `deploy/**` trigger
 `.github/workflows/server-deploy.yml`, which runs the same `deploy.sh` over SSH.
-Configure these repository secrets:
+Pushes that touch `lightflux/**` (or the Web deploy assets) trigger
+`.github/workflows/web-deploy.yml`, which builds the export in CI and runs
+`deploy-web.sh` over SSH with `SKIP_BUILD=1`. Configure these repository
+secrets:
 
 | Secret          | Purpose                                        |
 | --------------- | ---------------------------------------------- |
@@ -115,13 +118,22 @@ Configure these repository secrets:
 | `DEPLOY_HOST`   | Server host or IP (e.g. `182.254.243.33`)      |
 | `DEPLOY_USER`   | SSH user (e.g. `root`)                          |
 
+The Web build inlines the API origin at build time, so the workflow reads the
+`EXPO_PUBLIC_*` values from repository **variables** (not secrets — the origin
+is public and shipped in the bundle) under the `production` environment:
+
+| Variable                     | Value                    |
+| ---------------------------- | ------------------------ |
+| `EXPO_PUBLIC_AUTH_API_URL`   | `https://lightflux.site` |
+| `EXPO_PUBLIC_UPLOAD_API_URL` | `https://lightflux.site` |
+| `EXPO_PUBLIC_AI_API_URL`     | `https://lightflux.site` |
+
 Add the matching public key to `~/.ssh/authorized_keys` on the server. Prefer a
 non-root deploy user with `docker` group membership in the long run.
 
 `server-ci.yml` runs `npm test` for the server on every PR and push that
-touches `server/**`. Web deploys stay manual because the bundle bakes in the
-`lightflux/.env` origin at build time; run `deploy-web.sh` after shipping
-front-end changes you want live on the Web app.
+touches `server/**`. The manual `deploy-web.sh` remains available for local
+deploys (omit `SKIP_BUILD` so it builds from `lightflux/.env`).
 
 ## Certificates
 

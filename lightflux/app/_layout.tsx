@@ -1,3 +1,11 @@
+// Side-effect imports the old `index.ts` entry used to run before mounting the
+// app. The expo-router entry (`expo-router/entry`) replaced that file, so these
+// must live at the top of the root layout. `config/nativewind` sets NativeWind's
+// web output to 'native'; without it every `className` silently no-ops on Web
+// and flex layouts (sidebar row, flex-1 fill) collapse.
+import '../config/focusStyles';
+import '../config/nativewind';
+
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import React, {
@@ -764,17 +772,16 @@ const AppShell = () => {
     <View
       accessibilityElementsHidden={mainContentHidden}
       aria-hidden={mainContentHidden || undefined}
-      className="flex-1 flex-row bg-canvas"
       importantForAccessibility={
         mainContentHidden ? 'no-hide-descendants' : 'auto'
       }
+      style={styles.appShell}
     >
       {usesDesktopLayout ? (
         <SafeAreaView
-          className="w-[78px] border-r border-[#E2E1E8] bg-[#F7F6F9]"
           style={styles.desktopSidebar}
         >
-          <View className="flex-1 items-center pt-5">
+          <View style={styles.desktopNavigation}>
             <View style={styles.desktopAccountPosition}>
               <AccountTrigger
                 active={
@@ -849,7 +856,7 @@ const AppShell = () => {
             : styles.fullPane
         }
       >
-        <View className="flex-1">
+        <View style={styles.fullPane}>
           <AppShellProvider value={shellValue}>
             <Slot />
           </AppShellProvider>
@@ -857,19 +864,22 @@ const AppShell = () => {
 
         {!usesDesktopLayout && activeView !== 'statistics' ? (
           <SafeAreaView
-            className="border-t border-[#E4E3EA] bg-canvas"
             edges={['bottom']}
+            style={styles.mobileNavigationSafeArea}
           >
-            <View className="h-[58px] flex-row items-center justify-around px-3">
+            <View style={styles.mobileNavigationBar}>
               {navigationItems.map((item) => {
                 const isActive = item.id === activeView;
                 return (
                   <Pressable
                     accessibilityRole="tab"
                     accessibilityState={{ selected: isActive }}
-                    className="flex-1 items-center justify-center py-2"
                     key={item.id}
                     onPress={() => selectNavigationView(item.id)}
+                    style={({ pressed }) => [
+                      styles.mobileNavigationItem,
+                      pressed && styles.mobileNavigationItemPressed,
+                    ]}
                   >
                     <Ionicons
                       color={isActive ? '#6759E8' : '#A3A3AF'}
@@ -877,9 +887,10 @@ const AppShell = () => {
                       size={21}
                     />
                     <Text
-                      className={`mt-1 text-[10px] font-bold ${
-                        isActive ? 'text-primary' : 'text-[#9596A3]'
-                      }`}
+                      style={[
+                        styles.mobileNavigationLabel,
+                        isActive && styles.mobileNavigationLabelActive,
+                      ]}
                     >
                       {labels.navigation[item.id]}
                     </Text>
@@ -900,7 +911,7 @@ const AppShell = () => {
             onResize={setListPaneWidth}
             width={resolvedListPaneWidth}
           />
-          <View className="flex-1 bg-white">
+          <View style={styles.detailsPane}>
             <TaskEditorScreen
               embedded
               key={`${selectedTask.id}-${selectedTask.requestId}`}
@@ -1122,6 +1133,15 @@ const AppShell = () => {
 };
 
 const styles = StyleSheet.create({
+  appBackground: {
+    backgroundColor: '#F5F5FA',
+    flex: 1,
+  },
+  appShell: {
+    backgroundColor: '#F5F5FA',
+    flex: 1,
+    flexDirection: 'row',
+  },
   bootOverlay: {
     backgroundColor: '#F3F2F7',
   },
@@ -1129,12 +1149,55 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   desktopSidebar: {
+    backgroundColor: '#F7F6F9',
+    borderRightColor: '#E2E1E8',
+    borderRightWidth: 1,
     overflow: 'visible',
     position: 'relative',
+    width: 78,
     zIndex: 100,
+  },
+  desktopNavigation: {
+    alignItems: 'center',
+    flex: 1,
+    paddingTop: 20,
+  },
+  detailsPane: {
+    backgroundColor: '#FFFFFF',
+    flex: 1,
   },
   fullPane: {
     flex: 1,
+  },
+  mobileNavigationSafeArea: {
+    backgroundColor: '#F5F5FA',
+    borderTopColor: '#E4E3EA',
+    borderTopWidth: 1,
+  },
+  mobileNavigationBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    height: 58,
+    justifyContent: 'space-around',
+    paddingHorizontal: 12,
+  },
+  mobileNavigationItem: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  mobileNavigationItemPressed: {
+    opacity: 0.68,
+  },
+  mobileNavigationLabel: {
+    color: '#9596A3',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  mobileNavigationLabelActive: {
+    color: '#6759E8',
   },
   desktopNavigationButton: {
     position: 'relative',
@@ -1273,13 +1336,23 @@ const styles = StyleSheet.create({
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
-      <TodoProvider>
-        <ConfirmationProvider>
-          <ToastProvider>
-            <AppShell />
-          </ToastProvider>
-        </ConfirmationProvider>
-      </TodoProvider>
+      {/*
+        expo-router mounts through wrapper <div>s that have no background, unlike
+        the old registerRootComponent root. Where app content does not fully
+        cover the viewport (e.g. below a short list) the transparent stack lets
+        the browser's default canvas show through — which composites to black
+        under a dark OS color-scheme. This full-fill canvas backdrop guarantees
+        the app background instead of black.
+      */}
+      <View style={styles.appBackground}>
+        <TodoProvider>
+          <ConfirmationProvider>
+            <ToastProvider>
+              <AppShell />
+            </ToastProvider>
+          </ConfirmationProvider>
+        </TodoProvider>
+      </View>
     </SafeAreaProvider>
   );
 }

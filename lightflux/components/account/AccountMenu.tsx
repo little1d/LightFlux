@@ -1,6 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import React from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { translations } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
@@ -31,17 +30,17 @@ const AccountMenu = ({
       position={position ?? { x: 12, y: 72 }}
       width={240}
     >
-      <View className="border-b border-[#ECEBF1] px-4 py-3">
-        <View className="flex-row items-center">
-          <View className="mr-2.5 h-8 w-8 items-center justify-center rounded-[10px] bg-[#6759E8]">
+      <View style={styles.header}>
+        <View style={styles.identityRow}>
+          <View style={styles.avatar}>
             <Ionicons color="#FFFFFF" name="person" size={18} />
           </View>
-          <View className="flex-1">
-            <Text className="text-[14px] font-extrabold text-[#303145]" numberOfLines={1}>
+          <View style={styles.identityCopy}>
+            <Text style={styles.name} numberOfLines={1}>
               {currentUser?.name || currentUser?.email || labels.account.localAccount}
             </Text>
             {currentUser?.email ? (
-              <Text className="text-[11px] text-[#858797]" numberOfLines={1}>
+              <Text style={styles.email} numberOfLines={1}>
                 {currentUser.email}
               </Text>
             ) : null}
@@ -68,5 +67,39 @@ const AccountMenu = ({
     </MenuSurface>
   );
 };
+
+const styles = StyleSheet.create({
+  header: {
+    borderBottomColor: '#ECEBF1',
+    borderBottomWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  identityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  avatar: {
+    alignItems: 'center',
+    backgroundColor: '#6759E8',
+    borderRadius: 10,
+    height: 32,
+    justifyContent: 'center',
+    marginRight: 10,
+    width: 32,
+  },
+  identityCopy: {
+    flex: 1,
+  },
+  name: {
+    color: '#303145',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  email: {
+    color: '#858797',
+    fontSize: 11,
+  },
+});
 
 export default AccountMenu;

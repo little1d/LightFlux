@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   type DimensionValue,
   Pressable,
@@ -62,77 +62,76 @@ const SettingsScreen = ({
     { label: labels.settings.chinese, value: 'zh' },
     { label: labels.settings.english, value: 'en' },
   ];
-  const styles = StyleSheet.create({
-    ...sharedStyles,
-    accountCard: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      paddingHorizontal: compact ? 2 : 16,
-      paddingVertical: compact ? 10 : 14,
-    },
-    accountAvatar: {
-      alignItems: 'center',
-      backgroundColor: '#6759E8',
-      borderRadius: compact ? 18 : 22,
-      height: compact ? 36 : 44,
-      justifyContent: 'center',
-      marginRight: compact ? 10 : 13,
-      width: compact ? 36 : 44,
-    },
-    accountInfo: {
-      flex: 1,
-    },
-    accountEmail: {
-      color: '#2E2F41',
-      fontSize: compact ? 14 : 15,
-      fontWeight: '800',
-    },
-    accountLabel: {
-      color: '#858797',
-      fontSize: compact ? 11 : 12,
-      marginTop: 2,
-    },
-    signOutButton: {
-      alignItems: 'center',
-      borderColor: '#F0CDD3',
-      borderRadius: 8,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 6,
-      paddingHorizontal: compact ? 12 : 16,
-      paddingVertical: compact ? 6 : 8,
-    },
-    signOutButtonHovered: {
-      backgroundColor: '#FFF5F6',
-      borderColor: '#D45C6A',
-    },
-    signOutButtonPressed: {
-      backgroundColor: '#FFEAED',
-    },
-    signOutText: {
-      color: '#C84F60',
-      fontSize: compact ? 12 : 13,
-      fontWeight: '700',
-    },
-    localAvatar: {
-      alignItems: 'center',
-      backgroundColor: '#EDE9FF',
-      borderRadius: compact ? 18 : 22,
-      height: compact ? 36 : 44,
-      justifyContent: 'center',
-      marginRight: compact ? 10 : 13,
-      width: compact ? 36 : 44,
-    },
-    localEmail: {
-      color: '#2E2F41',
-      fontSize: compact ? 14 : 15,
-      fontWeight: '800',
-    },
-    divider: {
-      backgroundColor: '#EBEAF0',
-      height: 1,
-    },
-  });
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        accountCard: {
+          alignItems: 'center',
+          flexDirection: 'row',
+          paddingHorizontal: compact ? 2 : 16,
+          paddingVertical: compact ? 10 : 14,
+        },
+        accountAvatar: {
+          alignItems: 'center',
+          backgroundColor: '#6759E8',
+          borderRadius: compact ? 18 : 22,
+          height: compact ? 36 : 44,
+          justifyContent: 'center',
+          marginRight: compact ? 10 : 13,
+          width: compact ? 36 : 44,
+        },
+        accountInfo: {
+          flex: 1,
+        },
+        accountEmail: {
+          color: '#2E2F41',
+          fontSize: compact ? 14 : 15,
+          fontWeight: '800',
+        },
+        accountLabel: {
+          color: '#858797',
+          fontSize: compact ? 11 : 12,
+          marginTop: 2,
+        },
+        signOutButton: {
+          alignItems: 'center',
+          borderColor: '#F0CDD3',
+          borderRadius: 8,
+          borderWidth: 1,
+          flexDirection: 'row',
+          gap: 6,
+          paddingHorizontal: compact ? 12 : 16,
+          paddingVertical: compact ? 6 : 8,
+        },
+        signOutButtonHovered: {
+          backgroundColor: '#FFF5F6',
+          borderColor: '#D45C6A',
+        },
+        signOutButtonPressed: {
+          backgroundColor: '#FFEAED',
+        },
+        signOutText: {
+          color: '#C84F60',
+          fontSize: compact ? 12 : 13,
+          fontWeight: '700',
+        },
+        localAvatar: {
+          alignItems: 'center',
+          backgroundColor: '#EDE9FF',
+          borderRadius: compact ? 18 : 22,
+          height: compact ? 36 : 44,
+          justifyContent: 'center',
+          marginRight: compact ? 10 : 13,
+          width: compact ? 36 : 44,
+        },
+        localEmail: {
+          color: '#2E2F41',
+          fontSize: compact ? 14 : 15,
+          fontWeight: '800',
+        },
+      }),
+    [compact],
+  );
 
   return (
     <View style={sharedStyles.screen}>
@@ -168,35 +167,33 @@ const SettingsScreen = ({
               ]}
             >
               {currentUser ? (
-                <>
-                  <View style={styles.accountCard}>
-                    <View style={styles.accountAvatar}>
-                      <Ionicons color="#FFFFFF" name="person" size={compact ? 18 : 22} />
-                    </View>
-                    <View style={styles.accountInfo}>
-                      <Text style={styles.accountEmail} numberOfLines={1}>
-                        {currentUser.name || currentUser.email}
-                      </Text>
-                      <Text style={styles.accountLabel} numberOfLines={1}>
-                        {labels.settings.signedInAs} · {currentUser.email}
-                      </Text>
-                    </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      onHoverIn={() => setSignOutHovered(true)}
-                      onHoverOut={() => setSignOutHovered(false)}
-                      onPress={onSignOut}
-                      style={({ pressed }) => [
-                        styles.signOutButton,
-                        signOutHovered && styles.signOutButtonHovered,
-                        pressed && styles.signOutButtonPressed,
-                      ]}
-                    >
-                      <Ionicons color="#C84F60" name="log-out-outline" size={14} />
-                      <Text style={styles.signOutText}>{labels.settings.signOut}</Text>
-                    </Pressable>
+                <View style={styles.accountCard}>
+                  <View style={styles.accountAvatar}>
+                    <Ionicons color="#FFFFFF" name="person" size={compact ? 18 : 22} />
                   </View>
-                </>
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountEmail} numberOfLines={1}>
+                      {currentUser.name || currentUser.email}
+                    </Text>
+                    <Text style={styles.accountLabel} numberOfLines={1}>
+                      {labels.settings.signedInAs} · {currentUser.email}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    onHoverIn={() => setSignOutHovered(true)}
+                    onHoverOut={() => setSignOutHovered(false)}
+                    onPress={onSignOut}
+                    style={({ pressed }) => [
+                      styles.signOutButton,
+                      signOutHovered && styles.signOutButtonHovered,
+                      pressed && styles.signOutButtonPressed,
+                    ]}
+                  >
+                    <Ionicons color="#C84F60" name="log-out-outline" size={14} />
+                    <Text style={styles.signOutText}>{labels.settings.signOut}</Text>
+                  </Pressable>
+                </View>
               ) : (
                 <View style={styles.accountCard}>
                   <View style={styles.localAvatar}>

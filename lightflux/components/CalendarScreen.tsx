@@ -190,6 +190,7 @@ const CalendarTask = ({
 
   return (
     <Pressable
+      accessibilityLabel={`${editLabel}: ${todo.title}`}
       accessibilityRole="button"
       onHoverIn={() => onHoverIn(todo.id)}
       onHoverOut={onHoverOut}

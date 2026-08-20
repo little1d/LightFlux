@@ -1,9 +1,31 @@
 const STYLE_ID = 'lightflux-focus-styles';
+const WEB_MIN_WIDTH = 320;
+const WEB_MIN_HEIGHT = 568;
 
 if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
+    html,
+    body {
+      margin: 0;
+      min-height: ${WEB_MIN_HEIGHT}px;
+      min-width: ${WEB_MIN_WIDTH}px;
+      overflow: auto;
+    }
+
+    #root {
+      display: flex;
+      min-height: max(100vh, ${WEB_MIN_HEIGHT}px);
+      min-width: ${WEB_MIN_WIDTH}px;
+    }
+
+    #root > div {
+      flex: 1 0 auto;
+      min-height: ${WEB_MIN_HEIGHT}px;
+      min-width: ${WEB_MIN_WIDTH}px;
+    }
+
     input:focus,
     textarea:focus,
     [contenteditable="true"]:focus {

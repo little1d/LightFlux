@@ -1,18 +1,17 @@
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
 import {
-  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useShallow } from 'zustand/react/shallow';
 
-import { inputAccentProps } from '../config/input';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { translations } from '../content';
 import { buildChildCountByParent } from '../store/todoDomain';
@@ -158,7 +157,10 @@ const CalendarTask = ({
   color,
   editLabel,
   moreActionsLabel,
+  hovered,
   onEdit,
+  onHoverIn,
+  onHoverOut,
   onOpenMenu,
   onToggle,
   selected,
@@ -170,7 +172,10 @@ const CalendarTask = ({
   color: string;
   editLabel: string;
   moreActionsLabel: string;
+  hovered: boolean;
   onEdit: (id: string) => void;
+  onHoverIn: (id: string) => void;
+  onHoverOut: () => void;
   onOpenMenu: OpenTaskMenu;
   onToggle: (id: string) => void;
   selected: boolean;
@@ -178,26 +183,30 @@ const CalendarTask = ({
   markActive: string;
   markComplete: string;
 }) => {
-  const [hovered, setHovered] = useState(false);
   const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
     todo.id,
     onOpenMenu,
   );
 
   return (
-    <View
-      className={`${todo.parentId ? 'ml-5 min-h-[38px]' : 'min-h-[44px]'} mb-1 flex-row items-center overflow-hidden rounded-[11px] px-2`}
-      onPointerEnter={() => setHovered(true)}
-      onPointerLeave={() => setHovered(false)}
+    <Pressable
+      accessibilityRole="button"
+      onHoverIn={() => onHoverIn(todo.id)}
+      onHoverOut={onHoverOut}
+      onPress={() => onEdit(todo.id)}
+      onLongPress={openFromLongPress}
+      delayLongPress={350}
       ref={targetRef}
-      style={[
-        styles.taskRow,
+      style={({ pressed }) => [
+        styles.taskRowBase,
+        todo.parentId ? styles.taskRowChild : styles.taskRowRoot,
         todo.priority !== 'none' &&
           !selected && {
             backgroundColor: TASK_PRIORITY_THEME[todo.priority].rowBackground,
           },
         selected && styles.taskRowSelected,
         hovered && !selected && styles.taskRowHovered,
+        pressed && styles.taskRowPressed,
       ]}
     >
       <TaskSelectionMarker visible={selected} />
@@ -208,74 +217,61 @@ const CalendarTask = ({
         markComplete={markComplete}
         onPress={() => onToggle(todo.id)}
       />
-      <Pressable
-        accessibilityLabel={`${editLabel}: ${todo.title}`}
-        accessibilityRole="button"
-        className="ml-2.5 flex-1 py-2"
-        delayLongPress={350}
-        onLongPress={openFromLongPress}
-        onPress={() => onEdit(todo.id)}
-        style={({ pressed }) => pressed && styles.taskTitlePressed}
-      >
+      <View style={styles.taskContent}>
         <Text
-          className={`text-[13px] font-semibold ${
-            todo.completed ? 'text-[#9A9BAA] line-through' : 'text-[#343548]'
-          }`}
+          style={[
+            styles.taskTitle,
+            todo.completed && styles.taskTitleCompleted,
+          ]}
           numberOfLines={1}
         >
           {todo.title}
         </Text>
-      </Pressable>
+      </View>
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
       <View
-        className="ml-2 h-2 w-2 rounded"
-        style={{ backgroundColor: color }}
+        style={[styles.taskGroupDot, { backgroundColor: color }]}
       />
       <TaskMoreButton
         label={moreActionsLabel}
         onPress={openFromButton}
       />
-    </View>
+    </Pressable>
   );
 };
 
 const CalendarScreen = ({
+  onAddTask,
   onEditTask,
   onOpenTaskMenu,
   selectedTaskId,
 }: {
+  onAddTask: (dateKey: string) => void;
   onEditTask: (id: string) => void;
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
-  const {
-    language,
-    todos,
-    groups,
-    addTodo,
-    toggleTodo,
-  } = useTodoStore(
+  const { language, todos, groups, toggleTodo } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
       groups: state.groups,
-      addTodo: state.addTodo,
       toggleTodo: state.toggleTodo,
     })),
   );
   const labels = translations[language];
   const today = useCurrentDateKey();
+  const { width } = useWindowDimensions();
+  const compact = width < 700;
   const [contentWidth, setContentWidth] = useState(0);
+  const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [visibleMonth, setVisibleMonth] = useState(
     () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
   );
   const [selectedDate, setSelectedDate] = useState(today);
-  const [draft, setDraft] = useState('');
 
-  const sideBySide = contentWidth >= 880;
-  const calendarWidth = sideBySide ? contentWidth - 350 : contentWidth;
-  const showTaskTitles = calendarWidth >= 610;
+  const showTaskTitles = contentWidth >= 610;
   const days = useMemo(() => monthGrid(visibleMonth), [visibleMonth]);
   const tasksByDate = useMemo(() => {
     const result = new Map<string, Todo[]>();
@@ -322,32 +318,23 @@ const CalendarScreen = ({
     setSelectedDate(today);
   };
 
-  const submitTask = () => {
-    if (!draft.trim()) {
-      return;
-    }
-    addTodo({ title: draft, scheduledDate: selectedDate });
-    setDraft('');
-    Keyboard.dismiss();
-  };
-
   const selectedDateLabel = fromDateKey(selectedDate).toLocaleDateString(
     language === 'zh' ? 'zh-CN' : 'en-US',
     { month: 'long', day: 'numeric', weekday: 'long' },
   );
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View style={styles.screen}>
       <ExpoStatusBar style="dark" />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, compact && styles.contentCompact]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View className="pb-5 pt-4">
-            <Text className="text-[24px] font-extrabold text-ink">
+          <View style={styles.header}>
+            <Text style={[styles.title, compact && styles.titleCompact]}>
               {labels.calendar.title}
             </Text>
           </View>
@@ -359,27 +346,22 @@ const CalendarScreen = ({
                 setContentWidth(nextWidth);
               }
             }}
-            style={sideBySide ? styles.workspaceWide : styles.workspaceStack}
+            style={styles.workspace}
           >
             <View
-              className="overflow-hidden rounded-[22px] border border-[#E5E4EC] bg-white"
               nativeID="calendar-month-panel"
-              style={[
-                styles.calendarCard,
-                sideBySide && styles.calendarColumn,
-                styles.calendarShadow,
-              ]}
+              style={[styles.calendarCard, styles.calendarShadow, styles.calendarBorder]}
             >
-              <View className="flex-row items-center justify-between border-b border-[#ECEBF1] px-4 py-3.5">
-                <Text className="text-[18px] font-extrabold text-[#303145]">
+              <View style={styles.calendarHeader}>
+                <Text style={styles.monthTitle}>
                   {labels.calendar.monthTitle(
                     visibleMonth.getFullYear(),
                     visibleMonth.getMonth() + 1,
                   )}
                 </Text>
-                <View className="flex-row items-center">
+                <View style={styles.headerControls}>
                   {!isAtToday ? (
-                    <View className="mr-2">
+                    <View style={styles.headerSpacer}>
                       <ActionButton
                         label={labels.calendar.today}
                         onPress={goToday}
@@ -394,7 +376,7 @@ const CalendarScreen = ({
                     onPress={() => changeMonth(-1)}
                     size="small"
                   />
-                  <View className="w-1.5" />
+                  <View style={styles.controlGap} />
                   <IconButton
                     icon="chevron-forward"
                     label={labels.calendar.nextMonth}
@@ -404,21 +386,20 @@ const CalendarScreen = ({
                 </View>
               </View>
 
-              <View className="flex-row border-b border-[#ECEBF1] bg-[#FAFAFC]">
+              <View style={styles.weekdayHeader}>
                 {labels.calendar.weekdays.map((weekday) => (
                   <View
-                    className="items-center py-2.5"
                     key={weekday}
-                    style={styles.weekColumn}
+                    style={[styles.weekColumn, styles.weekdayCell]}
                   >
-                    <Text className="text-[10px] font-bold text-[#9597A5]">
+                    <Text style={styles.weekdayText}>
                       {weekday}
                     </Text>
                   </View>
                 ))}
               </View>
 
-              <View className="flex-row flex-wrap">
+              <View style={styles.daysGrid}>
                 {days.map((date) => {
                   const dateKey = toDateKey(date);
                   return (
@@ -440,124 +421,154 @@ const CalendarScreen = ({
               </View>
             </View>
 
-            <View
-              className="rounded-[22px] border border-[#E5E4EC] bg-white p-4"
-              nativeID="calendar-agenda-panel"
-              style={[
-                styles.agendaCard,
-                sideBySide ? styles.agendaSide : styles.agendaStack,
-                styles.calendarShadow,
-              ]}
-            >
-              <View className="mb-4">
-                <Text className="text-[16px] font-extrabold text-[#343548]">
-                  {selectedDateLabel}
-                </Text>
-                <Text className="mt-1 text-[11px] font-semibold text-[#898A99]">
-                  {labels.calendar.tasksForDate(selectedTodos.length)}
-                </Text>
-              </View>
-
+            {selectedTodos.length > 0 ? (
               <View
-                className="mb-4 flex-row items-center rounded-[13px] border border-[#E5E3ED] bg-[#F8F7FA] p-1.5 pl-3"
-                nativeID="calendar-task-composer"
+                nativeID="calendar-agenda-panel"
+                style={styles.agendaList}
               >
-                <TextInput
-                  {...inputAccentProps}
-                  accessibilityLabel={labels.calendar.inputPlaceholder}
-                  className="h-9 flex-1 text-[13px] text-[#303145]"
-                  onChangeText={setDraft}
-                  onSubmitEditing={submitTask}
-                  placeholder={labels.calendar.inputPlaceholder}
-                  placeholderTextColor="#9A9BA8"
-                  returnKeyType="done"
-                  value={draft}
-                />
-                <ActionButton
-                  disabled={!draft.trim()}
-                  label={labels.addTask}
-                  onPress={submitTask}
-                  size="small"
-                />
-              </View>
-
-              {selectedTodos.length === 0 ? (
-                <View className="items-center py-9">
-                  <View className="mb-3 h-8 w-8 items-center justify-center rounded-[11px] bg-[#F0EEFF]">
-                    <Text className="text-[16px] font-bold text-primary">＋</Text>
-                  </View>
-                  <Text className="text-[12px] text-[#8D8E9D]">
-                    {labels.calendar.empty}
-                  </Text>
-                </View>
-              ) : (
-                selectedTodos.map((todo) => (
+                {selectedTodos.map((todo) => (
                   <CalendarTask
                     childCount={childCountByParent.get(todo.id) ?? 0}
                     color={
                       groupColors.get(todo.groupId ?? '') ?? '#8B7EFF'
                     }
                     editLabel={labels.editor.title}
+                    hovered={hoveredTask === todo.id}
                     key={todo.id}
                     markActive={labels.markActive}
                     markComplete={labels.markComplete}
                     moreActionsLabel={labels.taskMenu.moreActions}
                     onEdit={onEditTask}
+                    onHoverIn={setHoveredTask}
+                    onHoverOut={() => setHoveredTask(null)}
                     onOpenMenu={onOpenTaskMenu}
                     onToggle={toggleTodo}
                     selected={selectedTaskId === todo.id}
                     todo={todo}
                   />
-                ))
-              )}
-            </View>
+                ))}
+              </View>
+            ) : null}
           </View>
         </ScrollView>
+        <Pressable
+          accessibilityLabel={`${labels.addTask}: ${selectedDateLabel}`}
+          accessibilityRole="button"
+          onPress={() => onAddTask(selectedDate)}
+          style={({ pressed }) => [
+            styles.fab,
+            compact && styles.fabCompact,
+            pressed && styles.fabPressed,
+          ]}
+        >
+          <Ionicons color="#FFFFFF" name="add" size={compact ? 26 : 28} />
+        </Pressable>
       </SafeAreaView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: '#F3F3F6',
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
   scroll: {
     alignSelf: 'center',
     maxWidth: 1180,
     width: '100%',
   },
   content: {
-    paddingBottom: 28,
+    paddingBottom: 96,
     paddingHorizontal: 20,
+    paddingTop: 16,
   },
-  workspaceWide: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    width: '100%',
+  contentCompact: {
+    paddingBottom: 96,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-  workspaceStack: {
+  header: {
+    paddingBottom: 12,
+  },
+  title: {
+    color: '#232238',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  titleCompact: {
+    fontSize: 22,
+    letterSpacing: -0.3,
+  },
+  workspace: {
     width: '100%',
   },
   calendarCard: {
     minWidth: 0,
+    width: '100%',
   },
-  calendarColumn: {
-    flex: 1,
-  },
-  agendaCard: {
-    alignSelf: 'stretch',
-  },
-  agendaSide: {
-    marginLeft: 16,
-    minHeight: 580,
-    width: 334,
-  },
-  agendaStack: {
-    marginTop: 16,
+  calendarBorder: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E4EC',
+    borderRadius: 22,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   calendarShadow: {
     shadowColor: '#4B4963',
     shadowOffset: { height: 7, width: 0 },
     shadowOpacity: 0.06,
     shadowRadius: 16,
+  },
+  calendarHeader: {
+    alignItems: 'center',
+    borderBottomColor: '#ECEBF1',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  monthTitle: {
+    color: '#303145',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  headerControls: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  headerSpacer: {
+    marginRight: 8,
+  },
+  controlGap: {
+    width: 6,
+  },
+  weekdayHeader: {
+    backgroundColor: '#FAFAFC',
+    borderBottomColor: '#ECEBF1',
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+  },
+  weekdayCell: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  weekdayText: {
+    color: '#9597A5',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  agendaList: {
+    marginTop: 10,
   },
   weekColumn: {
     width: `${100 / 7}%`,
@@ -657,8 +668,22 @@ const styles = StyleSheet.create({
     marginRight: 3,
     width: 6,
   },
-  taskRow: {
+  taskRowBase: {
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    borderRadius: 11,
+    flexDirection: 'row',
+    marginBottom: 4,
+    minHeight: 44,
+    overflow: 'hidden',
+    paddingHorizontal: 8,
+  },
+  taskRowRoot: {
+    minHeight: 44,
+  },
+  taskRowChild: {
+    marginLeft: 20,
+    minHeight: 38,
   },
   taskRowHovered: {
     backgroundColor: '#F5F4F8',
@@ -666,8 +691,56 @@ const styles = StyleSheet.create({
   taskRowSelected: {
     backgroundColor: '#EEECFF',
   },
-  taskTitlePressed: {
+  taskRowPressed: {
     opacity: 0.62,
+  },
+  taskContent: {
+    flex: 1,
+    marginLeft: 10,
+    paddingVertical: 8,
+  },
+  taskTitle: {
+    color: '#343548',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  taskTitleCompleted: {
+    color: '#9A9BAA',
+    textDecorationLine: 'line-through',
+  },
+  taskGroupDot: {
+    borderRadius: 3,
+    height: 8,
+    marginLeft: 8,
+    width: 8,
+  },
+  fab: {
+    alignItems: 'center',
+    backgroundColor: '#6759E8',
+    borderRadius: 28,
+    bottom: 24,
+    elevation: 8,
+    height: 56,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 24,
+    shadowColor: '#4B3FC4',
+    shadowOffset: { height: 6, width: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    width: 56,
+    zIndex: 60,
+  },
+  fabCompact: {
+    borderRadius: 26,
+    bottom: 86,
+    height: 52,
+    right: 18,
+    width: 52,
+  },
+  fabPressed: {
+    backgroundColor: '#594CCD',
+    transform: [{ scale: 0.94 }],
   },
 });
 

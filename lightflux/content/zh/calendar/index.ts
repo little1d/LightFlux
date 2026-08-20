@@ -6,8 +6,5 @@ export const calendar: Translation['calendar'] = {
   previousMonth: '上个月',
   nextMonth: '下个月',
   today: '今天',
-  selectedDate: '当天任务',
   tasksForDate: (count) => `${count} 项任务`,
-  empty: '这一天还没有安排',
-  inputPlaceholder: '添加到这一天…',
 };

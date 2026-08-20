@@ -9,8 +9,5 @@ export const calendar: Translation['calendar'] = {
   previousMonth: 'Previous month',
   nextMonth: 'Next month',
   today: 'Today',
-  selectedDate: 'Tasks for this day',
   tasksForDate: (count) => `${count} ${count === 1 ? 'task' : 'tasks'}`,
-  empty: 'Nothing scheduled for this day',
-  inputPlaceholder: 'Add to this day…',
 };

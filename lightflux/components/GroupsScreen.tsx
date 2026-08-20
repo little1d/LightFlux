@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { inputAccentProps } from '../config/input';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import GroupActionMenu from './groups/GroupActionMenu';
 import GroupSectionCard from './groups/GroupSectionCard';
 import { UNGROUPED_ID } from './groups/types';
@@ -30,26 +31,28 @@ const GroupsScreen = ({
   const notify = useToast();
   const controller = useGroupsController(selectedTaskId, notify);
   const { width } = useWindowDimensions();
-  const compact = width < 900;
+  const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View style={styles.screen}>
       <ExpoStatusBar style="dark" />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            compact && styles.contentCompact,
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View
-            className="flex-row items-center justify-between pb-5 pt-4"
-            style={compact && styles.headerWithAccount}
-          >
-            <Text className="text-[24px] font-extrabold text-ink">
-              {controller.labels.groups.title}
-            </Text>
-          </View>
+          {!compact ? (
+            <View className="flex-row items-center justify-between pb-5 pt-4">
+              <Text className="text-[24px] font-extrabold text-ink">
+                {controller.labels.groups.title}
+              </Text>
+            </View>
+          ) : null}
 
           <View
             className="mb-5 flex-row rounded-[18px] border border-[#E7E6ED] bg-white p-1.5 pl-4"
@@ -138,6 +141,13 @@ const GroupsScreen = ({
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: '#F5F5FA',
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
   scroll: {
     alignSelf: 'center',
     maxWidth: 760,
@@ -147,14 +157,14 @@ const styles = StyleSheet.create({
     paddingBottom: 26,
     paddingHorizontal: 20,
   },
+  contentCompact: {
+    paddingTop: 70,
+  },
   cardShadow: {
     shadowColor: '#4B4963',
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.06,
     shadowRadius: 12,
-  },
-  headerWithAccount: {
-    paddingLeft: 54,
   },
 });
 

@@ -204,6 +204,7 @@ const SettingsScreen = ({
                     </Text>
                   </View>
                   <Pressable
+                    accessibilityLabel={labels.settings.signOut}
                     accessibilityRole="button"
                     onHoverIn={() => setSignOutHovered(true)}
                     onHoverOut={() => setSignOutHovered(false)}
@@ -232,6 +233,7 @@ const SettingsScreen = ({
                     </Text>
                   </View>
                   <Pressable
+                    accessibilityLabel={labels.settings.signIn}
                     accessibilityRole="button"
                     onHoverIn={() => setSignInHovered(true)}
                     onHoverOut={() => setSignInHovered(false)}

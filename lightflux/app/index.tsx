@@ -1,6 +1,6 @@
 import { Redirect } from 'expo-router';
 
-// The shell defaults to the Groups surface, matching the pre-router behavior.
+// Today is the primary workspace and the stable post-authentication destination.
 export default function Index() {
-  return <Redirect href="/groups" />;
+  return <Redirect href="/today" />;
 }

@@ -20,6 +20,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
 import { translations } from '../../content';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
 import {
@@ -129,7 +130,7 @@ const TaskActionMenu = ({
     null,
   );
   const viewport = useWindowDimensions();
-  const mobileSheet = viewport.width < 900;
+  const mobileSheet = viewport.width < DESKTOP_LAYOUT_BREAKPOINT;
   const compactEdit = viewport.width < 360;
   const isWeb = Platform.OS === 'web';
   const desktopWeb = isWeb && !mobileSheet;

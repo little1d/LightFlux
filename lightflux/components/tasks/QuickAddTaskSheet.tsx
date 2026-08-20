@@ -17,6 +17,7 @@ import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
 import { translations } from '../../content';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
 import {
@@ -42,7 +43,7 @@ const QuickAddTaskSheet = ({
 }) => {
   const inputRef = useRef<TextInput>(null);
   const { width } = useWindowDimensions();
-  const wide = width >= 900;
+  const wide = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const {
     addTodo,
     groups,

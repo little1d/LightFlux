@@ -1,3 +1,5 @@
+import { DESKTOP_LAYOUT_BREAKPOINT } from './layout';
+
 const STYLE_ID = 'lightflux-focus-styles';
 const WEB_MIN_WIDTH = 320;
 const WEB_MIN_HEIGHT = 568;
@@ -37,7 +39,7 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
       box-shadow: 0 2px 0 rgba(103, 89, 232, 0.16);
     }
 
-    @media (min-width: 900px) {
+    @media (min-width: ${DESKTOP_LAYOUT_BREAKPOINT}px) {
       #task-rich-editor:focus-within {
         border-color: rgba(103, 89, 232, 0.62) !important;
         box-shadow: 0 0 0 3px rgba(103, 89, 232, 0.1);

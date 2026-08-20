@@ -10,6 +10,7 @@ import {
 
 import IconButton from '../ui/IconButton';
 import Tooltip from '../ui/Tooltip';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 
 export const TaskNestingIndicator = () => (
   <Text style={styles.nestingIndicator}>↳</Text>
@@ -83,7 +84,7 @@ export const TaskMoreButton = ({
   onPress: (event: GestureResponderEvent) => void;
 }) => {
   const { width } = useWindowDimensions();
-  const narrow = width < 900;
+  const narrow = width < DESKTOP_LAYOUT_BREAKPOINT;
 
   return (
     <View style={styles.moreButtonPosition}>

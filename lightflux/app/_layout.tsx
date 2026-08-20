@@ -5,6 +5,7 @@
 // and flex layouts (sidebar row, flex-1 fill) collapse.
 import '../config/focusStyles';
 import '../config/nativewind';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Slot, usePathname, useRouter } from 'expo-router';
@@ -31,9 +32,6 @@ import {
   SafeAreaView,
 } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
-
-import '../config/focusStyles';
-import '../config/nativewind';
 
 import SearchOverlay from '../components/SearchOverlay';
 import SettingsScreen from '../components/SettingsScreen';
@@ -83,6 +81,7 @@ import { getRemoteUser } from '../services/authApi';
 import {
   loadSessionState,
   saveSessionState,
+  SessionState,
 } from '../services/sessionStorage';
 import {
   NavigationItemId,
@@ -127,11 +126,11 @@ const NAVIGABLE_VIEWS: AppView[] = [
 
 // Derive the active view from the current route so navigation highlighting and
 // selection guards stay in sync with the URL. Unknown paths fall back to the
-// default surface.
+// primary workspace.
 const viewFromPathname = (pathname: string): AppView => {
   const segment = pathname.replace(/^\/+/, '').split('/')[0];
   const match = NAVIGABLE_VIEWS.find((view) => view === segment);
-  return match ?? 'groups';
+  return match ?? 'today';
 };
 
 const DesktopNavigationButton = ({
@@ -220,9 +219,9 @@ const AppShell = () => {
   const router = useRouter();
   const pathname = usePathname();
   const activeView = viewFromPathname(pathname);
+  const isLoginRoute = pathname === '/login';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
+  const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [currentUser, setCurrentUser] = useState<{ email: string; name?: string } | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
@@ -326,7 +325,7 @@ const AppShell = () => {
       state.trashedTodos.length + state.trashedMilestones.length,
   );
   const labels = translations[language];
-  const usesDesktopLayout = width >= 900;
+  const usesDesktopLayout = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const selectedTaskId = taskMenu?.todoId ?? selectedTask?.id ?? null;
   const availableDesktopWidth = width - DESKTOP_NAV_WIDTH;
   const maximumListWidth = Math.max(
@@ -468,8 +467,8 @@ const AppShell = () => {
   const openAuthentication = useCallback(() => {
     setAccountMenuOpen(false);
     setSettingsPanelOpen(false);
-    setAuthOpen(true);
-  }, []);
+    router.push('/login');
+  }, [router]);
   const setNavigationVisible = useCallback(
     (id: OptionalNavigationItemId, visible: boolean) => {
       setNavigationItemVisible(id, visible);
@@ -597,16 +596,16 @@ const AppShell = () => {
           const user = await getRemoteUser();
           if (active) {
             setCurrentUser(user);
-            setSignedIn(true);
+            setSessionState('authenticated');
           }
           return;
         }
         setCurrentUser(null);
-        setSignedIn(sessionState === 'local');
+        setSessionState(sessionState);
       })
       .catch(() => {
         if (active) {
-          setSignedIn(false);
+          setSessionState('signed-out');
         }
       });
 
@@ -616,7 +615,18 @@ const AppShell = () => {
   }, [syncRemote]);
 
   useEffect(() => {
-    if (Platform.OS !== 'web') {
+    if (sessionState === 'signed-out' && !isLoginRoute) {
+      router.replace('/login');
+    }
+  }, [isLoginRoute, router, sessionState]);
+
+  useEffect(() => {
+    if (
+      Platform.OS !== 'web' ||
+      sessionState === null ||
+      sessionState === 'signed-out' ||
+      isLoginRoute
+    ) {
       return undefined;
     }
 
@@ -657,7 +667,14 @@ const AppShell = () => {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [changeView, openAgent, openSearch, searchOpen]);
+  }, [
+    changeView,
+    isLoginRoute,
+    openAgent,
+    openSearch,
+    searchOpen,
+    sessionState,
+  ]);
 
   useEffect(() => {
     if (!selectedTask) {
@@ -691,7 +708,7 @@ const AppShell = () => {
         setSelectedTask(null);
         setTaskMenu(null);
         setCurrentUser(null);
-        setSignedIn(false);
+        setSessionState('signed-out');
         void saveSessionState('signed-out').catch(() => {});
       },
       title: labels.account.signOutTitle,
@@ -708,17 +725,15 @@ const AppShell = () => {
     await syncRemote();
     const user = await getRemoteUser();
     setCurrentUser(user);
-    setSignedIn(true);
-    setAuthOpen(false);
-    router.replace('/groups');
+    setSessionState('authenticated');
+    router.replace('/today');
     await saveSessionState('authenticated');
   };
 
   const continueLocally = async () => {
     setCurrentUser(null);
-    setSignedIn(true);
-    setAuthOpen(false);
-    router.replace('/groups');
+    setSessionState('local');
+    router.replace('/today');
     await saveSessionState('local');
   };
 
@@ -761,11 +776,15 @@ const AppShell = () => {
     updateStatus !== 'idle' &&
     updateStatus !== 'unavailable';
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
-  const mainContentHidden = authOpen || mobileEditorOpen || searchOpen;
+  const mainContentHidden = mobileEditorOpen || searchOpen;
   const showMobileUtilities =
     !usesDesktopLayout &&
     !selectedTask &&
-    (activeView === 'today' || activeView === 'groups');
+    navigationItems.some((item) => item.id === activeView);
+  const showAppShell =
+    sessionState !== null &&
+    sessionState !== 'signed-out' &&
+    !isLoginRoute;
 
   return (
     <>
@@ -775,10 +794,15 @@ const AppShell = () => {
       importantForAccessibility={
         mainContentHidden ? 'no-hide-descendants' : 'auto'
       }
-      style={styles.appShell}
+      style={[
+        styles.appShell,
+        { width },
+        !showAppShell && styles.appShellHidden,
+      ]}
     >
-      {usesDesktopLayout ? (
+      {showAppShell && usesDesktopLayout ? (
         <SafeAreaView
+          key="desktop-sidebar"
           style={styles.desktopSidebar}
         >
           <View style={styles.desktopNavigation}>
@@ -850,6 +874,7 @@ const AppShell = () => {
       ) : null}
 
       <View
+        key="route-pane"
         style={
           usesDesktopLayout && selectedTask
             ? { width: resolvedListPaneWidth }
@@ -862,7 +887,9 @@ const AppShell = () => {
           </AppShellProvider>
         </View>
 
-        {!usesDesktopLayout && activeView !== 'statistics' ? (
+        {showAppShell &&
+        !usesDesktopLayout &&
+        activeView !== 'statistics' ? (
           <SafeAreaView
             edges={['bottom']}
             style={styles.mobileNavigationSafeArea}
@@ -902,7 +929,7 @@ const AppShell = () => {
         ) : null}
       </View>
 
-      {usesDesktopLayout && selectedTask ? (
+      {showAppShell && usesDesktopLayout && selectedTask ? (
         <>
           <ResizableDivider
             label={labels.editor.resizePane}
@@ -923,7 +950,7 @@ const AppShell = () => {
         </>
       ) : null}
 
-      {showMobileUtilities ? (
+      {showAppShell && showMobileUtilities ? (
         <SafeAreaView style={styles.mobileUtilityOverlay}>
           <View style={styles.mobileUtilityRow}>
             <AccountTrigger
@@ -954,7 +981,7 @@ const AppShell = () => {
         </SafeAreaView>
       ) : null}
 
-      {taskMenu ? (
+      {showAppShell && taskMenu ? (
         <TaskActionMenu
           onClose={() => setTaskMenu(null)}
           onTrash={(todoId) =>
@@ -967,7 +994,7 @@ const AppShell = () => {
         />
       ) : null}
 
-      {accountMenuOpen && usesDesktopLayout ? (
+      {showAppShell && accountMenuOpen && usesDesktopLayout ? (
         <AccountMenu
           currentUser={currentUser}
           onClose={() => setAccountMenuOpen(false)}
@@ -982,7 +1009,7 @@ const AppShell = () => {
         />
       ) : null}
 
-      {updateMenuOpen && updateInfo ? (
+      {showAppShell && updateMenuOpen && updateInfo ? (
         <DesktopUpdateMenu
           language={language}
           onClose={() => setUpdateMenuOpen(false)}
@@ -990,7 +1017,8 @@ const AppShell = () => {
           position={{ x: 90, y: Math.max(12, height - 290) }}
         />
       ) : null}
-      {!usesDesktopLayout &&
+      {showAppShell &&
+      !usesDesktopLayout &&
       !selectedTask &&
       (activeView === 'today' || activeView === 'groups') ? (
         <View style={styles.mobileQuickAdd}>
@@ -1011,7 +1039,7 @@ const AppShell = () => {
         </View>
       ) : null}
     </View>
-    {settingsPanelOpen && !usesDesktopLayout ? (
+    {showAppShell && settingsPanelOpen && !usesDesktopLayout ? (
       <View
         pointerEvents="box-none"
         style={StyleSheet.absoluteFill}
@@ -1045,40 +1073,30 @@ const AppShell = () => {
         </Animated.View>
       </View>
     ) : null}
-    {authOpen ? (
-      <Modal
-        animationType={Platform.OS === 'web' ? 'none' : 'slide'}
-        onRequestClose={() => setAuthOpen(false)}
-        presentationStyle="fullScreen"
-        visible
-      >
-        <SignedOutScreen
-          onCancel={() => setAuthOpen(false)}
-          onContinue={continueSession}
-          onContinueLocally={continueLocally}
+    {showAppShell ? (
+      <>
+        <SearchOverlay
+          onClose={() => setSearchOpen(false)}
+          onOpenTask={openSearchTask}
+          selectedTaskId={selectedTaskId}
+          visible={searchOpen}
         />
-      </Modal>
+        <AgentCommandPanel
+          onClose={() => setAgentOpen(false)}
+          onNotify={notify}
+          visible={agentOpen}
+        />
+        <QuickAddTaskSheet
+          initialDate={quickAddInitialDate ?? undefined}
+          onClose={() => {
+            setQuickAddOpen(false);
+            setQuickAddInitialDate(null);
+          }}
+          visible={quickAddOpen}
+        />
+      </>
     ) : null}
-    <SearchOverlay
-      onClose={() => setSearchOpen(false)}
-      onOpenTask={openSearchTask}
-      selectedTaskId={selectedTaskId}
-      visible={searchOpen}
-    />
-    <AgentCommandPanel
-      onClose={() => setAgentOpen(false)}
-      onNotify={notify}
-      visible={agentOpen}
-    />
-    <QuickAddTaskSheet
-      initialDate={quickAddInitialDate ?? undefined}
-      onClose={() => {
-        setQuickAddOpen(false);
-        setQuickAddInitialDate(null);
-      }}
-      visible={quickAddOpen}
-    />
-    {selectedTask && !usesDesktopLayout ? (
+    {showAppShell && selectedTask && !usesDesktopLayout ? (
       <Modal
         animationType={Platform.OS === 'web' ? 'none' : 'slide'}
         onRequestClose={closeSelectedTask}
@@ -1117,15 +1135,21 @@ const AppShell = () => {
         </View>
       </Modal>
     ) : null}
-    {signedIn === null ? (
-      <View style={[StyleSheet.absoluteFill, styles.bootOverlay]} />
-    ) : null}
-    {signedIn === false ? (
+    {!showAppShell ? (
       <View style={StyleSheet.absoluteFill}>
-        <SignedOutScreen
-          onContinue={continueSession}
-          onContinueLocally={continueLocally}
-        />
+        {sessionState === null ? (
+          <View style={[styles.appBackground, styles.bootOverlay]} />
+        ) : (
+          <SignedOutScreen
+            onCancel={
+              sessionState !== 'signed-out' && isLoginRoute
+                ? () => router.replace('/today')
+                : undefined
+            }
+            onContinue={continueSession}
+            onContinueLocally={continueLocally}
+          />
+        )}
       </View>
     ) : null}
     </>
@@ -1136,11 +1160,21 @@ const styles = StyleSheet.create({
   appBackground: {
     backgroundColor: '#F5F5FA',
     flex: 1,
+    maxWidth: '100%',
+    minWidth: 0,
+    overflow: 'hidden',
+    width: '100%',
   },
   appShell: {
     backgroundColor: '#F5F5FA',
     flex: 1,
     flexDirection: 'row',
+    maxWidth: '100%',
+    minWidth: 0,
+    width: '100%',
+  },
+  appShellHidden: {
+    display: 'none',
   },
   bootOverlay: {
     backgroundColor: '#F3F2F7',
@@ -1168,6 +1202,7 @@ const styles = StyleSheet.create({
   },
   fullPane: {
     flex: 1,
+    minWidth: 0,
   },
   mobileNavigationSafeArea: {
     backgroundColor: '#F5F5FA',

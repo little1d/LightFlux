@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../config/input';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { translations } from '../content';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
@@ -178,7 +179,7 @@ const SearchOverlay = ({
   const progress = useRef(new Animated.Value(0)).current;
   const [query, setQuery] = useState('');
   const { width } = useWindowDimensions();
-  const compact = width < 900;
+  const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
   const nativeWorkspace = Platform.OS !== 'web';
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const groupNames = useMemo(

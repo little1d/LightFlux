@@ -5,12 +5,14 @@ import {
   SectionList,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { translations } from '../content';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
@@ -156,6 +158,8 @@ const CompletedScreen = ({
 
   const today = useCurrentDateKey();
   const todayDate = fromDateKey(today);
+  const { width } = useWindowDimensions();
+  const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
   const yesterdayDate = new Date(todayDate);
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
   const yesterday = toDateKey(yesterdayDate);
@@ -181,11 +185,14 @@ const CompletedScreen = ({
   };
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View style={styles.screen}>
       <ExpoStatusBar style="dark" />
-      <SafeAreaView className="flex-1">
+      <SafeAreaView style={styles.safeArea}>
         <SectionList
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            compact && styles.contentCompact,
+          ]}
           keyExtractor={(todo) => todo.id}
           ListEmptyComponent={
             <View className="min-h-[380px] items-center justify-center px-8">
@@ -201,11 +208,13 @@ const CompletedScreen = ({
             </View>
           }
           ListHeaderComponent={
-            <View className="pb-5 pt-4">
-              <Text className="text-[24px] font-extrabold text-ink">
-                {labels.completed.title}
-              </Text>
-            </View>
+            compact ? null : (
+              <View className="pb-5 pt-4">
+                <Text className="text-[24px] font-extrabold text-ink">
+                  {labels.completed.title}
+                </Text>
+              </View>
+            )
           }
           renderItem={({ item }) => (
             <CompletedTaskRow
@@ -241,6 +250,13 @@ const CompletedScreen = ({
 };
 
 const styles = StyleSheet.create({
+  screen: {
+    backgroundColor: '#F5F5FA',
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
   list: {
     alignSelf: 'center',
     maxWidth: 860,
@@ -250,6 +266,9 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 30,
     paddingHorizontal: 20,
+  },
+  contentCompact: {
+    paddingTop: 70,
   },
 });
 

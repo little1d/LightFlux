@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { inputAccentProps } from '../../config/input';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 import { translations } from '../../content';
 import {
   ImageUploadError,
@@ -120,7 +121,7 @@ const TaskEditorScreen = ({
   readOnly = false,
 }: TaskEditorScreenProps) => {
   const { width } = useWindowDimensions();
-  const compact = width < 900;
+  const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
   const {
     groups,
     language,

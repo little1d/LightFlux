@@ -6,12 +6,14 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { translations } from '../content';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { useTodoStore } from '../store/todoStore';
 import { fromDateKey } from '../utils/date';
 import TaskSelectionMarker from './tasks/TaskSelectionMarker';
@@ -47,6 +49,8 @@ const TrashScreen = ({
     })),
   );
   const labels = translations[language];
+  const { width } = useWindowDimensions();
+  const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
   const hasTrash =
     trashedTodos.length > 0 || trashedMilestones.length > 0;
 
@@ -85,30 +89,39 @@ const TrashScreen = ({
       <ExpoStatusBar style="dark" />
       <SafeAreaView className="flex-1">
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[
+            styles.content,
+            compact && styles.contentCompact,
+          ]}
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          <View className="flex-row items-center justify-between pb-5 pt-4">
-            <View>
-              <Text className="text-[24px] font-extrabold text-ink">
-                {labels.trash.title}
-              </Text>
-            </View>
-            <View className="flex-row items-center">
-              {hasTrash ? (
-                <Pressable
-                  accessibilityRole="button"
-                  className="mr-2 h-9 items-center justify-center rounded-[13px] bg-[#FCECEF] px-3"
-                  onPress={requestEmptyTrash}
-                >
-                  <Text className="text-xs font-extrabold text-[#C84F60]">
-                    {labels.trash.emptyTrash}
+          {!compact || hasTrash ? (
+            <View className="flex-row items-center justify-between pb-5 pt-4">
+              {!compact ? (
+                <View>
+                  <Text className="text-[24px] font-extrabold text-ink">
+                    {labels.trash.title}
                   </Text>
-                </Pressable>
-              ) : null}
+                </View>
+              ) : (
+                <View />
+              )}
+              <View className="flex-row items-center">
+                {hasTrash ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    className="mr-2 h-9 items-center justify-center rounded-[13px] bg-[#FCECEF] px-3"
+                    onPress={requestEmptyTrash}
+                  >
+                    <Text className="text-xs font-extrabold text-[#C84F60]">
+                      {labels.trash.emptyTrash}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
-          </View>
+          ) : null}
 
           {!hasTrash ? (
             <View className="min-h-[360px] items-center justify-center px-8">
@@ -277,6 +290,9 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 28,
     paddingHorizontal: 20,
+  },
+  contentCompact: {
+    paddingTop: 70,
   },
 });
 

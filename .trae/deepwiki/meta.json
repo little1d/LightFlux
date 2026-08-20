@@ -1,0 +1,552 @@
+{
+  "current_version_id": 1,
+  "versions": [
+    {
+      "version_id": 1,
+      "status": {
+        "session_id": "6a7ab4e3e9944f29b8fcba71",
+        "commit_id": "6ce730fc1834eeb4dc0ba5a8ffce8711c1810264",
+        "generate_type": "full"
+      },
+      "catalogs": {
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/跨端文件命名与自动选择机制.md": {
+          "content_hash": "fa1afdda9e05586bb98007d9c8413083279a3b981226baf8c75b832a66ea8ff4",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/跨端文件命名与自动选择机制.md",
+          "chapter_number": "6.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/编辑器扩展与任务元数据管理.md": {
+          "content_hash": "c3978f3e5b435e63fd5e18237280ab14c4800a8d74da8358527c09e785c7eaf0",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/编辑器扩展与任务元数据管理.md",
+          "chapter_number": "5.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/里程碑与双历系统.md": {
+          "content_hash": "0e09e548770a6bfa960be3c8249411e83a90e105cffdb1c53757ec519456ea28",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/里程碑与双历系统.md",
+          "chapter_number": "7.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配.md": {
+          "content_hash": "ff97145d47024556ce1de695b6c96e261f3e8e60825b7df582b55506d5f484e1",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配.md",
+          "chapter_number": "6"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/NativeWind 样式与全局配置.md": {
+          "content_hash": "98a75c9286f4d77c296a321bd4c70ba1b9478c7c52eb5fb2e7ef12f399ae2702",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/NativeWind 样式与全局配置.md",
+          "chapter_number": "6.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储.md": {
+          "content_hash": "bea255f27c9a4678936df060db15fb82b8535bac278ab3f66bbe367b6ba292e7",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储.md",
+          "chapter_number": "7"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/移动端原生集成与认证.md": {
+          "content_hash": "063c7352fa430969e9d51b5fb538d8a3fb0b023ec4b67aafc2d18eb34bef085b",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/移动端原生集成与认证.md",
+          "chapter_number": "9.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/桌面端构建与权限配置.md": {
+          "content_hash": "193615b281bf8e4beb90873b1406a02b23216411d8288759e64d0ad5e22119ff",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/桌面端构建与权限配置.md",
+          "chapter_number": "8.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/存储迁移与状态同步测试.md": {
+          "content_hash": "a9f72f71d67ba750adbe2b8bd5a6541da2fa1157f3a83a1cc9326c6b0edeb3a5",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/存储迁移与状态同步测试.md",
+          "chapter_number": "10.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务事件与统计回顾.md": {
+          "content_hash": "75a1173410427ae7996a3ac833d8477ed9560073db791dda081a4c351cb07f8c",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务事件与统计回顾.md",
+          "chapter_number": "7.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成.md": {
+          "content_hash": "7b601b4f1669d42fb967530f7f7fcb6a70082f2ce96330c57dcaaa81f0d639be",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成.md",
+          "chapter_number": "5"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/微信开放平台配置与环境准备.md": {
+          "content_hash": "20611747a7af8bb518a64126111b68092f435ec31e40c135dfca78ff5076feaf",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/微信开放平台配置与环境准备.md",
+          "chapter_number": "9.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统.md": {
+          "content_hash": "82df7887bfd6fc7654f34be87d760437a3800a8eab6aa7398d93295b64cecb36",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统.md",
+          "chapter_number": "4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/环境准备.md": {
+          "content_hash": "00a0398e7de2340d95a0d3bf294c1b00eee53ed18b809b88f9e72302d45902b5",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/环境准备.md",
+          "chapter_number": "2.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/基于 Zustand 的状态管理.md": {
+          "content_hash": "dbbd8d5b42d87a89074ff58436decd3f09326655fe181304af34bc894cfe570d",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/基于 Zustand 的状态管理.md",
+          "chapter_number": "3.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/指令执行器详解：任务与里程碑自动化.md": {
+          "content_hash": "69bf02df3b75ce61f0654f3fc5cf24bf4219e667c90a4dbfaacafa50f7d11b89",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/指令执行器详解：任务与里程碑自动化.md",
+          "chapter_number": "4.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/目录结构说明.md": {
+          "content_hash": "4b97d34de41b58f4814fc5852e26d8c33674a042b829db2abc67da54cdf17f1a",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/目录结构说明.md",
+          "chapter_number": "1.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/自动化发布流水线.md": {
+          "content_hash": "7fe0ffff415339274327642e11c88b280bf68c31744dcead6d20790a31c4f79e",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/自动化发布流水线.md",
+          "chapter_number": "8.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/数据同步与冲突解决.md": {
+          "content_hash": "fb6a71f4f0472d8c571bf2cc6f71e0b9408182e195932ee5152b95c27ad16617",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/数据同步与冲突解决.md",
+          "chapter_number": "3.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/服务端 Agent 能力与 API 协作.md": {
+          "content_hash": "cb76da5986e80a24d5fccf59afb5c517ef551e77541e99fdb692c91d88ca5941",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/服务端 Agent 能力与 API 协作.md",
+          "chapter_number": ""
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/AI 指令与 Agent 专项测试.md": {
+          "content_hash": "fc37aecf5576c28d8da24e5d61184dc0860ebfcb4e65a5f07a1f11c3bc898db6",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/AI 指令与 Agent 专项测试.md",
+          "chapter_number": "10.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/项目愿景与核心特性.md": {
+          "content_hash": "f8e7a550d27ec6c7e958f25eab48b7c0c3f330fce51c1b0d82d026ad64cf6f7c",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/项目愿景与核心特性.md",
+          "chapter_number": "1.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/后端服务启动.md": {
+          "content_hash": "b3250a40c66b68ea7720a890cde0b5839628b82adecee841dc0ac49ca805ed67",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/后端服务启动.md",
+          "chapter_number": "2.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/常见问题排查.md": {
+          "content_hash": "42be7afeff0338f2a412581bcbc039cc376d28772992f97e6c651071c6588bf7",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/常见问题排查.md",
+          "chapter_number": "2.5"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/桌面端开发环境（Tauri）.md": {
+          "content_hash": "a879489f9a118c552a9822010ef392e352098da4b46bf3d55a7acf6cc55fa8e5",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/桌面端开发环境（Tauri）.md",
+          "chapter_number": "2.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手.md": {
+          "content_hash": "c1dabbbcec8a2806864cce79ed2a49c2434309b9419a328cb510511c56211635",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手.md",
+          "chapter_number": "2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/整体架构图解.md": {
+          "content_hash": "f648e7374398bd0ab8c812deabb08f52c64668bf1eb9a43143c0f9788dae26f1",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/整体架构图解.md",
+          "chapter_number": "1.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布.md": {
+          "content_hash": "f025cf2bc91e7ffc5eab89cd181e7b6e4c27dff2b0bab659201a0fd8a2e5bb4e",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布.md",
+          "chapter_number": "8"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/UI 交互层：智能指令面板实现.md": {
+          "content_hash": "f1a8ba424f3c81e0129808129839145519a35197d933afde1ccb7d4c5fa38aa6",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/UI 交互层：智能指令面板实现.md",
+          "chapter_number": "4.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/Tauri 架构与 Rust 核心实现.md": {
+          "content_hash": "cc2e570ff2c106dff6c484677ff9d7e4674dff481b3ffe8a90b7dcb94c208020",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/Tauri 架构与 Rust 核心实现.md",
+          "chapter_number": "8.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Web 端集成实现.md": {
+          "content_hash": "6af46b913e9646e0a67f2d43bb15ef4a27a8a4e5a8299e4e5567796212cb5932",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Web 端集成实现.md",
+          "chapter_number": "5.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/前端开发环境（移动端与 Web）.md": {
+          "content_hash": "5a6c1e34a22221378b0cf4ac0cdcc796543fe5a485e29729961ff1dc86e6a1dc",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/前端开发环境（移动端与 Web）.md",
+          "chapter_number": "2.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/存储适配器：Agent 与状态库的交互桥梁.md": {
+          "content_hash": "0a573a6f7e3ffb9f0fa3579a1d85030cd3766a8a88218ed68b2fecba9257aeb6",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/存储适配器：Agent 与状态库的交互桥梁.md",
+          "chapter_number": "4.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/持续集成与桌面端发布指南.md": {
+          "content_hash": "a2dd40eebe7100a76e3a28d80a5304f896e471a7fbdf92ecd99f9a549d0ed9da",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/持续集成与桌面端发布指南.md",
+          "chapter_number": "10.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/打包、签名与分发指南.md": {
+          "content_hash": "b4699e669a8f9090ed8b26b0fb7cc2f4dddd07b5af4fd11e3944c6676c2e2677",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/打包、签名与分发指南.md",
+          "chapter_number": "8.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/Web 端扫码登录实现.md": {
+          "content_hash": "afdd872d2e0bcee70343cdeee098cef224d96a0326cf77c5461c71c5ec6e8d52",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/Web 端扫码登录实现.md",
+          "chapter_number": "9.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证.md": {
+          "content_hash": "0e2b874f5b4ccb6ffa26f56817d86662b6f454d1f1d9db03c88aa81c73fc0b1b",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证.md",
+          "chapter_number": "10"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/后端认证与会话管理.md": {
+          "content_hash": "f9b5e299dc211e6ea79ccbf7bc21210a8eb8e420a958207857377933be8cb3e3",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/后端认证与会话管理.md",
+          "chapter_number": "9.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流.md": {
+          "content_hash": "76571330238ce54021c2630decbb2961814231176c771411e48ece249c1bf042",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流.md",
+          "chapter_number": "3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/单元测试规范与领域逻辑测试.md": {
+          "content_hash": "38249f48144ac3a212f88dd2adf19f514d8ff85f776f273e8c8f5ddf09f745f6",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/单元测试规范与领域逻辑测试.md",
+          "chapter_number": "10.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务模型与状态流转.md": {
+          "content_hash": "ec5d25c268a1ac1e30e66e5ec83315760c9ddc2355a6060332dc50d1aa6ea755",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务模型与状态流转.md",
+          "chapter_number": "7.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览.md": {
+          "content_hash": "66b4ee73a924f5a3d8cf8dc4567ba6ba52ea64a43fb8e06878934a6e39391971",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览.md",
+          "chapter_number": "1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Tiptap 编辑器核心与构建流程.md": {
+          "content_hash": "ab00a2394e3fe495619fb318bf900413c06df4065bfae888e9ec8d2a27d7f9c3",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Tiptap 编辑器核心与构建流程.md",
+          "chapter_number": "5.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/技术栈概览.md": {
+          "content_hash": "48cb10ac7f929843651c9da4e613cdcb5ce1e6ee15e2a02d326aa3ed071043de",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/技术栈概览.md",
+          "chapter_number": "1.2"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/Agent 核心原理与指令解析.md": {
+          "content_hash": "4e4ede3f3e2ca82bdfeeb07e283101cfc83120726833b1c8c2a479804008e49b",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/Agent 核心原理与指令解析.md",
+          "chapter_number": "4.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/扩展指南：如何添加新的 AI 指令.md": {
+          "content_hash": "3509f0d9cb1ae8fba4f274d7b3971fca3e97277643161bf4cc2ac0513a73fa55",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/扩展指南：如何添加新的 AI 指令.md",
+          "chapter_number": ""
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/平台差异化逻辑处理.md": {
+          "content_hash": "a1ceae0fb5a690dc4dcfc937d1594725d7428657dc606abcac7ae00a14e54911",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/平台差异化逻辑处理.md",
+          "chapter_number": "6.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Native 端 WebView 桥接机制.md": {
+          "content_hash": "c1fa99636c4c985d68b5cb9f2f547865ff136f500de4585a084bede1a7677256",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Native 端 WebView 桥接机制.md",
+          "chapter_number": "5.3"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/本地优先架构与持久化.md": {
+          "content_hash": "7d269efb07110b259b6f70140dab2b7e5b2f6752e5992c40ab54806278465295",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/本地优先架构与持久化.md",
+          "chapter_number": "3.1"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/持久化层与存储实现.md": {
+          "content_hash": "56cf6c66d3c9dc27fb4dd2f34779d645d4b7acf7654fc5d6c6261c0d78931f48",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/持久化层与存储实现.md",
+          "chapter_number": "7.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证.md": {
+          "content_hash": "0971086f6ab3ddd2b492ab3d220c35ad309b9c4be959b8752e069426927a6450",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证.md",
+          "chapter_number": "9"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/跨端适配与 Tauri-Expo 集成原理.md": {
+          "content_hash": "3dc2ac8abefa18681d8c3cf86a75bf72eab269fa5e07f2b46960bc108ca63f5c",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/跨端适配与 Tauri-Expo 集成原理.md",
+          "chapter_number": "3.4"
+        },
+        "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/响应式布局与多端 UI 策略.md": {
+          "content_hash": "37d1b0ea5e6b5d1c7769ae2bebe0b840533116a0d648a1751d6c8270b8788897",
+          "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/响应式布局与多端 UI 策略.md",
+          "chapter_number": "6.4"
+        }
+      }
+    }
+  ],
+  "status": {
+    "session_id": "6a7ab4e3e9944f29b8fcba71",
+    "commit_id": "6ce730fc1834eeb4dc0ba5a8ffce8711c1810264",
+    "generate_type": "full"
+  },
+  "catalogs": {
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/跨端文件命名与自动选择机制.md": {
+      "content_hash": "fa1afdda9e05586bb98007d9c8413083279a3b981226baf8c75b832a66ea8ff4",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/跨端文件命名与自动选择机制.md",
+      "chapter_number": "6.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/编辑器扩展与任务元数据管理.md": {
+      "content_hash": "c3978f3e5b435e63fd5e18237280ab14c4800a8d74da8358527c09e785c7eaf0",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/编辑器扩展与任务元数据管理.md",
+      "chapter_number": "5.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/里程碑与双历系统.md": {
+      "content_hash": "0e09e548770a6bfa960be3c8249411e83a90e105cffdb1c53757ec519456ea28",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/里程碑与双历系统.md",
+      "chapter_number": "7.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配.md": {
+      "content_hash": "ff97145d47024556ce1de695b6c96e261f3e8e60825b7df582b55506d5f484e1",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配.md",
+      "chapter_number": "6"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/NativeWind 样式与全局配置.md": {
+      "content_hash": "98a75c9286f4d77c296a321bd4c70ba1b9478c7c52eb5fb2e7ef12f399ae2702",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/NativeWind 样式与全局配置.md",
+      "chapter_number": "6.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储.md": {
+      "content_hash": "bea255f27c9a4678936df060db15fb82b8535bac278ab3f66bbe367b6ba292e7",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储.md",
+      "chapter_number": "7"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/移动端原生集成与认证.md": {
+      "content_hash": "063c7352fa430969e9d51b5fb538d8a3fb0b023ec4b67aafc2d18eb34bef085b",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/移动端原生集成与认证.md",
+      "chapter_number": "9.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/桌面端构建与权限配置.md": {
+      "content_hash": "193615b281bf8e4beb90873b1406a02b23216411d8288759e64d0ad5e22119ff",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/桌面端构建与权限配置.md",
+      "chapter_number": "8.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/存储迁移与状态同步测试.md": {
+      "content_hash": "a9f72f71d67ba750adbe2b8bd5a6541da2fa1157f3a83a1cc9326c6b0edeb3a5",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/存储迁移与状态同步测试.md",
+      "chapter_number": "10.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务事件与统计回顾.md": {
+      "content_hash": "75a1173410427ae7996a3ac833d8477ed9560073db791dda081a4c351cb07f8c",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务事件与统计回顾.md",
+      "chapter_number": "7.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成.md": {
+      "content_hash": "7b601b4f1669d42fb967530f7f7fcb6a70082f2ce96330c57dcaaa81f0d639be",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成.md",
+      "chapter_number": "5"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/微信开放平台配置与环境准备.md": {
+      "content_hash": "20611747a7af8bb518a64126111b68092f435ec31e40c135dfca78ff5076feaf",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/微信开放平台配置与环境准备.md",
+      "chapter_number": "9.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统.md": {
+      "content_hash": "82df7887bfd6fc7654f34be87d760437a3800a8eab6aa7398d93295b64cecb36",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统.md",
+      "chapter_number": "4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/环境准备.md": {
+      "content_hash": "00a0398e7de2340d95a0d3bf294c1b00eee53ed18b809b88f9e72302d45902b5",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/环境准备.md",
+      "chapter_number": "2.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/基于 Zustand 的状态管理.md": {
+      "content_hash": "dbbd8d5b42d87a89074ff58436decd3f09326655fe181304af34bc894cfe570d",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/基于 Zustand 的状态管理.md",
+      "chapter_number": "3.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/指令执行器详解：任务与里程碑自动化.md": {
+      "content_hash": "69bf02df3b75ce61f0654f3fc5cf24bf4219e667c90a4dbfaacafa50f7d11b89",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/指令执行器详解：任务与里程碑自动化.md",
+      "chapter_number": "4.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/目录结构说明.md": {
+      "content_hash": "4b97d34de41b58f4814fc5852e26d8c33674a042b829db2abc67da54cdf17f1a",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/目录结构说明.md",
+      "chapter_number": "1.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/自动化发布流水线.md": {
+      "content_hash": "7fe0ffff415339274327642e11c88b280bf68c31744dcead6d20790a31c4f79e",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/自动化发布流水线.md",
+      "chapter_number": "8.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/数据同步与冲突解决.md": {
+      "content_hash": "fb6a71f4f0472d8c571bf2cc6f71e0b9408182e195932ee5152b95c27ad16617",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/数据同步与冲突解决.md",
+      "chapter_number": "3.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/服务端 Agent 能力与 API 协作.md": {
+      "content_hash": "cb76da5986e80a24d5fccf59afb5c517ef551e77541e99fdb692c91d88ca5941",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/服务端 Agent 能力与 API 协作.md",
+      "chapter_number": ""
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/AI 指令与 Agent 专项测试.md": {
+      "content_hash": "fc37aecf5576c28d8da24e5d61184dc0860ebfcb4e65a5f07a1f11c3bc898db6",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/AI 指令与 Agent 专项测试.md",
+      "chapter_number": "10.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/项目愿景与核心特性.md": {
+      "content_hash": "f8e7a550d27ec6c7e958f25eab48b7c0c3f330fce51c1b0d82d026ad64cf6f7c",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/项目愿景与核心特性.md",
+      "chapter_number": "1.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/后端服务启动.md": {
+      "content_hash": "b3250a40c66b68ea7720a890cde0b5839628b82adecee841dc0ac49ca805ed67",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/后端服务启动.md",
+      "chapter_number": "2.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/常见问题排查.md": {
+      "content_hash": "42be7afeff0338f2a412581bcbc039cc376d28772992f97e6c651071c6588bf7",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/常见问题排查.md",
+      "chapter_number": "2.5"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/桌面端开发环境（Tauri）.md": {
+      "content_hash": "a879489f9a118c552a9822010ef392e352098da4b46bf3d55a7acf6cc55fa8e5",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/桌面端开发环境（Tauri）.md",
+      "chapter_number": "2.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手.md": {
+      "content_hash": "c1dabbbcec8a2806864cce79ed2a49c2434309b9419a328cb510511c56211635",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手.md",
+      "chapter_number": "2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/整体架构图解.md": {
+      "content_hash": "f648e7374398bd0ab8c812deabb08f52c64668bf1eb9a43143c0f9788dae26f1",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/整体架构图解.md",
+      "chapter_number": "1.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布.md": {
+      "content_hash": "f025cf2bc91e7ffc5eab89cd181e7b6e4c27dff2b0bab659201a0fd8a2e5bb4e",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布.md",
+      "chapter_number": "8"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/UI 交互层：智能指令面板实现.md": {
+      "content_hash": "f1a8ba424f3c81e0129808129839145519a35197d933afde1ccb7d4c5fa38aa6",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/UI 交互层：智能指令面板实现.md",
+      "chapter_number": "4.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/Tauri 架构与 Rust 核心实现.md": {
+      "content_hash": "cc2e570ff2c106dff6c484677ff9d7e4674dff481b3ffe8a90b7dcb94c208020",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/Tauri 架构与 Rust 核心实现.md",
+      "chapter_number": "8.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Web 端集成实现.md": {
+      "content_hash": "6af46b913e9646e0a67f2d43bb15ef4a27a8a4e5a8299e4e5567796212cb5932",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Web 端集成实现.md",
+      "chapter_number": "5.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/前端开发环境（移动端与 Web）.md": {
+      "content_hash": "5a6c1e34a22221378b0cf4ac0cdcc796543fe5a485e29729961ff1dc86e6a1dc",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/快速上手/前端开发环境（移动端与 Web）.md",
+      "chapter_number": "2.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/存储适配器：Agent 与状态库的交互桥梁.md": {
+      "content_hash": "0a573a6f7e3ffb9f0fa3579a1d85030cd3766a8a88218ed68b2fecba9257aeb6",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/存储适配器：Agent 与状态库的交互桥梁.md",
+      "chapter_number": "4.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/持续集成与桌面端发布指南.md": {
+      "content_hash": "a2dd40eebe7100a76e3a28d80a5304f896e471a7fbdf92ecd99f9a549d0ed9da",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/持续集成与桌面端发布指南.md",
+      "chapter_number": "10.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/打包、签名与分发指南.md": {
+      "content_hash": "b4699e669a8f9090ed8b26b0fb7cc2f4dddd07b5af4fd11e3944c6676c2e2677",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/桌面端开发与发布/打包、签名与分发指南.md",
+      "chapter_number": "8.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/Web 端扫码登录实现.md": {
+      "content_hash": "afdd872d2e0bcee70343cdeee098cef224d96a0326cf77c5461c71c5ec6e8d52",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/Web 端扫码登录实现.md",
+      "chapter_number": "9.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证.md": {
+      "content_hash": "0e2b874f5b4ccb6ffa26f56817d86662b6f454d1f1d9db03c88aa81c73fc0b1b",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证.md",
+      "chapter_number": "10"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/后端认证与会话管理.md": {
+      "content_hash": "f9b5e299dc211e6ea79ccbf7bc21210a8eb8e420a958207857377933be8cb3e3",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证/后端认证与会话管理.md",
+      "chapter_number": "9.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流.md": {
+      "content_hash": "76571330238ce54021c2630decbb2961814231176c771411e48ece249c1bf042",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流.md",
+      "chapter_number": "3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/单元测试规范与领域逻辑测试.md": {
+      "content_hash": "38249f48144ac3a212f88dd2adf19f514d8ff85f776f273e8c8f5ddf09f745f6",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/测试与质量保证/单元测试规范与领域逻辑测试.md",
+      "chapter_number": "10.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务模型与状态流转.md": {
+      "content_hash": "ec5d25c268a1ac1e30e66e5ec83315760c9ddc2355a6060332dc50d1aa6ea755",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/任务模型与状态流转.md",
+      "chapter_number": "7.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览.md": {
+      "content_hash": "66b4ee73a924f5a3d8cf8dc4567ba6ba52ea64a43fb8e06878934a6e39391971",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览.md",
+      "chapter_number": "1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Tiptap 编辑器核心与构建流程.md": {
+      "content_hash": "ab00a2394e3fe495619fb318bf900413c06df4065bfae888e9ec8d2a27d7f9c3",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Tiptap 编辑器核心与构建流程.md",
+      "chapter_number": "5.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/技术栈概览.md": {
+      "content_hash": "48cb10ac7f929843651c9da4e613cdcb5ce1e6ee15e2a02d326aa3ed071043de",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/项目概览/技术栈概览.md",
+      "chapter_number": "1.2"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/Agent 核心原理与指令解析.md": {
+      "content_hash": "4e4ede3f3e2ca82bdfeeb07e283101cfc83120726833b1c8c2a479804008e49b",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/Agent 核心原理与指令解析.md",
+      "chapter_number": "4.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/扩展指南：如何添加新的 AI 指令.md": {
+      "content_hash": "3509f0d9cb1ae8fba4f274d7b3971fca3e97277643161bf4cc2ac0513a73fa55",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/AI 智能助手系统/扩展指南：如何添加新的 AI 指令.md",
+      "chapter_number": ""
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/平台差异化逻辑处理.md": {
+      "content_hash": "a1ceae0fb5a690dc4dcfc937d1594725d7428657dc606abcac7ae00a14e54911",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/平台差异化逻辑处理.md",
+      "chapter_number": "6.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Native 端 WebView 桥接机制.md": {
+      "content_hash": "c1fa99636c4c985d68b5cb9f2f547865ff136f500de4585a084bede1a7677256",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/富文本编辑器集成/Native 端 WebView 桥接机制.md",
+      "chapter_number": "5.3"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/本地优先架构与持久化.md": {
+      "content_hash": "7d269efb07110b259b6f70140dab2b7e5b2f6752e5992c40ab54806278465295",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/本地优先架构与持久化.md",
+      "chapter_number": "3.1"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/持久化层与存储实现.md": {
+      "content_hash": "56cf6c66d3c9dc27fb4dd2f34779d645d4b7acf7654fc5d6c6261c0d78931f48",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/领域模型与存储/持久化层与存储实现.md",
+      "chapter_number": "7.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证.md": {
+      "content_hash": "0971086f6ab3ddd2b492ab3d220c35ad309b9c4be959b8752e069426927a6450",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/微信集成与认证.md",
+      "chapter_number": "9"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/跨端适配与 Tauri-Expo 集成原理.md": {
+      "content_hash": "3dc2ac8abefa18681d8c3cf86a75bf72eab269fa5e07f2b46960bc108ca63f5c",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/架构设计与数据流/跨端适配与 Tauri-Expo 集成原理.md",
+      "chapter_number": "3.4"
+    },
+    "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/响应式布局与多端 UI 策略.md": {
+      "content_hash": "37d1b0ea5e6b5d1c7769ae2bebe0b840533116a0d648a1751d6c8270b8788897",
+      "file_path": "/Users/bytedance/Desktop/Code/LightFlux/.trae/deepwiki/跨端开发与 UI 适配/响应式布局与多端 UI 策略.md",
+      "chapter_number": "6.4"
+    }
+  }
+}

@@ -135,7 +135,7 @@ test('re-running migrations is idempotent', async () => {
   const applied = await pool.query(
     'SELECT id, name, checksum FROM lightflux_schema_migrations',
   );
-  assert.equal(applied.rowCount, 3);
+  assert.equal(applied.rowCount, 4);
   for (const migration of applied.rows) {
     assert.match(migration.checksum, /^[0-9a-f]{64}$/);
   }

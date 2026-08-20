@@ -5,6 +5,7 @@ export const settings: Translation['settings'] = {
   signedInAs: 'Signed in as',
   localOnly: 'Local only',
   localOnlyDescription: 'Sign in to sync tasks across devices.',
+  signIn: 'Sign in',
   signOut: 'Sign out',
   languageTitle: 'Language',
   chinese: '简体中文',

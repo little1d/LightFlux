@@ -5,6 +5,7 @@ export const settings: Translation['settings'] = {
   signedInAs: '已登录',
   localOnly: '仅本地',
   localOnlyDescription: '登录后可在多设备间同步任务。',
+  signIn: '登录',
   signOut: '退出登录',
   languageTitle: '语言',
   chinese: '简体中文',

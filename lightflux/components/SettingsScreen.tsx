@@ -32,6 +32,7 @@ const SettingsScreen = ({
   hiddenNavigationItems,
   onNavigationVisibilityChange,
   onOpenStatistics,
+  onSignIn,
   onSignOut,
 }: {
   currentUser: { email: string; name?: string } | null;
@@ -41,6 +42,7 @@ const SettingsScreen = ({
     visible: boolean,
   ) => void;
   onOpenStatistics: () => void;
+  onSignIn: () => void;
   onSignOut: () => void;
 }) => {
   const { width } = useWindowDimensions();
@@ -53,6 +55,7 @@ const SettingsScreen = ({
       : 280;
   const [focusedRow, setFocusedRow] = useState<string | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
+  const [signInHovered, setSignInHovered] = useState(false);
   const [signOutHovered, setSignOutHovered] = useState(false);
   const language = useTodoStore((state) => state.language);
   const setLanguage = useTodoStore((state) => state.setLanguage);
@@ -112,6 +115,27 @@ const SettingsScreen = ({
         },
         signOutText: {
           color: '#C84F60',
+          fontSize: compact ? 12 : 13,
+          fontWeight: '700',
+        },
+        signInButton: {
+          alignItems: 'center',
+          backgroundColor: '#6759E8',
+          borderRadius: 8,
+          flexDirection: 'row',
+          gap: 5,
+          paddingHorizontal: compact ? 10 : 14,
+          paddingVertical: compact ? 7 : 9,
+        },
+        signInButtonHovered: {
+          backgroundColor: '#594CCD',
+        },
+        signInButtonPressed: {
+          opacity: 0.76,
+          transform: [{ scale: 0.97 }],
+        },
+        signInText: {
+          color: '#FFFFFF',
           fontSize: compact ? 12 : 13,
           fontWeight: '700',
         },
@@ -207,6 +231,22 @@ const SettingsScreen = ({
                       {labels.settings.localOnlyDescription}
                     </Text>
                   </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    onHoverIn={() => setSignInHovered(true)}
+                    onHoverOut={() => setSignInHovered(false)}
+                    onPress={onSignIn}
+                    style={({ pressed }) => [
+                      styles.signInButton,
+                      signInHovered && styles.signInButtonHovered,
+                      pressed && styles.signInButtonPressed,
+                    ]}
+                  >
+                    <Ionicons color="#FFFFFF" name="log-in-outline" size={14} />
+                    <Text style={styles.signInText}>
+                      {labels.settings.signIn}
+                    </Text>
+                  </Pressable>
                 </View>
               )}
             </View>

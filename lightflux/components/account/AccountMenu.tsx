@@ -10,12 +10,14 @@ const AccountMenu = ({
   currentUser,
   onClose,
   onOpenSettings,
+  onSignIn,
   position,
   onSignOut,
 }: {
   currentUser: { email: string; name?: string } | null;
   onClose: () => void;
   onOpenSettings: () => void;
+  onSignIn: () => void;
   position?: MenuSurfacePosition;
   onSignOut: () => void;
 }) => {
@@ -56,14 +58,24 @@ const AccountMenu = ({
         onPress={onOpenSettings}
       />
 
-      <MenuItem
-        danger
-        icon={
-          <Ionicons color="#D45C6A" name="log-out-outline" size={17} />
-        }
-        label={labels.account.signOut}
-        onPress={onSignOut}
-      />
+      {currentUser ? (
+        <MenuItem
+          danger
+          icon={
+            <Ionicons color="#D45C6A" name="log-out-outline" size={17} />
+          }
+          label={labels.account.signOut}
+          onPress={onSignOut}
+        />
+      ) : (
+        <MenuItem
+          icon={
+            <Ionicons color="#6759E8" name="log-in-outline" size={17} />
+          }
+          label={labels.settings.signIn}
+          onPress={onSignIn}
+        />
+      )}
     </MenuSurface>
   );
 };

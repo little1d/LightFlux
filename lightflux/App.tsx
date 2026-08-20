@@ -66,8 +66,9 @@ import {
   TodoProvider,
   useTodoStore,
 } from './store/todoStore';
+import { searchResultView } from './store/todoDomain';
 import { translations } from './content';
-import { getRemoteUser, isRemoteAuthConfigured, logoutRemoteSession } from './services/authApi';
+import { getRemoteUser } from './services/authApi';
 import {
   loadSessionState,
   saveSessionState,
@@ -187,6 +188,7 @@ const AppContent = () => {
   const notify = useToast();
   const [activeView, setActiveView] = useState<AppView>('groups');
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [currentUser, setCurrentUser] = useState<{ email: string; name?: string } | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
@@ -355,6 +357,22 @@ const AppContent = () => {
       requestId: Date.now(),
     });
   }, []);
+  const openSearchTask = useCallback((id: string) => {
+    const todo = useTodoStore
+      .getState()
+      .todos.find((item) => item.id === id);
+    if (!todo) {
+      return;
+    }
+    setActiveView(searchResultView(todo));
+    setAccountMenuOpen(false);
+    setTaskMenu(null);
+    setSelectedTask({
+      id,
+      readOnly: false,
+      requestId: Date.now(),
+    });
+  }, []);
   const openTrashedTask = useCallback((id: string) => {
     setSelectedTask({
       id,
@@ -400,6 +418,11 @@ const AppContent = () => {
     setTaskMenu(null);
     setSelectedTask(null);
     setAgentOpen(true);
+  }, []);
+  const openAuthentication = useCallback(() => {
+    setAccountMenuOpen(false);
+    setSettingsPanelOpen(false);
+    setAuthOpen(true);
   }, []);
   const setNavigationVisible = useCallback(
     (id: OptionalNavigationItemId, visible: boolean) => {
@@ -519,28 +542,32 @@ const AppContent = () => {
   useEffect(() => {
     let active = true;
     loadSessionState()
-      .then(async (value) => {
-        if (!active) return;
-        if (value) {
+      .then(async (sessionState) => {
+        if (!active) {
+          return;
+        }
+        if (sessionState === 'authenticated') {
+          await syncRemote();
           const user = await getRemoteUser();
           if (active) {
             setCurrentUser(user);
             setSignedIn(true);
           }
-        } else {
-          setSignedIn(isRemoteAuthConfigured ? false : true);
+          return;
         }
+        setCurrentUser(null);
+        setSignedIn(sessionState === 'local');
       })
       .catch(() => {
         if (active) {
-          setSignedIn(!isRemoteAuthConfigured);
+          setSignedIn(false);
         }
       });
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [syncRemote]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -619,8 +646,7 @@ const AppContent = () => {
         setTaskMenu(null);
         setCurrentUser(null);
         setSignedIn(false);
-        void logoutRemoteSession().catch(() => {});
-        void saveSessionState(false);
+        void saveSessionState('signed-out').catch(() => {});
       },
       title: labels.account.signOutTitle,
     });
@@ -631,8 +657,17 @@ const AppContent = () => {
     const user = await getRemoteUser();
     setCurrentUser(user);
     setSignedIn(true);
+    setAuthOpen(false);
     setActiveView('groups');
-    await saveSessionState(true);
+    await saveSessionState('authenticated');
+  };
+
+  const continueLocally = async () => {
+    setCurrentUser(null);
+    setSignedIn(true);
+    setAuthOpen(false);
+    setActiveView('groups');
+    await saveSessionState('local');
   };
 
   if (signedIn === null) {
@@ -640,7 +675,12 @@ const AppContent = () => {
   }
 
   if (!signedIn) {
-    return <SignedOutScreen onContinue={continueSession} />;
+    return (
+      <SignedOutScreen
+        onContinue={continueSession}
+        onContinueLocally={continueLocally}
+      />
+    );
   }
 
   const activeScreen =
@@ -655,6 +695,7 @@ const AppContent = () => {
         hiddenNavigationItems={hiddenNavigationItems}
         onNavigationVisibilityChange={setNavigationVisible}
         onOpenStatistics={() => changeView('statistics')}
+        onSignIn={openAuthentication}
         onSignOut={signOut}
       />
     ) : activeView === 'today' ? (
@@ -702,7 +743,7 @@ const AppContent = () => {
     updateStatus !== 'idle' &&
     updateStatus !== 'unavailable';
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
-  const mainContentHidden = mobileEditorOpen || searchOpen;
+  const mainContentHidden = authOpen || mobileEditorOpen || searchOpen;
   const showMobileUtilities =
     !usesDesktopLayout &&
     !selectedTask &&
@@ -906,6 +947,7 @@ const AppContent = () => {
           currentUser={currentUser}
           onClose={() => setAccountMenuOpen(false)}
           onOpenSettings={() => changeView('settings')}
+          onSignIn={openAuthentication}
           position={
             usesDesktopLayout
               ? undefined
@@ -968,6 +1010,7 @@ const AppContent = () => {
                 setSettingsPanelOpen(false);
                 changeView('statistics');
               }}
+              onSignIn={openAuthentication}
               onSignOut={() => {
                 setSettingsPanelOpen(false);
                 signOut();
@@ -977,9 +1020,23 @@ const AppContent = () => {
         </Animated.View>
       </View>
     ) : null}
+    {authOpen ? (
+      <Modal
+        animationType={Platform.OS === 'web' ? 'none' : 'slide'}
+        onRequestClose={() => setAuthOpen(false)}
+        presentationStyle="fullScreen"
+        visible
+      >
+        <SignedOutScreen
+          onCancel={() => setAuthOpen(false)}
+          onContinue={continueSession}
+          onContinueLocally={continueLocally}
+        />
+      </Modal>
+    ) : null}
     <SearchOverlay
       onClose={() => setSearchOpen(false)}
-      onOpenTask={openActiveTask}
+      onOpenTask={openSearchTask}
       selectedTaskId={selectedTaskId}
       visible={searchOpen}
     />
@@ -1010,7 +1067,20 @@ const AppContent = () => {
             onPress={closeSelectedTask}
             style={StyleSheet.absoluteFill}
           />
-          <SafeAreaView edges={['bottom']} style={styles.mobileEditorSheet}>
+          <SafeAreaView
+            edges={['bottom']}
+            style={[
+              styles.mobileEditorSheet,
+              Platform.OS === 'web'
+                ? {
+                    height: Math.min(
+                      420,
+                      Math.max(300, Math.round(height * 0.4)),
+                    ),
+                  }
+                : styles.nativeEditorSheet,
+            ]}
+          >
             <TaskEditorScreen
               embedded
               key={`${selectedTask.id}-${selectedTask.requestId}`}
@@ -1123,9 +1193,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
+    overflow: 'hidden',
+  },
+  nativeEditorSheet: {
     height: '88%',
     maxHeight: 760,
-    overflow: 'hidden',
   },
   mobileQuickAdd: {
     bottom: 86,

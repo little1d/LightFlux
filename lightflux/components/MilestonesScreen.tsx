@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   scroll: {
     alignSelf: 'center',
     flex: 1,
-    maxWidth: 1120,
+    maxWidth: 860,
     width: '100%',
   },
   content: {

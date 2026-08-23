@@ -39,6 +39,7 @@ import {
   OpenTaskMenu,
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
+import MobileQuickAddButton from './tasks/MobileQuickAddButton';
 import ActionButton from './ui/ActionButton';
 import IconButton from './ui/IconButton';
 
@@ -482,18 +483,25 @@ const CalendarScreen = ({
             ) : null}
           </View>
         </ScrollView>
-        <Pressable
-          accessibilityLabel={`${labels.addTask}: ${selectedDateLabel}`}
-          accessibilityRole="button"
-          onPress={() => onAddTask(selectedDate)}
-          style={({ pressed }) => [
-            styles.fab,
-            mobileFab && styles.fabCompact,
-            pressed && styles.fabPressed,
-          ]}
-        >
-          <Ionicons color="#FFFFFF" name="add" size={mobileFab ? 26 : 28} />
-        </Pressable>
+        {mobileFab ? (
+          <MobileQuickAddButton
+            insideContentPane
+            label={`${labels.addTask}: ${selectedDateLabel}`}
+            onPress={() => onAddTask(selectedDate)}
+          />
+        ) : (
+          <Pressable
+            accessibilityLabel={`${labels.addTask}: ${selectedDateLabel}`}
+            accessibilityRole="button"
+            onPress={() => onAddTask(selectedDate)}
+            style={({ pressed }) => [
+              styles.fab,
+              pressed && styles.fabPressed,
+            ]}
+          >
+            <Ionicons color="#FFFFFF" name="add" size={28} />
+          </Pressable>
+        )}
       </SafeAreaView>
     </View>
   );
@@ -763,13 +771,6 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     width: 56,
     zIndex: 60,
-  },
-  fabCompact: {
-    borderRadius: 26,
-    bottom: 86,
-    height: 52,
-    right: 18,
-    width: 52,
   },
   fabPressed: {
     backgroundColor: '#594CCD',

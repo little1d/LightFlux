@@ -33,7 +33,6 @@ import {
 import {
   SafeAreaProvider,
   SafeAreaView,
-  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -48,6 +47,7 @@ import ResizableDivider from '../components/layout/ResizableDivider';
 import DraggableNavigationItem from '../components/navigation/DraggableNavigationItem';
 import { NavigationDragState } from '../components/navigation/navigationDrag';
 import TaskActionMenu from '../components/tasks/TaskActionMenu';
+import MobileQuickAddButton from '../components/tasks/MobileQuickAddButton';
 import QuickAddTaskSheet from '../components/tasks/QuickAddTaskSheet';
 import {
   OpenTaskMenu,
@@ -239,7 +239,6 @@ const AppShell = () => {
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const { height, width } = useWindowDimensions();
-  const safeAreaInsets = useSafeAreaInsets();
   const settingsSlideAnim = useRef(new Animated.Value(-width)).current;
   const [navigationDrag, setNavigationDrag] =
     useState<NavigationDragState | null>(null);
@@ -333,7 +332,6 @@ const AppShell = () => {
   const usesDesktopLayout = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const compactMobileHeight =
     !usesDesktopLayout && height < COMPACT_MOBILE_HEIGHT_BREAKPOINT;
-  const mobileNavigationHeight = compactMobileHeight ? 48 : 58;
   const selectedTaskId = taskMenu?.todoId ?? selectedTask?.id ?? null;
   const availableDesktopWidth = width - DESKTOP_NAV_WIDTH;
   const maximumListWidth = Math.max(
@@ -1038,30 +1036,13 @@ const AppShell = () => {
       !usesDesktopLayout &&
       !selectedTask &&
       (activeView === 'today' || activeView === 'groups') ? (
-        <View
-          style={[
-            styles.mobileQuickAdd,
-            {
-              bottom:
-                mobileNavigationHeight + safeAreaInsets.bottom + 12,
-            },
-          ]}
-        >
-          <Pressable
-            accessibilityLabel={labels.addTask}
-            accessibilityRole="button"
-            onPress={() => {
-              setQuickAddInitialDate(null);
-              setQuickAddOpen(true);
-            }}
-            style={({ pressed }) => [
-              styles.mobileQuickAddButton,
-              pressed && styles.mobileQuickAddPressed,
-            ]}
-          >
-            <Ionicons color="#FFFFFF" name="add" size={27} />
-          </Pressable>
-        </View>
+        <MobileQuickAddButton
+          label={labels.addTask}
+          onPress={() => {
+            setQuickAddInitialDate(null);
+            setQuickAddOpen(true);
+          }}
+        />
       ) : null}
     </View>
     {showAppShell && settingsPanelOpen && !usesDesktopLayout ? (
@@ -1360,27 +1341,6 @@ const styles = StyleSheet.create({
   nativeEditorSheet: {
     height: '88%',
     maxHeight: 760,
-  },
-  mobileQuickAdd: {
-    position: 'absolute',
-    right: 18,
-    zIndex: 60,
-  },
-  mobileQuickAddButton: {
-    alignItems: 'center',
-    backgroundColor: '#6759E8',
-    borderRadius: 26,
-    height: 52,
-    justifyContent: 'center',
-    shadowColor: '#6759E8',
-    shadowOffset: { height: 7, width: 0 },
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    width: 52,
-  },
-  mobileQuickAddPressed: {
-    backgroundColor: '#594CCD',
-    transform: [{ scale: 0.94 }],
   },
   settingsBackdrop: {
     backgroundColor: 'rgba(31, 30, 43, 0.25)',

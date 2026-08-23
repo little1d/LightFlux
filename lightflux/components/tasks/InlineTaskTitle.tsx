@@ -4,7 +4,7 @@ import { TextInput } from 'react-native';
 import { inputAccentProps } from '../../config/input';
 import { Todo } from '../../types/todo';
 
-// Shared inline title editor used by both the Groups and Today lists so a task
+// Shared inline title editor used by both the Projects and Today lists so a task
 // title can be renamed directly on its row. Opening details is optional: the
 // Today list keeps the composer focused without pulling up the editor pane, so
 // callers decide whether typing/focus also opens the details view.

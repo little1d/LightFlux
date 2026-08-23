@@ -1,18 +1,17 @@
-import { Todo } from '../../types/todo';
+import { Project, Todo } from '../../types/todo';
 
-export const UNGROUPED_ID = '__ungrouped__';
-
-export interface GroupSection {
+export interface ProjectSection {
   id: string;
   name: string;
   color: string;
+  kind: Project['kind'];
   sortOrder: number;
   todos: Todo[];
 }
 
 export interface InlineComposerState {
   anchorId: string;
-  groupId: string | null;
+  projectId: string;
   parentId: string | null;
   renderAfterId: string;
   scheduledDate: string;

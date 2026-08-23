@@ -1,10 +1,10 @@
-import GroupsScreen from '../components/GroupsScreen';
+import ProjectsScreen from '../components/ProjectsScreen';
 import { useAppShell } from '../components/appShellContext';
 
-export default function GroupsRoute() {
+export default function ProjectsRoute() {
   const shell = useAppShell();
   return (
-    <GroupsScreen
+    <ProjectsScreen
       onOpenTaskMenu={shell.openTaskMenu}
       onEditTask={shell.openActiveTask}
       selectedTaskId={shell.selectedTaskId}

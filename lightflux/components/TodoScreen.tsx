@@ -284,7 +284,7 @@ const TodoScreen = ({
     activeTodos.forEach((todo) => {
       const scopeId = todo.parentId
         ? `today:${dateKey}:parent:${todo.parentId}`
-        : `today:${dateKey}:group:${todo.groupId ?? 'ungrouped'}:root`;
+        : `today:${dateKey}:project:${todo.projectId ?? 'inbox'}:root`;
       const siblings = siblingsByScope.get(scopeId) ?? [];
       siblings.push(todo);
       siblingsByScope.set(scopeId, siblings);
@@ -394,7 +394,7 @@ const TodoScreen = ({
       const visibleSiblings = activeTodos.filter(
         (todo) =>
           todo.parentId === dragged.parentId &&
-          todo.groupId === dragged.groupId,
+          todo.projectId === dragged.projectId,
       );
       const boundedTarget = Math.max(
         0,
@@ -407,7 +407,7 @@ const TodoScreen = ({
       const persistedSiblings = allTodos.filter(
         (todo) =>
           todo.parentId === dragged.parentId &&
-          todo.groupId === dragged.groupId,
+          todo.projectId === dragged.projectId,
       );
       const persistedTargetIndex = persistedSiblings.findIndex(
         (todo) => todo.id === target.id,
@@ -561,7 +561,7 @@ const TodoScreen = ({
                   id={item.id}
                   index={dragMeta.index}
                   itemCount={dragMeta.itemCount}
-                  label={`${labels.groups.reorderTask}: ${item.title}`}
+                  label={`${labels.projects.reorderTask}: ${item.title}`}
                   nested={nested}
                   onDragStateChange={setTaskDrag}
                   onMove={moveTask}

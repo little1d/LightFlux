@@ -2,7 +2,7 @@ import { Text, View } from 'react-native';
 
 import { Translation } from '../../content';
 import {
-  GroupPressure,
+  ProjectPressure,
   StatisticsRange,
   TaskAnalytics,
   WeekdayRate,
@@ -82,7 +82,7 @@ const PressureRow = ({
   row,
 }: {
   maximum: number;
-  row: GroupPressure;
+  row: ProjectPressure;
 }) => {
   const total = row.completed + row.pending;
   const scaledWidth = `${Math.max(8, (total / maximum) * 100)}%` as const;
@@ -131,7 +131,7 @@ export const PressureChart = ({
         <View style={styles.pressureList}>
           {analytics.pressure.map((row) => (
             <PressureRow
-              key={row.groupId ?? 'ungrouped'}
+              key={row.projectId ?? 'inbox'}
               maximum={maximum}
               row={row}
             />

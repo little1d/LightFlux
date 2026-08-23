@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /today
+Disallow: /completed
+Disallow: /calendar
+Disallow: /milestones
+Disallow: /projects
+Disallow: /trash
+Disallow: /settings
+Disallow: /statistics
+Disallow: /login
+
+Sitemap: https://lightflux.site/sitemap.xml

@@ -2,6 +2,8 @@ import { File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
 import {
+  DEFAULT_HIDDEN_NAVIGATION_ITEM_IDS,
+  INBOX_PROJECT_ID,
   NAVIGATION_ITEM_IDS,
   OPTIONAL_NAVIGATION_ITEM_IDS,
   Language,
@@ -11,10 +13,10 @@ import {
   NavigationItemId,
   OptionalNavigationItemId,
   PersistedAppState,
+  Project,
   TaskEvent,
   TaskEventType,
   Todo,
-  TodoGroup,
   SolarMilestoneDateRule,
 } from '../types/todo';
 import { todayKey } from '../utils/date';
@@ -39,13 +41,21 @@ import {
   RemoteAppStateSnapshot,
   saveRemoteAppState,
 } from './authApi';
-import { loadWebState, saveWebState } from './indexedDbStorage';
-import { migrateTaskEvents } from '../store/taskEventDomain';
+import {
+  deleteWebState,
+  loadWebState,
+  saveWebState,
+} from './indexedDbStorage';
 
-const STORAGE_KEY = 'lightflux.app-state.v1';
-const SYNC_METADATA_KEY = 'lightflux.sync-metadata.v1';
-const stateFile = () => new File(Paths.document, 'lightflux-state.json');
+const STORAGE_KEY = 'lightflux.app-state.v12';
+const SYNC_METADATA_KEY = 'lightflux.sync-metadata.v12';
+const stateFile = () =>
+  new File(Paths.document, 'lightflux-state-v12.json');
 const syncMetadataFile = () =>
+  new File(Paths.document, 'lightflux-sync-metadata-v12.json');
+const legacyStateFile = () =>
+  new File(Paths.document, 'lightflux-state.json');
+const legacySyncMetadataFile = () =>
   new File(Paths.document, 'lightflux-sync-metadata.json');
 
 const normalizeNavigationOrder = (value: unknown): NavigationItemId[] => {
@@ -114,7 +124,10 @@ const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
       typeof todo.scheduledDate === 'string'
         ? todo.scheduledDate
         : todayKey(),
-    groupId: typeof todo.groupId === 'string' ? todo.groupId : null,
+    projectId:
+      typeof todo.projectId === 'string'
+        ? todo.projectId
+        : INBOX_PROJECT_ID,
     milestoneId:
       typeof todo.milestoneId === 'string' ? todo.milestoneId : null,
     parentId: typeof todo.parentId === 'string' ? todo.parentId : null,
@@ -303,29 +316,33 @@ const normalizeMilestone = (value: unknown): Milestone | null => {
   };
 };
 
-const normalizeGroup = (
+const normalizeProject = (
   value: unknown,
   fallbackOrder: number,
-): TodoGroup | null => {
+): Project | null => {
   if (!value || typeof value !== 'object') {
     return null;
   }
 
-  const group = value as Partial<TodoGroup>;
+  const project = value as Partial<Project>;
   if (
-    typeof group.id === 'string' &&
-    typeof group.name === 'string' &&
-    typeof group.color === 'string' &&
-    typeof group.createdAt === 'number'
+    typeof project.id === 'string' &&
+    typeof project.name === 'string' &&
+    typeof project.color === 'string' &&
+    typeof project.createdAt === 'number'
   ) {
     return {
-      id: group.id,
-      name: group.name,
-      color: group.color,
-      createdAt: group.createdAt,
+      id: project.id,
+      name: project.name,
+      color: project.color,
+      createdAt: project.createdAt,
+      kind:
+        project.kind === 'inbox' || project.id === INBOX_PROJECT_ID
+          ? 'inbox'
+          : 'standard',
       sortOrder:
-        typeof group.sortOrder === 'number'
-          ? group.sortOrder
+        typeof project.sortOrder === 'number'
+          ? project.sortOrder
           : fallbackOrder,
     };
   }
@@ -339,18 +356,48 @@ export const parsePersistedAppState = (
 ): PersistedAppState | null => {
   try {
     const parsed = JSON.parse(rawState) as Partial<PersistedAppState>;
-    if (!Array.isArray(parsed.todos)) {
+    if (
+      parsed.schemaVersion !== 12 ||
+      !Array.isArray(parsed.todos) ||
+      !Array.isArray(parsed.projects)
+    ) {
       return null;
     }
 
-    const normalizedTodos = parsed.todos
+    const language = parsed.language === 'en' ? 'en' : 'zh';
+    const migrationTimestamp =
+      typeof parsed.updatedAt === 'number' &&
+      Number.isFinite(parsed.updatedAt) &&
+      parsed.updatedAt >= 0
+        ? parsed.updatedAt
+        : now;
+    const normalizedProjects = parsed.projects
+      .map((project, index) => normalizeProject(project, index + 1))
+      .filter((project): project is Project => project !== null);
+    const inboxProject =
+      normalizedProjects.find((project) => project.kind === 'inbox') ?? {
+        id: INBOX_PROJECT_ID,
+        name: language === 'en' ? 'Inbox' : '收件箱',
+        color: '#8B7EFF',
+        createdAt: migrationTimestamp,
+        kind: 'inbox' as const,
+        sortOrder: 0,
+      };
+    const projects = [
+      inboxProject,
+      ...normalizedProjects
+        .filter((project) => project.id !== inboxProject.id)
+        .map((project) => ({ ...project, kind: 'standard' as const })),
+    ];
+    const projectIds = new Set(projects.map((project) => project.id));
+    const todos = parsed.todos
       .map((todo, index) => normalizeTodo(todo, index))
-      .filter((todo): todo is Todo => todo !== null);
-    const groups = Array.isArray(parsed.groups)
-      ? parsed.groups
-          .map((group, index) => normalizeGroup(group, index + 1))
-          .filter((group): group is TodoGroup => group !== null)
-      : [];
+      .filter((todo): todo is Todo => todo !== null)
+      .map((todo) =>
+        projectIds.has(todo.projectId)
+          ? todo
+          : { ...todo, projectId: inboxProject.id },
+      );
     const milestones = Array.isArray(parsed.milestones)
       ? parsed.milestones
           .map(normalizeMilestone)
@@ -361,12 +408,12 @@ export const parsePersistedAppState = (
     const milestoneIds = new Set(
       milestones.map((milestone) => milestone.id),
     );
-    const todos = normalizedTodos.map((todo) =>
+    const todosWithMilestones = todos.map((todo) =>
       todo.milestoneId !== null && !milestoneIds.has(todo.milestoneId)
         ? { ...todo, milestoneId: null }
         : todo,
     );
-    const taskIds = new Set(todos.map((todo) => todo.id));
+    const taskIds = new Set(todosWithMilestones.map((todo) => todo.id));
     const normalizedEvents = Array.isArray(parsed.taskEvents)
       ? parsed.taskEvents
           .map(normalizeTaskEvent)
@@ -375,49 +422,42 @@ export const parsePersistedAppState = (
               event !== null && taskIds.has(event.taskId),
           )
       : [];
-    const taskEvents =
-      parsed.schemaVersion !== undefined &&
-      parsed.schemaVersion >= 9 &&
-      Array.isArray(parsed.taskEvents)
-        ? Array.from(
-            new Map(
-              normalizedEvents.map((event) => [event.id, event]),
-            ).values(),
-          ).sort(
-            (a, b) =>
-              a.occurredAt - b.occurredAt ||
-              TASK_EVENT_ORDER[a.type] - TASK_EVENT_ORDER[b.type] ||
-              a.id.localeCompare(b.id),
-          )
-        : migrateTaskEvents(todos);
+    const taskEvents = Array.from(
+      new Map(
+        normalizedEvents.map((event) => [event.id, event]),
+      ).values(),
+    ).sort(
+      (a, b) =>
+        a.occurredAt - b.occurredAt ||
+        TASK_EVENT_ORDER[a.type] - TASK_EVENT_ORDER[b.type] ||
+        a.id.localeCompare(b.id),
+    );
     const analyticsStartedAt =
       typeof parsed.analyticsStartedAt === 'number' &&
       Number.isFinite(parsed.analyticsStartedAt) &&
       parsed.analyticsStartedAt >= 0
         ? parsed.analyticsStartedAt
         : now;
+    const hiddenNavigationItems = Array.isArray(
+      parsed.hiddenNavigationItems,
+    )
+      ? normalizeHiddenNavigationItems(parsed.hiddenNavigationItems)
+      : [...DEFAULT_HIDDEN_NAVIGATION_ITEM_IDS];
 
     return {
-      schemaVersion: 10,
+      schemaVersion: 12,
       updatedAt: deriveStateUpdatedAt(
-        todos,
-        groups,
+        todosWithMilestones,
+        projects,
         milestones,
         parsed.updatedAt,
       ),
-      language: parsed.language === 'en' ? 'en' : 'zh',
+      language,
       analyticsStartedAt,
       navigationOrder: normalizeNavigationOrder(parsed.navigationOrder),
-      hiddenNavigationItems: normalizeHiddenNavigationItems(
-        parsed.hiddenNavigationItems,
-      ),
-      ungroupedName:
-        typeof parsed.ungroupedName === 'string' &&
-        parsed.ungroupedName.trim().length > 0
-          ? parsed.ungroupedName.trim()
-          : null,
-      todos,
-      groups,
+      hiddenNavigationItems,
+      todos: todosWithMilestones,
+      projects,
       milestones,
       taskEvents,
     };
@@ -441,15 +481,23 @@ let deviceWriteGeneration = 0;
 const emptyAppState = (language: Language = 'zh'): PersistedAppState => {
   const timestamp = Date.now();
   return {
-    schemaVersion: 10,
+    schemaVersion: 12,
     updatedAt: timestamp,
     analyticsStartedAt: timestamp,
     language,
     navigationOrder: [...NAVIGATION_ITEM_IDS],
-    hiddenNavigationItems: [],
-    ungroupedName: null,
+    hiddenNavigationItems: [...DEFAULT_HIDDEN_NAVIGATION_ITEM_IDS],
     todos: [],
-    groups: [],
+    projects: [
+      {
+        id: INBOX_PROJECT_ID,
+        name: language === 'en' ? 'Inbox' : '收件箱',
+        color: '#8B7EFF',
+        createdAt: timestamp,
+        kind: 'inbox',
+        sortOrder: 0,
+      },
+    ],
     milestones: [],
     taskEvents: [],
   };
@@ -457,10 +505,23 @@ const emptyAppState = (language: Language = 'zh'): PersistedAppState => {
 
 const loadDeviceState = async (): Promise<PersistedAppState | null> => {
   if (Platform.OS === 'web') {
+    await Promise.all([
+      deleteWebState('current'),
+      deleteWebState('lightflux.app-state.v1'),
+      deleteWebState('lightflux.sync-metadata.v1'),
+    ]);
     const rawState = await loadWebState(STORAGE_KEY);
     return rawState ? parsePersistedAppState(rawState) : null;
   }
 
+  const oldFile = legacyStateFile();
+  if (oldFile.exists) {
+    oldFile.delete();
+  }
+  const oldSyncFile = legacySyncMetadataFile();
+  if (oldSyncFile.exists) {
+    oldSyncFile.delete();
+  }
   const file = stateFile();
   if (!file.exists) {
     return null;
@@ -514,8 +575,13 @@ const loadSyncMetadata = async (): Promise<SyncMetadata | null> => {
   }
   let rawValue: string | null = null;
   if (Platform.OS === 'web') {
+    await deleteWebState('lightflux.sync-metadata.v1');
     rawValue = await loadWebState(SYNC_METADATA_KEY);
   } else {
+    const oldFile = legacySyncMetadataFile();
+    if (oldFile.exists) {
+      oldFile.delete();
+    }
     const file = syncMetadataFile();
     rawValue = file.exists ? await file.text() : null;
   }

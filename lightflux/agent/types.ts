@@ -2,9 +2,9 @@ import {
   Milestone,
   MilestoneDateRule,
   MilestoneType,
+  Project,
   TaskEvent,
   Todo,
-  TodoGroup,
   TodoPriority,
 } from '../types/todo';
 
@@ -20,7 +20,7 @@ export interface AgentTaskCreateOperation extends AgentOperationBase {
   taskId: string;
   title: string;
   scheduledDate: string;
-  groupId?: string | null;
+  projectId?: string;
   parentId?: string | null;
   priority?: TodoPriority;
   beforeTaskId?: string;
@@ -47,7 +47,7 @@ export interface AgentTaskMoveOperation extends AgentOperationBase {
   type: 'task.move';
   taskId: string;
   scheduledDate?: string;
-  groupId?: string | null;
+  projectId?: string;
   parentId?: string | null;
   beforeTaskId?: string;
   afterTaskId?: string;
@@ -63,16 +63,16 @@ export interface AgentTaskRestoreOperation extends AgentOperationBase {
   taskId: string;
 }
 
-export interface AgentGroupCreateOperation extends AgentOperationBase {
-  type: 'group.create';
-  groupId: string;
+export interface AgentProjectCreateOperation extends AgentOperationBase {
+  type: 'project.create';
+  projectId: string;
   name: string;
   color?: string;
 }
 
-export interface AgentGroupUpdateOperation extends AgentOperationBase {
-  type: 'group.update';
-  groupId: string | null;
+export interface AgentProjectUpdateOperation extends AgentOperationBase {
+  type: 'project.update';
+  projectId: string;
   name: string;
 }
 
@@ -133,8 +133,8 @@ export type AgentOperation =
   | AgentTaskMoveOperation
   | AgentTaskTrashOperation
   | AgentTaskRestoreOperation
-  | AgentGroupCreateOperation
-  | AgentGroupUpdateOperation
+  | AgentProjectCreateOperation
+  | AgentProjectUpdateOperation
   | AgentMilestoneCreateOperation
   | AgentMilestoneUpdateOperation
   | AgentMilestoneArchiveOperation
@@ -155,9 +155,8 @@ export interface AgentProposal {
 export interface TodoCommandState {
   revision: number;
   todos: Todo[];
-  groups: TodoGroup[];
+  projects: Project[];
   milestones: Milestone[];
-  ungroupedName: string | null;
 }
 
 export interface AgentOperationResult {
@@ -187,7 +186,7 @@ export type AgentPreviewField =
   | 'title'
   | 'scheduledDate'
   | 'priority'
-  | 'group'
+  | 'project'
   | 'parent'
   | 'completed'
   | 'position'

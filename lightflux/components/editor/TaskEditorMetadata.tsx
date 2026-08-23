@@ -31,7 +31,7 @@ import {
   TaskPriorityIcon,
 } from '../tasks/TaskPriorityIndicator';
 
-type PickerKind = 'date' | 'group' | 'priority';
+type PickerKind = 'date' | 'project' | 'priority';
 
 const MetadataChip = ({
   active,
@@ -182,24 +182,23 @@ const MiniCalendar = ({
 };
 
 const TaskEditorMetadata = ({
-  groupName,
+  projectName,
   labels,
   language,
   todo,
 }: {
-  groupName: string;
+  projectName: string;
   labels: Translation;
   language: Language;
   todo: Todo;
 }) => {
-  const groups = useTodoStore((state) => state.groups);
-  const ungroupedName = useTodoStore((state) => state.ungroupedName);
+  const projects = useTodoStore((state) => state.projects);
   const updateTodo = useTodoStore((state) => state.updateTodo);
-  const moveTodoToGroup = useTodoStore((state) => state.moveTodoToGroup);
+  const moveTodoToProject = useTodoStore((state) => state.moveTodoToProject);
   const [picker, setPicker] = useState<PickerKind | null>(null);
   const [position, setPosition] = useState<MenuSurfacePosition>();
 
-  const orderedGroups = [...groups].sort(
+  const orderedProjects = [...projects].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
   );
   const priorityTheme = TASK_PRIORITY_THEME[todo.priority];
@@ -224,8 +223,8 @@ const TaskEditorMetadata = ({
     updateTodo(todo.id, { priority });
     closePicker();
   };
-  const setGroup = (groupId: string | null) => {
-    moveTodoToGroup(todo.id, groupId);
+  const setProject = (projectId: string) => {
+    moveTodoToProject(todo.id, projectId);
     closePicker();
   };
 
@@ -238,10 +237,10 @@ const TaskEditorMetadata = ({
         onPress={openPicker('date')}
       />
       <MetadataChip
-        active={picker === 'group'}
+        active={picker === 'project'}
         icon="folder-outline"
-        label={groupName}
-        onPress={openPicker('group')}
+        label={projectName}
+        onPress={openPicker('project')}
       />
       <MetadataChip
         active={picker === 'priority'}
@@ -287,32 +286,22 @@ const TaskEditorMetadata = ({
         </MenuSurface>
       ) : null}
 
-      {picker === 'group' ? (
+      {picker === 'project' ? (
         <MenuSurface
           closeLabel={labels.cancel}
-          estimatedHeight={Math.min(370, 44 + (orderedGroups.length + 1) * 44)}
+          estimatedHeight={Math.min(370, 44 + orderedProjects.length * 44)}
           onClose={closePicker}
           position={position}
           width={240}
         >
-          <MenuItem
-            label={ungroupedName ?? labels.groups.ungrouped}
-            onPress={() => setGroup(null)}
-            selected={todo.groupId === null}
-            trailing={
-              todo.groupId === null ? (
-                <Ionicons color="#6759E8" name="checkmark" size={17} />
-              ) : null
-            }
-          />
-          {orderedGroups.map((group) => (
+          {orderedProjects.map((project) => (
             <MenuItem
-              key={group.id}
-              label={group.name}
-              onPress={() => setGroup(group.id)}
-              selected={todo.groupId === group.id}
+              key={project.id}
+              label={project.name}
+              onPress={() => setProject(project.id)}
+              selected={todo.projectId === project.id}
               trailing={
-                todo.groupId === group.id ? (
+                todo.projectId === project.id ? (
                   <Ionicons color="#6759E8" name="checkmark" size={17} />
                 ) : null
               }

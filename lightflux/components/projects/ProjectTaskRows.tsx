@@ -64,7 +64,7 @@ export const InlineTaskComposer = ({
   </View>
 );
 
-export const GroupTask = ({
+export const ProjectTask = ({
   childCount,
   editLabel,
   markActive,
@@ -108,7 +108,7 @@ export const GroupTask = ({
             : 'rounded-[12px] border-transparent bg-[#EEECFF]'
           : 'border-[#ECECF1]'
       }`}
-      nativeID={`group-task-${todo.id}`}
+      nativeID={`project-task-${todo.id}`}
       ref={targetRef}
       style={[
         !selected &&

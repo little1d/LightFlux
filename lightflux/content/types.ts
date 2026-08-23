@@ -8,7 +8,7 @@ export interface Translation {
     completed: string;
     calendar: string;
     milestones: string;
-    groups: string;
+    projects: string;
     trash: string;
   };
   search: {
@@ -164,7 +164,7 @@ export interface Translation {
     insightsTitle: string;
     stableTitle: string;
     stableDescription: (days: string, advantage: number) => string;
-    pressureInsightTitle: (group: string) => string;
+    pressureInsightTitle: (project: string) => string;
     pressureInsightDescription: (pending: number, overdue: number) => string;
     reduceTitle: string;
     reduceDescription: (day: string, gap: number) => string;
@@ -230,7 +230,7 @@ export interface Translation {
     taskCompleted: string[];
     allTasksDone: string;
     taskReopened: string;
-    taskMovedToGroup: (groupName: string) => string;
+    taskMovedToProject: (projectName: string) => string;
     taskRescheduled: string;
     priorityUpdated: string;
   };
@@ -259,23 +259,23 @@ export interface Translation {
     today: string;
     tasksForDate: (count: number) => string;
   };
-  groups: {
+  projects: {
     title: string;
-    ungrouped: string;
-    addGroup: string;
-    groupPlaceholder: string;
+    inbox: string;
+    addProject: string;
+    projectPlaceholder: string;
     taskPlaceholder: string;
     addTaskTitle: string;
     cancelTask: string;
     reorderTask: string;
-    addGroupAbove: string;
-    addGroupBelow: string;
-    renameGroup: string;
-    deleteGroup: string;
+    addProjectAbove: string;
+    addProjectBelow: string;
+    renameProject: string;
+    deleteProject: string;
     confirmAdd: string;
     confirmRename: string;
-    deleteGroupTitle: string;
-    deleteGroupMessage: string;
+    deleteProjectTitle: string;
+    deleteProjectMessage: string;
     count: (count: number) => string;
     expand: string;
     collapse: string;
@@ -309,7 +309,7 @@ export interface Translation {
     resizePane: string;
     metadataTitle: string;
     dateLabel: string;
-    groupLabel: string;
+    projectLabel: string;
     priorityLabel: string;
     scheduleToday: string;
     scheduleTomorrow: string;
@@ -438,7 +438,7 @@ export interface Translation {
     priorityOptions: Record<TodoPriority, string>;
     subtaskPlaceholder: string;
     createSubtask: string;
-    moveToGroup: string;
+    moveToProject: string;
     backToActions: string;
     moveToTrash: string;
     moreActions: string;

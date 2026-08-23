@@ -8,7 +8,12 @@ import {
   AgentUndoToken,
   TodoCommandState,
 } from './types';
-import { Todo, TodoGroup, TodoPriority } from '../types/todo';
+import {
+  INBOX_PROJECT_ID,
+  Project,
+  Todo,
+  TodoPriority,
+} from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 import {
   byTodoOrder,
@@ -24,7 +29,7 @@ import {
 
 const MAX_OPERATIONS = 50;
 const MAX_TITLE_LENGTH = 160;
-const GROUP_COLORS = [
+const PROJECT_COLORS = [
   '#8B7EFF',
   '#55B9A5',
   '#EEA45E',
@@ -119,19 +124,17 @@ const assertPriority = (
 const cloneCommandState = (state: TodoCommandState): TodoCommandState => ({
   revision: state.revision,
   todos: state.todos.map((todo) => ({ ...todo })),
-  groups: state.groups.map((group) => ({ ...group })),
+  projects: state.projects.map((project) => ({ ...project })),
   milestones: state.milestones.map((milestone) => ({
     ...milestone,
     dateRule: { ...milestone.dateRule },
     reminderOffsets: [...milestone.reminderOffsets],
   })),
-  ungroupedName: state.ungroupedName,
 });
 
 export const calculateTodoCommandRevision = (
   todos: Todo[],
-  groups: TodoGroup[],
-  ungroupedName: string | null,
+  projects: Project[],
   milestones: TodoCommandState['milestones'] = [],
 ): number => {
   const value = JSON.stringify({
@@ -141,17 +144,17 @@ export const calculateTodoCommandRevision = (
         todo.id,
         todo.updatedAt,
         todo.parentId,
-        todo.groupId,
+        todo.projectId,
         todo.sortOrder,
         todo.trashedAt,
       ]),
-    groups: [...groups]
+    projects: [...projects]
       .sort((a, b) => a.id.localeCompare(b.id))
-      .map((group) => [
-        group.id,
-        group.name,
-        group.color,
-        group.sortOrder,
+      .map((project) => [
+        project.id,
+        project.name,
+        project.color,
+        project.sortOrder,
       ]),
     milestones: [...milestones]
       .sort((a, b) => a.id.localeCompare(b.id))
@@ -162,7 +165,6 @@ export const calculateTodoCommandRevision = (
         milestone.archivedAt,
         milestone.trashedAt,
       ]),
-    ungroupedName,
   });
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -172,23 +174,38 @@ export const calculateTodoCommandRevision = (
   return hash >>> 0;
 };
 
+const withInboxProject = (projects: Project[]): Project[] =>
+  projects.some((project) => project.kind === 'inbox')
+    ? projects
+    : [
+        {
+          id: INBOX_PROJECT_ID,
+          name: 'Inbox',
+          color: '#8B7EFF',
+          createdAt: 0,
+          kind: 'inbox',
+          sortOrder: 0,
+        },
+        ...projects,
+      ];
+
 export const createTodoCommandState = (
   todos: Todo[],
-  groups: TodoGroup[],
-  ungroupedName: string | null,
+  projects: Project[],
   milestones: TodoCommandState['milestones'] = [],
-): TodoCommandState => ({
-  revision: calculateTodoCommandRevision(
+): TodoCommandState => {
+  const normalizedProjects = withInboxProject(projects);
+  return {
+    revision: calculateTodoCommandRevision(
+      todos,
+      normalizedProjects,
+      milestones,
+    ),
     todos,
-    groups,
-    ungroupedName,
+    projects: normalizedProjects,
     milestones,
-  ),
-  todos,
-  groups,
-  milestones,
-  ungroupedName,
-});
+  };
+};
 
 const operationRisk = (operation: AgentOperation): AgentRisk => {
   if (isMilestoneOperation(operation)) {
@@ -249,25 +266,25 @@ const trashedTask = (
   return todo;
 };
 
-const assertGroup = (
-  groups: TodoGroup[],
-  groupId: string | null,
+const assertProject = (
+  projects: Project[],
+  projectId: string,
   operationId: string,
 ) => {
-  if (groupId && !groups.some((group) => group.id === groupId)) {
-    fail('target-not-found', 'Task group was not found.', operationId);
+  if (!projects.some((project) => project.id === projectId)) {
+    fail('target-not-found', 'Task project was not found.', operationId);
   }
 };
 
 const sameScope = (
-  todo: Pick<Todo, 'groupId' | 'parentId'>,
-  groupId: string | null,
+  todo: Pick<Todo, 'projectId' | 'parentId'>,
+  projectId: string,
   parentId: string | null,
-) => todo.groupId === groupId && todo.parentId === parentId;
+) => todo.projectId === projectId && todo.parentId === parentId;
 
 const reorderScope = (
   todos: Todo[],
-  groupId: string | null,
+  projectId: string,
   parentId: string | null,
   orderedIds: string[],
   timestamp: number,
@@ -276,7 +293,7 @@ const reorderScope = (
   return todos.map((todo) => {
     if (
       todo.trashedAt !== null ||
-      !sameScope(todo, groupId, parentId) ||
+      !sameScope(todo, projectId, parentId) ||
       !orderById.has(todo.id)
     ) {
       return todo;
@@ -331,20 +348,20 @@ const applyCreate = (
   const parent = operation.parentId
     ? activeTask(state.todos, operation.parentId, operation.operationId)
     : null;
-  const groupId = parent
-    ? parent.groupId
-    : operation.groupId === undefined
-      ? null
-      : operation.groupId;
-  assertGroup(state.groups, groupId, operation.operationId);
+  const projectId = parent
+    ? parent.projectId
+    : operation.projectId === undefined
+      ? INBOX_PROJECT_ID
+      : operation.projectId;
+  assertProject(state.projects, projectId, operation.operationId);
   if (
     parent &&
-    operation.groupId !== undefined &&
-    operation.groupId !== parent.groupId
+    operation.projectId !== undefined &&
+    operation.projectId !== parent.projectId
   ) {
     fail(
       'invalid-operation',
-      'A subtask must use the same group as its parent.',
+      'A subtask must use the same project as its parent.',
       operation.operationId,
     );
   }
@@ -361,7 +378,7 @@ const applyCreate = (
       operation.scheduledDate,
       operation.operationId,
     ),
-    groupId,
+    projectId,
     milestoneId: null,
     parentId: parent?.id ?? null,
     priority: assertPriority(
@@ -375,7 +392,7 @@ const applyCreate = (
     .filter(
       (todo) =>
         todo.trashedAt === null &&
-        sameScope(todo, newTodo.groupId, newTodo.parentId),
+        sameScope(todo, newTodo.projectId, newTodo.parentId),
     )
     .sort(byTodoOrder);
   const targetIndex = insertionIndex(
@@ -389,7 +406,7 @@ const applyCreate = (
   state.todos.push({ ...newTodo, sortOrder: targetIndex });
   state.todos = reorderScope(
     state.todos,
-    newTodo.groupId,
+    newTodo.projectId,
     newTodo.parentId,
     orderedIds,
     timestamp,
@@ -492,7 +509,7 @@ const applyMove = (
   const activeTodos = state.todos.filter((item) => item.trashedAt === null);
   const familyIds = collectTodoFamily(activeTodos, [todo.id]);
   const parentWasProvided = hasOwn(operation, 'parentId');
-  const groupWasProvided = hasOwn(operation, 'groupId');
+  const projectWasProvided = hasOwn(operation, 'projectId');
   const finalParentId = parentWasProvided
     ? (operation.parentId ?? null)
     : todo.parentId;
@@ -506,34 +523,34 @@ const applyMove = (
   const parent = finalParentId
     ? activeTask(state.todos, finalParentId, operation.operationId)
     : null;
-  let finalGroupId = groupWasProvided
-    ? (operation.groupId ?? null)
-    : todo.groupId;
+  let finalProjectId = projectWasProvided
+    ? (operation.projectId ?? INBOX_PROJECT_ID)
+    : todo.projectId;
   if (parent) {
-    if (groupWasProvided && finalGroupId !== parent.groupId) {
+    if (projectWasProvided && finalProjectId !== parent.projectId) {
       fail(
         'invalid-operation',
-        'A subtask must use the same group as its parent.',
+        'A subtask must use the same project as its parent.',
         operation.operationId,
       );
     }
-    finalGroupId = parent.groupId;
-  } else if (todo.parentId && groupWasProvided && !parentWasProvided) {
+    finalProjectId = parent.projectId;
+  } else if (todo.parentId && projectWasProvided && !parentWasProvided) {
     fail(
       'invalid-operation',
-      'Detach the task before moving it to another group.',
+      'Detach the task before moving it to another project.',
       operation.operationId,
     );
   }
-  assertGroup(state.groups, finalGroupId, operation.operationId);
+  assertProject(state.projects, finalProjectId, operation.operationId);
   const finalDate = hasOwn(operation, 'scheduledDate')
     ? assertDateKey(operation.scheduledDate, operation.operationId)
     : todo.scheduledDate;
 
-  const sourceGroupId = todo.groupId;
+  const sourceProjectId = todo.projectId;
   const sourceParentId = todo.parentId;
   const scopeChanged =
-    sourceGroupId !== finalGroupId || sourceParentId !== finalParentId;
+    sourceProjectId !== finalProjectId || sourceParentId !== finalParentId;
   const hasAnchor = Boolean(operation.beforeTaskId || operation.afterTaskId);
   let nextTodos = state.todos.map((item) => {
     if (!familyIds.has(item.id)) {
@@ -542,15 +559,15 @@ const applyMove = (
     if (item.id === todo.id) {
       return {
         ...item,
-        groupId: finalGroupId,
+        projectId: finalProjectId,
         parentId: finalParentId,
         scheduledDate: finalDate,
         updatedAt: timestamp,
       };
     }
-    return item.groupId === finalGroupId
+    return item.projectId === finalProjectId
       ? item
-      : { ...item, groupId: finalGroupId, updatedAt: timestamp };
+      : { ...item, projectId: finalProjectId, updatedAt: timestamp };
   });
 
   if (scopeChanged) {
@@ -559,13 +576,13 @@ const applyMove = (
         (item) =>
           item.trashedAt === null &&
           item.id !== todo.id &&
-          sameScope(item, sourceGroupId, sourceParentId),
+          sameScope(item, sourceProjectId, sourceParentId),
       )
       .sort(byTodoOrder)
       .map((item) => item.id);
     nextTodos = reorderScope(
       nextTodos,
-      sourceGroupId,
+      sourceProjectId,
       sourceParentId,
       sourceIds,
       timestamp,
@@ -579,7 +596,7 @@ const applyMove = (
           item.trashedAt === null &&
           item.id !== todo.id &&
           !familyIds.has(item.id) &&
-          sameScope(item, finalGroupId, finalParentId),
+          sameScope(item, finalProjectId, finalParentId),
       )
       .sort(byTodoOrder);
     const targetIndex = insertionIndex(
@@ -592,7 +609,7 @@ const applyMove = (
     orderedIds.splice(targetIndex, 0, todo.id);
     nextTodos = reorderScope(
       nextTodos,
-      finalGroupId,
+      finalProjectId,
       finalParentId,
       orderedIds,
       timestamp,
@@ -647,63 +664,55 @@ const applyRestore = (
   };
 };
 
-const applyGroupCreate = (
+const applyProjectCreate = (
   state: TodoCommandState,
-  operation: Extract<AgentOperation, { type: 'group.create' }>,
+  operation: Extract<AgentOperation, { type: 'project.create' }>,
   timestamp: number,
 ): AgentOperationResult => {
-  if (!validIdentifier(operation.groupId)) {
-    fail('invalid-operation', 'Invalid group ID.', operation.operationId);
+  if (!validIdentifier(operation.projectId)) {
+    fail('invalid-operation', 'Invalid project ID.', operation.operationId);
   }
-  if (state.groups.some((group) => group.id === operation.groupId)) {
-    fail('invalid-operation', 'Group ID already exists.', operation.operationId);
+  if (state.projects.some((project) => project.id === operation.projectId)) {
+    fail('invalid-operation', 'Project ID already exists.', operation.operationId);
   }
   const name = normalizedTitle(operation.name, operation.operationId);
-  const color = operation.color ?? GROUP_COLORS[state.groups.length % GROUP_COLORS.length];
+  const color = operation.color ?? PROJECT_COLORS[state.projects.length % PROJECT_COLORS.length];
   if (!/^#[0-9a-f]{6}$/i.test(color)) {
-    fail('invalid-operation', 'Invalid group color.', operation.operationId);
+    fail('invalid-operation', 'Invalid project color.', operation.operationId);
   }
-  const group: TodoGroup = {
-    id: operation.groupId,
+  const project: Project = {
+    id: operation.projectId,
     name,
     color,
     createdAt: timestamp,
-    sortOrder: Math.max(0, ...state.groups.map((item) => item.sortOrder)) + 1,
+    kind: 'standard',
+    sortOrder: Math.max(0, ...state.projects.map((item) => item.sortOrder)) + 1,
   };
-  state.groups.push(group);
+  state.projects.push(project);
   return {
     operationId: operation.operationId,
     idempotencyKey: operation.idempotencyKey,
     type: operation.type,
-    affectedIds: [group.id],
+    affectedIds: [project.id],
   };
 };
 
-const applyGroupUpdate = (
+const applyProjectUpdate = (
   state: TodoCommandState,
-  operation: Extract<AgentOperation, { type: 'group.update' }>,
+  operation: Extract<AgentOperation, { type: 'project.update' }>,
 ): AgentOperationResult => {
   const name = normalizedTitle(operation.name, operation.operationId);
-  if (operation.groupId === null) {
-    state.ungroupedName = name;
-    return {
-      operationId: operation.operationId,
-      idempotencyKey: operation.idempotencyKey,
-      type: operation.type,
-      affectedIds: [],
-    };
+  if (!state.projects.some((project) => project.id === operation.projectId)) {
+    fail('target-not-found', 'Task project was not found.', operation.operationId);
   }
-  if (!state.groups.some((group) => group.id === operation.groupId)) {
-    fail('target-not-found', 'Task group was not found.', operation.operationId);
-  }
-  state.groups = state.groups.map((group) =>
-    group.id === operation.groupId ? { ...group, name } : group,
+  state.projects = state.projects.map((project) =>
+    project.id === operation.projectId ? { ...project, name } : project,
   );
   return {
     operationId: operation.operationId,
     idempotencyKey: operation.idempotencyKey,
     type: operation.type,
-    affectedIds: [operation.groupId],
+    affectedIds: [operation.projectId],
   };
 };
 
@@ -728,10 +737,10 @@ const applyOperation = (
       return applyTrash(state, operation, timestamp);
     case 'task.restore':
       return applyRestore(state, operation, timestamp);
-    case 'group.create':
-      return applyGroupCreate(state, operation, timestamp);
-    case 'group.update':
-      return applyGroupUpdate(state, operation);
+    case 'project.create':
+      return applyProjectCreate(state, operation, timestamp);
+    case 'project.update':
+      return applyProjectUpdate(state, operation);
     default:
       return fail('invalid-operation', 'Unsupported agent operation.');
   }
@@ -754,8 +763,7 @@ const validateProposal = (
   }
   const currentRevision = calculateTodoCommandRevision(
     state.todos,
-    state.groups,
-    state.ungroupedName,
+    state.projects,
     state.milestones,
   );
   if (
@@ -816,8 +824,7 @@ export const executeAgentProposal = (
   );
   working.revision = calculateTodoCommandRevision(
     working.todos,
-    working.groups,
-    working.ungroupedName,
+    working.projects,
     working.milestones,
   );
   const undoToken: AgentUndoToken = {
@@ -843,8 +850,7 @@ export const undoAgentExecution = (
 ): TodoCommandState => {
   const currentRevision = calculateTodoCommandRevision(
     currentState.todos,
-    currentState.groups,
-    currentState.ungroupedName,
+    currentState.projects,
     currentState.milestones,
   );
   if (

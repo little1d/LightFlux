@@ -10,6 +10,7 @@ vi.mock('react-native', () => ({
 }));
 
 vi.mock('../services/indexedDbStorage', () => ({
+  deleteWebState: vi.fn().mockResolvedValue(undefined),
   loadWebState: vi.fn().mockResolvedValue(null),
   saveWebState: vi.fn().mockResolvedValue(undefined),
 }));
@@ -63,7 +64,7 @@ const todo = (id: string): Todo => ({
     ],
   },
   createdAt: 1,
-  groupId: null,
+  projectId: 'inbox',
   milestoneId: null,
   parentId: null,
   priority: 'none',
@@ -101,7 +102,16 @@ beforeEach(() => {
   mockStore.state = {
     ...deriveTodoCommandCollections([todo('existing')]),
     ...milestoneState([]),
-    groups: [],
+    projects: [
+      {
+        id: 'inbox',
+        name: '收件箱',
+        color: '#8B7EFF',
+        createdAt: 1,
+        kind: 'inbox',
+        sortOrder: 0,
+      },
+    ],
     taskEvents: [],
     analyticsStartedAt: 1,
     language: 'zh',
@@ -110,10 +120,9 @@ beforeEach(() => {
       'completed',
       'calendar',
       'milestones',
-      'groups',
+      'projects',
       'trash',
     ],
-    ungroupedName: null,
   };
   clearAgentRuntimeHistory();
   vi.mocked(saveWebState).mockClear();
@@ -236,7 +245,7 @@ describe('agent Zustand adapter', () => {
       new Date(2026, 7, 10),
     );
     expect(greetingContext.tasks).toEqual([]);
-    expect(greetingContext.groups).toEqual([]);
+    expect(greetingContext.projects).toEqual([]);
     expect(greetingContext.milestones).toEqual([]);
   });
 

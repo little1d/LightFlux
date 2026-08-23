@@ -23,6 +23,7 @@ import {
   uploadProfileImage,
 } from '../../services/imageUpload';
 import IconButton from '../ui/IconButton';
+import Tooltip from '../ui/Tooltip';
 import { useToast } from '../ui/ToastProvider';
 
 const ProfileCard = ({
@@ -46,6 +47,8 @@ const ProfileCard = ({
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const [avatarFocused, setAvatarFocused] = useState(false);
+  const [avatarHovered, setAvatarHovered] = useState(false);
 
   useEffect(() => {
     setNameDraft(currentUser.name ?? '');
@@ -124,40 +127,56 @@ const ProfileCard = ({
       ]}
     >
       <View style={styles.identityRow}>
-        <Pressable
-          accessibilityLabel={labels.changeAvatar}
-          accessibilityRole="button"
-          disabled={uploadingAvatar}
-          onPress={() => void chooseAvatar()}
-          style={({ pressed }) => [
-            styles.avatarButton,
-            compact && styles.avatarButtonCompact,
-            pressed && styles.pressed,
+        <View
+          style={[
+            styles.avatarPosition,
+            compact && styles.avatarPositionCompact,
           ]}
         >
-          {currentUser.avatarUrl && !avatarFailed ? (
-            <Image
-              onError={() => setAvatarFailed(true)}
-              source={{ uri: currentUser.avatarUrl }}
-              style={styles.avatarImage}
-            />
-          ) : (
-            <View style={styles.avatarFallback}>
-              <Ionicons
-                color="#FFFFFF"
-                name="person"
-                size={compact ? 18 : 22}
+          <Pressable
+            accessibilityLabel={labels.changeAvatar}
+            accessibilityRole="button"
+            disabled={uploadingAvatar}
+            onBlur={() => setAvatarFocused(false)}
+            onFocus={() => setAvatarFocused(true)}
+            onHoverIn={() => setAvatarHovered(true)}
+            onHoverOut={() => setAvatarHovered(false)}
+            onPress={() => void chooseAvatar()}
+            style={({ pressed }) => [
+              styles.avatarButton,
+              compact && styles.avatarButtonCompact,
+              (avatarHovered || avatarFocused) && styles.avatarButtonActive,
+              pressed && styles.pressed,
+            ]}
+          >
+            {currentUser.avatarUrl && !avatarFailed ? (
+              <Image
+                onError={() => setAvatarFailed(true)}
+                source={{ uri: currentUser.avatarUrl }}
+                style={styles.avatarImage}
               />
-            </View>
-          )}
-          <View style={styles.avatarBadge}>
-            {uploadingAvatar ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Ionicons color="#FFFFFF" name="camera" size={10} />
+              <View style={styles.avatarFallback}>
+                <Ionicons
+                  color="#FFFFFF"
+                  name="person"
+                  size={compact ? 17 : 20}
+                />
+              </View>
             )}
-          </View>
-        </Pressable>
+            {uploadingAvatar ? (
+              <View style={styles.avatarLoading}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              </View>
+            ) : null}
+          </Pressable>
+          <Tooltip
+            appearance="light"
+            label={labels.changeAvatar}
+            position="right"
+            visible={avatarHovered || avatarFocused}
+          />
+        </View>
 
         <View style={styles.identityCopy}>
           <View style={styles.nameRow}>
@@ -168,7 +187,7 @@ const ProfileCard = ({
               {displayName}
             </Text>
             <IconButton
-              icon="pencil-outline"
+              icon="create-outline"
               label={labels.editProfileName}
               onPress={() => {
                 setNameDraft(displayName);
@@ -264,52 +283,67 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   cardCompact: {
-    paddingVertical: 6,
+    paddingVertical: 5,
   },
   cardWide: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   identityRow: {
     alignItems: 'center',
     flexDirection: 'row',
   },
-  avatarButton: {
-    height: 44,
-    marginRight: 12,
+  avatarPosition: {
+    marginRight: 10,
     position: 'relative',
-    width: 44,
+    zIndex: 2,
+  },
+  avatarPositionCompact: {
+    marginRight: 8,
+  },
+  avatarButton: {
+    borderColor: 'transparent',
+    borderRadius: 20,
+    borderWidth: 1,
+    height: 40,
+    overflow: 'hidden',
+    position: 'relative',
+    width: 40,
+  },
+  avatarButtonActive: {
+    borderColor: '#AFA7EE',
+    shadowColor: '#39334F',
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
   },
   avatarButtonCompact: {
-    height: 36,
-    marginRight: 8,
-    width: 36,
+    borderRadius: 17,
+    height: 34,
+    width: 34,
   },
   avatarImage: {
-    borderRadius: 22,
+    borderRadius: 20,
     height: '100%',
     width: '100%',
   },
   avatarFallback: {
     alignItems: 'center',
     backgroundColor: '#6759E8',
-    borderRadius: 22,
+    borderRadius: 20,
     height: '100%',
     justifyContent: 'center',
     width: '100%',
   },
-  avatarBadge: {
+  avatarLoading: {
     alignItems: 'center',
-    backgroundColor: '#5043C8',
-    borderColor: '#FFFFFF',
-    borderRadius: 8,
-    borderWidth: 1.5,
-    bottom: -2,
-    height: 16,
+    backgroundColor: 'rgba(35, 32, 56, 0.56)',
+    bottom: 0,
     justifyContent: 'center',
     position: 'absolute',
-    right: -2,
-    width: 16,
+    left: 0,
+    right: 0,
+    top: 0,
   },
   identityCopy: {
     flex: 1,
@@ -322,12 +356,13 @@ const styles = StyleSheet.create({
   name: {
     color: '#2E2F41',
     flex: 1,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
   },
   nameCompact: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '500',
     lineHeight: 17,
   },
   email: {
@@ -346,10 +381,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 6,
+    gap: 5,
     marginLeft: 10,
-    minHeight: 34,
-    paddingHorizontal: 12,
+    minHeight: 32,
+    paddingHorizontal: 10,
   },
   compactSignOutButton: {
     alignItems: 'center',
@@ -364,8 +399,8 @@ const styles = StyleSheet.create({
   },
   signOutText: {
     color: '#C84F60',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '500',
   },
   nameEditor: {
     alignItems: 'center',

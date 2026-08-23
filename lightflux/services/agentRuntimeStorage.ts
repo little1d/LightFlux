@@ -73,7 +73,7 @@ const normalizeUndoToken = (value: unknown): AgentUndoToken | null => {
     typeof (value as AgentUndoToken).afterRevision !== 'number' ||
     !(value as AgentUndoToken).snapshot ||
     !Array.isArray((value as AgentUndoToken).snapshot.todos) ||
-    !Array.isArray((value as AgentUndoToken).snapshot.groups) ||
+    !Array.isArray((value as AgentUndoToken).snapshot.projects) ||
     !Array.isArray((value as AgentUndoToken).snapshot.milestones)
   ) {
     return null;

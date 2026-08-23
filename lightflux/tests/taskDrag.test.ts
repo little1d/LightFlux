@@ -9,7 +9,7 @@ const state = (
   overrides: Partial<TaskDragState> = {},
 ): TaskDragState => ({
   id: 'dragged',
-  scopeId: 'group:root',
+  scopeId: 'project:root',
   sourceIndex: 1,
   targetIndex: 3,
   ...overrides,
@@ -23,7 +23,7 @@ describe('task drag displacement', () => {
         id: 'second',
         index: 2,
         nested: false,
-        scopeId: 'group:root',
+        scopeId: 'project:root',
       }),
     ).toBe(-54);
     expect(
@@ -32,7 +32,7 @@ describe('task drag displacement', () => {
         id: 'third',
         index: 3,
         nested: false,
-        scopeId: 'group:root',
+        scopeId: 'project:root',
       }),
     ).toBe(-54);
   });
@@ -60,7 +60,7 @@ describe('task drag displacement', () => {
         id: 'dragged',
         index: 1,
         nested: false,
-        scopeId: 'group:root',
+        scopeId: 'project:root',
       }),
     ).toBe(0);
     expect(
@@ -69,7 +69,7 @@ describe('task drag displacement', () => {
         id: 'other',
         index: 2,
         nested: false,
-        scopeId: 'another-group',
+        scopeId: 'another-project',
       }),
     ).toBe(0);
   });

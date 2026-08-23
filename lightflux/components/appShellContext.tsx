@@ -13,7 +13,7 @@ export type AppView =
   | 'completed'
   | 'calendar'
   | 'milestones'
-  | 'groups'
+  | 'projects'
   | 'trash'
   | 'settings'
   | 'statistics';

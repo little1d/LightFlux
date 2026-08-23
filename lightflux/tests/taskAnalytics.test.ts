@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TaskEvent,
   Todo,
-  TodoGroup,
+  Project,
 } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 import { buildTaskAnalytics } from '../utils/taskAnalytics';
@@ -22,7 +22,7 @@ const todo = (
   completedAt: null,
   content: emptyRichTextDocument(),
   createdAt: timestamp(1),
-  groupId: null,
+  projectId: 'inbox',
   milestoneId: null,
   parentId: null,
   priority: 'none',
@@ -49,12 +49,21 @@ const event = (
     : {}),
 });
 
-const groups: TodoGroup[] = [
+const projects: Project[] = [
+  {
+    id: 'inbox',
+    name: '收件箱',
+    color: '#8B7EFF',
+    createdAt: 0,
+    kind: 'inbox',
+    sortOrder: 0,
+  },
   {
     id: 'work',
     name: '工作',
     color: '#8B7EFF',
     createdAt: 1,
+    kind: 'standard',
     sortOrder: 1,
   },
   {
@@ -62,6 +71,7 @@ const groups: TodoGroup[] = [
     name: '个人',
     color: '#55B9A5',
     createdAt: 2,
+    kind: 'standard',
     sortOrder: 2,
   },
 ];
@@ -72,21 +82,21 @@ describe('task analytics', () => {
       todo('done-work', '2026-08-04', {
         completed: true,
         completedAt: timestamp(4, 18),
-        groupId: 'work',
+        projectId: 'work',
       }),
       todo('pending-work', '2026-08-05', {
-        groupId: 'work',
+        projectId: 'work',
         priority: 'high',
       }),
       todo('done-personal', '2026-08-10', {
         completed: true,
         completedAt: timestamp(9, 18),
-        groupId: 'personal',
+        projectId: 'personal',
       }),
       todo('trashed', '2026-08-06', {
         completed: true,
         completedAt: timestamp(6, 18),
-        groupId: 'work',
+        projectId: 'work',
         trashedAt: timestamp(7),
       }),
     ];
@@ -115,12 +125,11 @@ describe('task analytics', () => {
 
     const result = buildTaskAnalytics({
       todos,
-      groups,
+      projects,
       taskEvents: events,
       analyticsStartedAt: timestamp(1),
       range: '7d',
       now: new Date(2026, 7, 10, 12),
-      ungroupedName: '未分组',
     });
 
     expect(result.completedCount).toBe(2);
@@ -134,13 +143,13 @@ describe('task analytics', () => {
     expect(result.pressure).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          groupId: 'work',
+          projectId: 'work',
           completed: 1,
           pending: 1,
           overdue: 1,
         }),
         expect.objectContaining({
-          groupId: 'personal',
+          projectId: 'personal',
           completed: 1,
           pending: 0,
         }),
@@ -171,12 +180,11 @@ describe('task analytics', () => {
 
     const result = buildTaskAnalytics({
       todos: [source],
-      groups: [],
+      projects,
       taskEvents: events,
       analyticsStartedAt: timestamp(1),
       range: '7d',
       now: new Date(2026, 7, 10, 12),
-      ungroupedName: '未分组',
     });
 
     expect(result.completedCount).toBe(1);
@@ -200,24 +208,22 @@ describe('task analytics', () => {
 
     const result = buildTaskAnalytics({
       todos: [todo('legacy', '2026-08-04')],
-      groups: [],
+      projects,
       taskEvents: [migrated],
       analyticsStartedAt: timestamp(10),
       range: '7d',
       now: new Date(2026, 7, 10, 12),
-      ungroupedName: '未分组',
     });
 
     expect(result.estimated).toBe(true);
 
     const completeHistory = buildTaskAnalytics({
       todos: [todo('legacy', '2026-08-04')],
-      groups: [],
+      projects,
       taskEvents: [migrated],
       analyticsStartedAt: timestamp(1),
       range: '7d',
       now: new Date(2026, 7, 10, 12),
-      ungroupedName: '未分组',
     });
 
     expect(completeHistory.estimated).toBe(false);

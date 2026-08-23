@@ -1,6 +1,10 @@
-import { Redirect } from 'expo-router';
+import MarketingHome from '../components/marketing/MarketingHome';
+import MarketingRoute from '../components/marketing/MarketingRoute';
 
-// Today is the primary workspace and the stable post-authentication destination.
 export default function Index() {
-  return <Redirect href="/today" />;
+  return (
+    <MarketingRoute>
+      <MarketingHome />
+    </MarketingRoute>
+  );
 }

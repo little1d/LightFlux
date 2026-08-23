@@ -43,10 +43,10 @@ import { TaskMenuPosition } from './useTaskContextMenu';
 
 const MENU_WIDTH = 240;
 const EDIT_MENU_WIDTH = 300;
-const GROUP_FLYOUT_WIDTH = 216;
+const PROJECT_FLYOUT_WIDTH = 216;
 type MenuMode =
   | 'date'
-  | 'group'
+  | 'project'
   | 'priority'
   | 'rename'
   | 'subtask'
@@ -100,20 +100,18 @@ const TaskActionMenu = ({
   const {
     language,
     todos,
-    groups,
-    ungroupedName,
+    projects,
     addTodo,
-    moveTodoToGroup,
+    moveTodoToProject,
     trashTodo,
     updateTodo,
   } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
-      groups: state.groups,
-      ungroupedName: state.ungroupedName,
+      projects: state.projects,
       addTodo: state.addTodo,
-      moveTodoToGroup: state.moveTodoToGroup,
+      moveTodoToProject: state.moveTodoToProject,
       trashTodo: state.trashTodo,
       updateTodo: state.updateTodo,
     })),
@@ -134,13 +132,13 @@ const TaskActionMenu = ({
   const compactEdit = viewport.width < 360;
   const isWeb = Platform.OS === 'web';
   const desktopWeb = isWeb && !mobileSheet;
-  const orderedGroups = [...groups].sort(
+  const orderedProjects = [...projects].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
   );
   const flyoutOnLeft =
     desktopWeb &&
     position !== undefined &&
-    position.x + MENU_WIDTH + GROUP_FLYOUT_WIDTH + 20 > viewport.width;
+    position.x + MENU_WIDTH + PROJECT_FLYOUT_WIDTH + 20 > viewport.width;
 
   useEffect(
     () => () => {
@@ -198,7 +196,7 @@ const TaskActionMenu = ({
       addTodo({
         title,
         scheduledDate: todo.scheduledDate,
-        groupId: todo.groupId,
+        projectId: todo.projectId,
         parentId: todo.id,
       });
     }
@@ -206,8 +204,8 @@ const TaskActionMenu = ({
     onClose();
   };
 
-  const moveToGroup = (groupId: string | null) => {
-    moveTodoToGroup(todo.id, groupId);
+  const moveToProject = (projectId: string) => {
+    moveTodoToProject(todo.id, projectId);
     onClose();
   };
 
@@ -227,35 +225,25 @@ const TaskActionMenu = ({
     onClose();
   };
 
-  const renderGroupList = (mobile = false) => (
+  const renderProjectList = (mobile = false) => (
     <ScrollView
-      contentContainerStyle={styles.groupListContent}
+      contentContainerStyle={styles.projectListContent}
       showsVerticalScrollIndicator={false}
-      style={[styles.groupList, mobile && styles.mobileGroupList]}
+      style={[styles.projectList, mobile && styles.mobileProjectList]}
     >
-      <MenuItem
-        label={ungroupedName ?? labels.groups.ungrouped}
-        onPress={() => moveToGroup(null)}
-        selected={todo.groupId === null}
-        trailing={
-          todo.groupId === null ? (
-            <Ionicons color="#6759E8" name="checkmark" size={17} />
-          ) : null
-        }
-      />
-      {orderedGroups.map((group) => (
+      {orderedProjects.map((project) => (
         <MenuItem
           icon={
             <View
-              style={[styles.groupDot, { backgroundColor: group.color }]}
+              style={[styles.projectDot, { backgroundColor: project.color }]}
             />
           }
-          key={group.id}
-          label={group.name}
-          onPress={() => moveToGroup(group.id)}
-          selected={todo.groupId === group.id}
+          key={project.id}
+          label={project.name}
+          onPress={() => moveToProject(project.id)}
+          selected={todo.projectId === project.id}
           trailing={
-            todo.groupId === group.id ? (
+            todo.projectId === project.id ? (
               <Ionicons color="#6759E8" name="checkmark" size={17} />
             ) : null
           }
@@ -399,11 +387,11 @@ const TaskActionMenu = ({
     if (mode === 'date') {
       return renderDatePicker();
     }
-    if (mode === 'group') {
+    if (mode === 'project') {
       return (
         <>
-          {renderSheetHeader(labels.taskMenu.moveToGroup, true)}
-          {renderGroupList(true)}
+          {renderSheetHeader(labels.taskMenu.moveToProject, true)}
+          {renderProjectList(true)}
         </>
       );
     }
@@ -466,7 +454,7 @@ const TaskActionMenu = ({
               disabled={!draft.trim()}
               label={
                 mode === 'rename'
-                  ? labels.groups.confirmRename
+                  ? labels.projects.confirmRename
                   : labels.taskMenu.createSubtask
               }
               onPress={submit}
@@ -477,10 +465,9 @@ const TaskActionMenu = ({
       );
     }
 
-    const groupName =
-      orderedGroups.find((group) => group.id === todo.groupId)?.name ??
-      ungroupedName ??
-      labels.groups.ungrouped;
+    const projectName =
+      orderedProjects.find((project) => project.id === todo.projectId)?.name ??
+      labels.projects.inbox;
     const dateLabel = fromDateKey(todo.scheduledDate).toLocaleDateString(
       language === 'zh' ? 'zh-CN' : 'en-US',
       { day: 'numeric', month: 'short' },
@@ -499,9 +486,9 @@ const TaskActionMenu = ({
           />
           <MobileAction
             icon="folder-outline"
-            label={labels.editor.groupLabel}
-            onPress={() => openMode('group')}
-            value={groupName}
+            label={labels.editor.projectLabel}
+            onPress={() => openMode('project')}
+            value={projectName}
           />
           <MobileAction
             icon="flag-outline"
@@ -543,8 +530,8 @@ const TaskActionMenu = ({
         estimatedHeight={
           mode === 'date'
             ? 510
-            : mode === 'group'
-              ? Math.min(520, 80 + (orderedGroups.length + 1) * 44)
+            : mode === 'project'
+              ? Math.min(520, 80 + orderedProjects.length * 44)
               : mode
                 ? 270
                 : 350
@@ -573,8 +560,8 @@ const TaskActionMenu = ({
       allowOverflow={desktopWeb}
       closeLabel={labels.cancel}
       estimatedHeight={
-        mode === 'group'
-          ? Math.min(370, 62 + (orderedGroups.length + 1) * 44)
+        mode === 'project'
+          ? Math.min(370, 62 + orderedProjects.length * 44)
           : mode === 'rename' || mode === 'subtask'
             ? compactEdit
               ? 164
@@ -589,8 +576,8 @@ const TaskActionMenu = ({
           : MENU_WIDTH
       }
     >
-      {mode === 'group' ? (
-        <View style={styles.groupPicker}>
+      {mode === 'project' ? (
+        <View style={styles.projectPicker}>
           <MenuItem
             icon={
               <Ionicons
@@ -603,7 +590,7 @@ const TaskActionMenu = ({
             onPress={() => setMode(null)}
           />
           <View style={styles.divider} />
-          {renderGroupList()}
+          {renderProjectList()}
         </View>
       ) : mode === 'rename' || mode === 'subtask' ? (
         <View
@@ -647,7 +634,7 @@ const TaskActionMenu = ({
               disabled={!draft.trim()}
               label={
                 mode === 'rename'
-                  ? labels.groups.confirmRename
+                  ? labels.projects.confirmRename
                   : labels.taskMenu.createSubtask
               }
               onPress={submit}
@@ -684,10 +671,10 @@ const TaskActionMenu = ({
                   size={16}
                 />
               }
-              label={labels.taskMenu.moveToGroup}
+              label={labels.taskMenu.moveToProject}
               onHoverIn={openFlyoutOnHover}
               onPress={() =>
-                desktopWeb ? openFlyoutOnHover() : openMode('group')
+                desktopWeb ? openFlyoutOnHover() : openMode('project')
               }
               selected={desktopWeb && flyoutOpen}
               trailing={
@@ -707,14 +694,14 @@ const TaskActionMenu = ({
                   flyoutOnLeft ? styles.flyoutLeft : styles.flyoutRight,
                 ]}
               >
-                {renderGroupList()}
+                {renderProjectList()}
               </View>
             ) : null}
           </View>
         </>
       )}
 
-      {mode !== 'group' ? (
+      {mode !== 'project' ? (
         <MenuItem
           danger
           label={labels.taskMenu.moveToTrash}
@@ -928,21 +915,21 @@ const styles = StyleSheet.create({
     left: '100%',
     marginLeft: 8,
   },
-  groupDot: {
+  projectDot: {
     borderRadius: 4,
     height: 8,
     width: 8,
   },
-  groupList: {
+  projectList: {
     maxHeight: 264,
   },
-  mobileGroupList: {
+  mobileProjectList: {
     maxHeight: 380,
   },
-  groupListContent: {
+  projectListContent: {
     paddingBottom: 2,
   },
-  groupPicker: {
+  projectPicker: {
     paddingBottom: 2,
   },
   moveRow: {

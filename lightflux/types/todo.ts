@@ -9,7 +9,7 @@ export const NAVIGATION_ITEM_IDS = [
   'completed',
   'calendar',
   'milestones',
-  'groups',
+  'projects',
   'trash',
 ] as const;
 
@@ -24,6 +24,10 @@ export const OPTIONAL_NAVIGATION_ITEM_IDS = [
 
 export type OptionalNavigationItemId =
   (typeof OPTIONAL_NAVIGATION_ITEM_IDS)[number];
+
+export const DEFAULT_HIDDEN_NAVIGATION_ITEM_IDS = [
+  ...OPTIONAL_NAVIGATION_ITEM_IDS,
+] as const;
 
 export interface RichTextMark {
   type: string;
@@ -51,7 +55,7 @@ export interface Todo {
   createdAt: number;
   updatedAt: number;
   scheduledDate: string;
-  groupId: string | null;
+  projectId: string;
   milestoneId: string | null;
   parentId: string | null;
   priority: TodoPriority;
@@ -60,11 +64,14 @@ export interface Todo {
   content: RichTextDocument;
 }
 
-export interface TodoGroup {
+export const INBOX_PROJECT_ID = 'inbox';
+
+export interface Project {
   id: string;
   name: string;
   color: string;
   createdAt: number;
+  kind: 'inbox' | 'standard';
   sortOrder: number;
 }
 
@@ -137,28 +144,27 @@ export interface Milestone {
 }
 
 export interface PersistedAppState {
-  schemaVersion: 10;
+  schemaVersion: 12;
   updatedAt: number;
   analyticsStartedAt: number;
   language: Language;
   navigationOrder: NavigationItemId[];
   hiddenNavigationItems: OptionalNavigationItemId[];
-  ungroupedName: string | null;
   todos: Todo[];
-  groups: TodoGroup[];
+  projects: Project[];
   milestones: Milestone[];
   taskEvents: TaskEvent[];
 }
 
-export interface GroupPlacement {
-  anchorGroupId: string | null;
+export interface ProjectPlacement {
+  anchorProjectId: string;
   position: 'before' | 'after';
 }
 
 export interface NewTodo {
   title: string;
   scheduledDate: string;
-  groupId?: string | null;
+  projectId?: string;
   milestoneId?: string | null;
   parentId?: string | null;
   priority?: TodoPriority;
@@ -198,7 +204,7 @@ export type TodoUpdate = Partial<
     Todo,
     | 'title'
     | 'scheduledDate'
-    | 'groupId'
+    | 'projectId'
     | 'parentId'
     | 'priority'
     | 'sortOrder'

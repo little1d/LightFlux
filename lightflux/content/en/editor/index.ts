@@ -28,7 +28,7 @@ export const editor: Translation['editor'] = {
   resizePane: 'Resize task list and details',
   metadataTitle: 'Task info',
   dateLabel: 'Date',
-  groupLabel: 'Group',
+  projectLabel: 'Project',
   priorityLabel: 'Priority',
   scheduleToday: 'Today',
   scheduleTomorrow: 'Tomorrow',

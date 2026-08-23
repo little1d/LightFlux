@@ -17,7 +17,7 @@ const todo = (
   completedAt: null,
   content: emptyRichTextDocument(),
   createdAt: 10,
-  groupId: null,
+  projectId: 'inbox',
   milestoneId: null,
   parentId: null,
   priority: 'none',

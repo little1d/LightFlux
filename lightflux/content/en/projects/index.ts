@@ -1,0 +1,22 @@
+import type { Translation } from '../../types';
+export const projects: Translation['projects'] = {
+  title: 'Projects',
+  inbox: 'Inbox',
+  addProject: 'New project',
+  projectPlaceholder: 'Project name',
+  taskPlaceholder: 'Add a task to this project…',
+  addTaskTitle: 'Add main task',
+  cancelTask: 'Cancel',
+  reorderTask: 'Drag to reorder task',
+  addProjectAbove: 'Add project above',
+  addProjectBelow: 'Add project below',
+  renameProject: 'Rename',
+  deleteProject: 'Delete project',
+  confirmAdd: 'Add',
+  confirmRename: 'Save',
+  deleteProjectTitle: 'Delete this project?',
+  deleteProjectMessage: 'Tasks in this project will move to Inbox and will not be deleted.',
+  count: (count) => `${count} ${count === 1 ? 'task' : 'tasks'}`,
+  expand: 'Expand project',
+  collapse: 'Collapse project',
+};

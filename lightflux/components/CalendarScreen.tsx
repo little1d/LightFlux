@@ -46,7 +46,7 @@ import IconButton from './ui/IconButton';
 interface CalendarDayProps {
   currentMonth: number;
   date: Date;
-  groupColors: Map<string, string>;
+  projectColors: Map<string, string>;
   language: Language;
   onSelect: (date: Date) => void;
   selected: boolean;
@@ -59,7 +59,7 @@ interface CalendarDayProps {
 const CalendarDay = ({
   currentMonth,
   date,
-  groupColors,
+  projectColors,
   language,
   onSelect,
   selected,
@@ -120,7 +120,7 @@ const CalendarDay = ({
                     styles.dayTaskDot,
                     {
                       backgroundColor:
-                        groupColors.get(todo.groupId ?? '') ?? '#8B7EFF',
+                        projectColors.get(todo.projectId ?? '') ?? '#8B7EFF',
                     },
                   ]}
                 />
@@ -143,7 +143,7 @@ const CalendarDay = ({
                 styles.compactDot,
                 {
                   backgroundColor:
-                    groupColors.get(todo.groupId ?? '') ?? '#8B7EFF',
+                    projectColors.get(todo.projectId ?? '') ?? '#8B7EFF',
                 },
               ]}
             />
@@ -166,7 +166,7 @@ const CalendarTask = ({
   onOpenMenu,
   onToggle,
   selected,
-  showGroupColor,
+  showProjectColor,
   childCount,
   markActive,
   markComplete,
@@ -182,7 +182,7 @@ const CalendarTask = ({
   onOpenMenu: OpenTaskMenu;
   onToggle: (id: string) => void;
   selected: boolean;
-  showGroupColor: boolean;
+  showProjectColor: boolean;
   childCount: number;
   markActive: string;
   markComplete: string;
@@ -240,9 +240,9 @@ const CalendarTask = ({
       </Pressable>
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
-      {showGroupColor ? (
+      {showProjectColor ? (
         <View
-          style={[styles.taskGroupDot, { backgroundColor: color }]}
+          style={[styles.taskProjectDot, { backgroundColor: color }]}
         />
       ) : null}
       <TaskMoreButton
@@ -264,11 +264,11 @@ const CalendarScreen = ({
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
-  const { language, todos, groups, toggleTodo } = useTodoStore(
+  const { language, todos, projects, toggleTodo } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
-      groups: state.groups,
+      projects: state.projects,
       toggleTodo: state.toggleTodo,
     })),
   );
@@ -312,9 +312,9 @@ const CalendarScreen = ({
     });
     return result;
   }, [todos]);
-  const groupColors = useMemo(
-    () => new Map(groups.map((group) => [group.id, group.color])),
-    [groups],
+  const projectColors = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.color])),
+    [projects],
   );
   const childCountByParent = useMemo(
     () => buildChildCountByParent(todos),
@@ -440,7 +440,7 @@ const CalendarScreen = ({
                         <CalendarDay
                           currentMonth={visibleMonth.getMonth()}
                           date={date}
-                          groupColors={groupColors}
+                          projectColors={projectColors}
                           key={dateKey}
                           language={language}
                           onSelect={selectDate}
@@ -466,7 +466,7 @@ const CalendarScreen = ({
                   <CalendarTask
                     childCount={childCountByParent.get(todo.id) ?? 0}
                     color={
-                      groupColors.get(todo.groupId ?? '') ?? '#8B7EFF'
+                      projectColors.get(todo.projectId ?? '') ?? '#8B7EFF'
                     }
                     editLabel={labels.editor.title}
                     hovered={hoveredTask === todo.id}
@@ -480,7 +480,7 @@ const CalendarScreen = ({
                     onOpenMenu={onOpenTaskMenu}
                     onToggle={toggleTodo}
                     selected={selectedTaskId === todo.id}
-                    showGroupColor={!mobileFab}
+                    showProjectColor={!mobileFab}
                     todo={todo}
                   />
                 ))}
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
     color: '#9A9BAA',
     textDecorationLine: 'line-through',
   },
-  taskGroupDot: {
+  taskProjectDot: {
     borderRadius: 3,
     height: 8,
     marginLeft: 8,

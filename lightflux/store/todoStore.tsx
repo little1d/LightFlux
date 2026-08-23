@@ -13,8 +13,9 @@ import {
   synchronizeAppState,
 } from '../services/todoStorage';
 import {
+  DEFAULT_HIDDEN_NAVIGATION_ITEM_IDS,
+  INBOX_PROJECT_ID,
   NAVIGATION_ITEM_IDS,
-  GroupPlacement,
   Language,
   Milestone,
   MilestoneUpdate,
@@ -23,9 +24,10 @@ import {
   NewMilestone,
   NewTodo,
   PersistedAppState,
+  Project,
+  ProjectPlacement,
   TaskEvent,
   Todo,
-  TodoGroup,
   TodoUpdate,
 } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
@@ -43,7 +45,7 @@ import {
   collectTodoFamily,
   deleteTrashedTodoBranch,
   emptyTrashTodos,
-  moveTodoBranchToGroup,
+  moveTodoBranchToProject,
   reorderList,
   restoreTodoBranch,
   todoState,
@@ -53,7 +55,7 @@ import {
   deriveTaskEventsFromTodoDiff,
 } from './taskEventDomain';
 
-const GROUP_COLORS = [
+const PROJECT_COLORS = [
   '#8B7EFF',
   '#55B9A5',
   '#EEA45E',
@@ -66,7 +68,7 @@ interface TodoStore {
   allTodos: Todo[];
   todos: Todo[];
   trashedTodos: Todo[];
-  groups: TodoGroup[];
+  projects: Project[];
   taskEvents: TaskEvent[];
   analyticsStartedAt: number;
   allMilestones: Milestone[];
@@ -75,7 +77,6 @@ interface TodoStore {
   trashedMilestones: Milestone[];
   navigationOrder: NavigationItemId[];
   hiddenNavigationItems: OptionalNavigationItemId[];
-  ungroupedName: string | null;
   isHydrated: boolean;
   persistenceReady: boolean;
   persistenceErrorAt: number | null;
@@ -91,10 +92,10 @@ interface TodoStore {
   trashTodos: (ids: string[]) => void;
   restoreTodo: (id: string) => void;
   reorderTask: (id: string, targetIndex: number) => void;
-  moveTodoToGroup: (id: string, groupId: string | null) => void;
+  moveTodoToProject: (id: string, projectId: string) => void;
   deleteTodoPermanently: (id: string) => void;
   emptyTrash: () => void;
-  addGroup: (name: string, placement?: GroupPlacement) => string;
+  addProject: (name: string, placement?: ProjectPlacement) => string;
   reorderNavigationItem: (
     id: NavigationItemId,
     targetIndex: number,
@@ -103,8 +104,8 @@ interface TodoStore {
     id: OptionalNavigationItemId,
     visible: boolean,
   ) => void;
-  renameGroup: (id: string | null, name: string) => void;
-  deleteGroup: (id: string) => void;
+  renameProject: (id: string, name: string) => void;
+  deleteProject: (id: string) => void;
   addMilestone: (milestone: NewMilestone) => string | null;
   updateMilestone: (id: string, changes: MilestoneUpdate) => void;
   archiveMilestone: (id: string) => void;
@@ -117,16 +118,27 @@ interface TodoStore {
 const makeId = (): string =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const createInboxProject = (
+  language: Language,
+  timestamp = Date.now(),
+): Project => ({
+  id: INBOX_PROJECT_ID,
+  name: language === 'en' ? 'Inbox' : '收件箱',
+  color: '#8B7EFF',
+  createdAt: timestamp,
+  kind: 'inbox',
+  sortOrder: 0,
+});
+
 const persistedStoreSlice = (state: PersistedAppState) => ({
   language: state.language,
   ...todoState(state.todos),
-  groups: state.groups,
+  projects: state.projects,
   taskEvents: state.taskEvents,
   analyticsStartedAt: state.analyticsStartedAt,
   ...milestoneState(state.milestones),
   navigationOrder: state.navigationOrder,
   hiddenNavigationItems: state.hiddenNavigationItems,
-  ungroupedName: state.ungroupedName,
 });
 
 let hydrationPromise: Promise<void> | null = null;
@@ -134,13 +146,12 @@ let hydrationPromise: Promise<void> | null = null;
 export const useTodoStore = create<TodoStore>((set, get) => ({
   language: 'zh',
   ...todoState([]),
-  groups: [],
+  projects: [createInboxProject('zh')],
   taskEvents: [],
   analyticsStartedAt: Date.now(),
   ...milestoneState([]),
   navigationOrder: [...NAVIGATION_ITEM_IDS],
-  hiddenNavigationItems: [],
-  ungroupedName: null,
+  hiddenNavigationItems: [...DEFAULT_HIDDEN_NAVIGATION_ITEM_IDS],
   isHydrated: false,
   persistenceReady: false,
   persistenceErrorAt: null,
@@ -223,7 +234,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         createdAt: timestamp,
         updatedAt: timestamp,
         scheduledDate: todo.scheduledDate,
-        groupId: todo.groupId ?? null,
+        projectId: todo.projectId ?? INBOX_PROJECT_ID,
         milestoneId: todo.milestoneId ?? null,
         parentId: todo.parentId ?? null,
         priority: todo.priority ?? 'none',
@@ -235,7 +246,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         .filter(
           (item) =>
             item.trashedAt === null &&
-            item.groupId === newTodo.groupId &&
+            item.projectId === newTodo.projectId &&
             item.parentId === newTodo.parentId,
         )
         .sort(byTodoOrder);
@@ -402,7 +413,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         .filter(
           (todo) =>
             todo.parentId === dragged.parentId &&
-            todo.groupId === dragged.groupId &&
+            todo.projectId === dragged.projectId &&
             todo.trashedAt === null,
         )
         .sort(byTodoOrder);
@@ -436,13 +447,13 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       );
     }),
 
-  moveTodoToGroup: (id, groupId) =>
+  moveTodoToProject: (id, projectId) =>
     set((state) =>
       todoState(
-        moveTodoBranchToGroup(
+        moveTodoBranchToProject(
           state.allTodos,
           id,
-          groupId,
+          projectId,
           Date.now(),
         ),
       ),
@@ -494,66 +505,59 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       };
     }),
 
-  addGroup: (name, placement) => {
+  addProject: (name, placement) => {
     const id = makeId();
     set((state) => {
-      const newGroup: TodoGroup = {
+      const newProject: Project = {
         id,
         name: name.trim(),
-        color: GROUP_COLORS[state.groups.length % GROUP_COLORS.length],
+        color:
+          PROJECT_COLORS[state.projects.length % PROJECT_COLORS.length],
         createdAt: Date.now(),
+        kind: 'standard',
         sortOrder:
-          Math.max(0, ...state.groups.map((group) => group.sortOrder)) + 1,
+          Math.max(
+            0,
+            ...state.projects.map((project) => project.sortOrder),
+          ) + 1,
       };
 
       if (!placement) {
-        return { groups: [...state.groups, newGroup] };
+        return { projects: [...state.projects, newProject] };
       }
 
-      const ordered: Array<TodoGroup | null> = [
-        null,
-        ...state.groups,
-      ].sort(
+      const ordered = [...state.projects].sort(
         (a, b) =>
-          (a?.sortOrder ?? 0) - (b?.sortOrder ?? 0) ||
-          (a?.createdAt ?? 0) - (b?.createdAt ?? 0),
+          a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
       );
       const anchorIndex = ordered.findIndex(
-        (group) => (group?.id ?? null) === placement.anchorGroupId,
+        (project) => project.id === placement.anchorProjectId,
       );
       const insertIndex =
         anchorIndex < 0
           ? ordered.length
           : anchorIndex + (placement.position === 'after' ? 1 : 0);
-      ordered.splice(insertIndex, 0, newGroup);
-      const ungroupedIndex = ordered.indexOf(null);
+      ordered.splice(insertIndex, 0, newProject);
 
       return {
-        groups: ordered
-          .filter((group): group is TodoGroup => group !== null)
-          .map((group) => ({
-            ...group,
-            sortOrder: ordered.indexOf(group) - ungroupedIndex,
-          })),
+        projects: ordered.map((project, index) => ({
+          ...project,
+          sortOrder: index,
+        })),
       };
     });
     return id;
   },
 
-  renameGroup: (id, name) => {
+  renameProject: (id, name) => {
     const normalizedName = name.trim();
     if (!normalizedName) {
       return;
     }
 
-    if (id === null) {
-      set({ ungroupedName: normalizedName });
-      return;
-    }
-
     set((state) => ({
-      groups: state.groups.map((group) =>
-        group.id === id ? { ...group, name: normalizedName } : group,
+      projects: state.projects.map((project) =>
+        project.id === id ? { ...project, name: normalizedName } : project,
       ),
     }));
   },
@@ -585,17 +589,30 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       };
     }),
 
-  deleteGroup: (id) =>
-    set((state) => ({
-      groups: state.groups.filter((group) => group.id !== id),
-      ...todoState(
-        state.allTodos.map((todo) =>
-          todo.groupId === id
-            ? { ...todo, groupId: null, updatedAt: Date.now() }
-            : todo,
+  deleteProject: (id) =>
+    set((state) => {
+      const project = state.projects.find((item) => item.id === id);
+      if (!project || project.kind === 'inbox') {
+        return state;
+      }
+      const inboxProjectId =
+        state.projects.find((item) => item.kind === 'inbox')?.id ??
+        INBOX_PROJECT_ID;
+      return {
+        projects: state.projects.filter((item) => item.id !== id),
+        ...todoState(
+          state.allTodos.map((todo) =>
+            todo.projectId === id
+              ? {
+                  ...todo,
+                  projectId: inboxProjectId,
+                  updatedAt: Date.now(),
+                }
+              : todo,
+          ),
         ),
-      ),
-    })),
+      };
+    }),
 
   addMilestone: (milestone) => {
     const title = milestone.title.trim();
@@ -763,15 +780,14 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 }));
 
 const persistedState = (state: TodoStore): PersistedAppState => ({
-  schemaVersion: 10,
+  schemaVersion: 12,
   updatedAt: Date.now(),
   analyticsStartedAt: state.analyticsStartedAt,
   language: state.language,
   navigationOrder: state.navigationOrder,
   hiddenNavigationItems: state.hiddenNavigationItems,
-  ungroupedName: state.ungroupedName,
   todos: state.allTodos,
-  groups: state.groups,
+  projects: state.projects,
   milestones: state.allMilestones,
   taskEvents: state.taskEvents,
 });
@@ -788,14 +804,13 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   const hydrate = useTodoStore((state) => state.hydrate);
   const language = useTodoStore((state) => state.language);
   const allTodos = useTodoStore((state) => state.allTodos);
-  const groups = useTodoStore((state) => state.groups);
+  const projects = useTodoStore((state) => state.projects);
   const taskEvents = useTodoStore((state) => state.taskEvents);
   const allMilestones = useTodoStore((state) => state.allMilestones);
   const navigationOrder = useTodoStore((state) => state.navigationOrder);
   const hiddenNavigationItems = useTodoStore(
     (state) => state.hiddenNavigationItems,
   );
-  const ungroupedName = useTodoStore((state) => state.ungroupedName);
   const isHydrated = useTodoStore((state) => state.isHydrated);
   const persistenceReady = useTodoStore((state) => state.persistenceReady);
 
@@ -878,14 +893,13 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   }, [
     allTodos,
     allMilestones,
-    groups,
+    projects,
     isHydrated,
     language,
     navigationOrder,
     hiddenNavigationItems,
     persistenceReady,
     taskEvents,
-    ungroupedName,
   ]);
 
   return children;

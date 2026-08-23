@@ -11,7 +11,7 @@ import {
   AgentOperation,
   AgentProposal,
 } from '../agent/types';
-import { Milestone, Todo, TodoGroup } from '../types/todo';
+import { Milestone, Todo, Project } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 
 const todo = (
@@ -24,7 +24,7 @@ const todo = (
   completedAt: null,
   content: emptyRichTextDocument(),
   createdAt: 1,
-  groupId: null,
+  projectId: 'inbox',
   parentId: null,
   priority: 'none',
   scheduledDate: '2026-08-10',
@@ -35,11 +35,12 @@ const todo = (
   milestoneId: overrides.milestoneId ?? null,
 });
 
-const group = (id: string): TodoGroup => ({
+const project = (id: string): Project => ({
   id,
   name: id,
   color: '#8B7EFF',
   createdAt: 1,
+  kind: id === 'inbox' ? 'inbox' : 'standard',
   sortOrder: 1,
 });
 
@@ -109,16 +110,16 @@ const expectCommandError = (
 };
 
 describe('agent task commands', () => {
-  it('creates a group, parent task, and subtask atomically', () => {
-    const source = createTodoCommandState([], [], null);
+  it('creates a project, parent task, and subtask atomically', () => {
+    const source = createTodoCommandState([], []);
     const result = executeAgentProposal(
       source,
       proposal(
         [
           {
-            ...operationBase('group'),
-            type: 'group.create',
-            groupId: 'work',
+            ...operationBase('project'),
+            type: 'project.create',
+            projectId: 'work',
             name: '工作',
           },
           {
@@ -127,7 +128,7 @@ describe('agent task commands', () => {
             taskId: 'expense',
             title: '处理报销',
             scheduledDate: '2026-08-11',
-            groupId: 'work',
+            projectId: 'work',
             priority: 'high',
           },
           {
@@ -144,20 +145,23 @@ describe('agent task commands', () => {
       { confirmed: true, now: 100 },
     );
 
-    expect(result.state.groups).toEqual([
-      expect.objectContaining({ id: 'work', name: '工作' }),
-    ]);
+    expect(result.state.projects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'inbox', kind: 'inbox' }),
+        expect.objectContaining({ id: 'work', name: '工作' }),
+      ]),
+    );
     expect(result.state.todos).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'expense',
-          groupId: 'work',
+          projectId: 'work',
           parentId: null,
           priority: 'high',
         }),
         expect.objectContaining({
           id: 'receipts',
-          groupId: 'work',
+          projectId: 'work',
           parentId: 'expense',
         }),
       ]),
@@ -166,8 +170,33 @@ describe('agent task commands', () => {
     expect(result.afterRevision).not.toBe(source.revision);
   });
 
+  it('creates tasks in Inbox when no Project is specified', () => {
+    const source = createTodoCommandState([], []);
+    const result = executeAgentProposal(
+      source,
+      proposal(
+        [
+          {
+            ...operationBase('inbox-task'),
+            type: 'task.create',
+            taskId: 'inbox-task',
+            title: 'Capture this',
+            scheduledDate: '2026-08-11',
+          },
+        ],
+        source.revision,
+      ),
+      { confirmed: true, now: 100 },
+    );
+
+    expect(result.state.todos[0]).toMatchObject({
+      id: 'inbox-task',
+      projectId: 'inbox',
+    });
+  });
+
   it('requires explicit confirmation for every mutation', () => {
-    const source = createTodoCommandState([], [], null);
+    const source = createTodoCommandState([], []);
     expectCommandError(
       () =>
         executeAgentProposal(
@@ -191,7 +220,7 @@ describe('agent task commands', () => {
   });
 
   it('rejects stale revisions and understated risk', () => {
-    const source = createTodoCommandState([todo('task')], [], null);
+    const source = createTodoCommandState([todo('task')], []);
     const trashOperation: AgentOperation = {
       ...operationBase('trash'),
       type: 'task.trash',
@@ -219,7 +248,7 @@ describe('agent task commands', () => {
   });
 
   it('requires medium risk for task rescheduling through update', () => {
-    const source = createTodoCommandState([todo('task')], [], null);
+    const source = createTodoCommandState([todo('task')], []);
     const operation: AgentOperation = {
       ...operationBase('reschedule'),
       type: 'task.update',
@@ -246,7 +275,7 @@ describe('agent task commands', () => {
   });
 
   it('keeps the source unchanged when a later operation fails', () => {
-    const source = createTodoCommandState([todo('existing')], [], null);
+    const source = createTodoCommandState([todo('existing')], []);
     const snapshot = JSON.stringify(source);
     expectCommandError(
       () =>
@@ -277,7 +306,7 @@ describe('agent task commands', () => {
   });
 
   it('rejects duplicate idempotency keys', () => {
-    const source = createTodoCommandState([todo('task')], [], null);
+    const source = createTodoCommandState([todo('task')], []);
     expectCommandError(
       () =>
         executeAgentProposal(
@@ -311,7 +340,6 @@ describe('agent task commands', () => {
     const source = createTodoCommandState(
       [todo('parent'), todo('child', { parentId: 'parent' })],
       [],
-      null,
     );
     expectCommandError(
       () =>
@@ -343,7 +371,6 @@ describe('agent task commands', () => {
         todo('third', { sortOrder: 2 }),
       ],
       [],
-      null,
     );
     const result = executeAgentProposal(
       source,
@@ -375,7 +402,6 @@ describe('agent task commands', () => {
     const source = createTodoCommandState(
       [todo('parent'), todo('child', { parentId: 'parent' })],
       [],
-      null,
     );
     const result = executeAgentProposal(
       source,
@@ -400,7 +426,7 @@ describe('agent task commands', () => {
   });
 
   it('refuses undo after another task change', () => {
-    const source = createTodoCommandState([todo('task')], [], null);
+    const source = createTodoCommandState([todo('task')], []);
     const result = executeAgentProposal(
       source,
       proposal(
@@ -426,8 +452,7 @@ describe('agent task commands', () => {
       ...result.state,
       revision: calculateTodoCommandRevision(
         changedTodos,
-        result.state.groups,
-        result.state.ungroupedName,
+        result.state.projects,
       ),
       todos: changedTodos,
     };
@@ -439,7 +464,10 @@ describe('agent task commands', () => {
   });
 
   it('rejects runtime attempts to update rich text', () => {
-    const source = createTodoCommandState([todo('task')], [group('work')], null);
+    const source = createTodoCommandState(
+      [todo('task')],
+      [project('work')],
+    );
     const invalidOperation = {
       ...operationBase('content'),
       type: 'task.update',
@@ -459,7 +487,7 @@ describe('agent task commands', () => {
   });
 
   it('creates and updates a lunar milestone atomically with task changes', () => {
-    const source = createTodoCommandState([todo('task')], [], null, []);
+    const source = createTodoCommandState([todo('task')], [], []);
     const result = executeAgentProposal(
       source,
       proposal(
@@ -508,7 +536,6 @@ describe('agent task commands', () => {
     const source = createTodoCommandState(
       [],
       [],
-      null,
       [milestone('launch')],
     );
     const archived = executeAgentProposal(
@@ -575,7 +602,6 @@ describe('agent task commands', () => {
     const source = createTodoCommandState(
       [],
       [],
-      null,
       [milestone('launch', { archivedAt: 50, trashedAt: 60 })],
     );
     const restored = executeAgentProposal(
@@ -601,7 +627,7 @@ describe('agent task commands', () => {
   });
 
   it('rejects malformed milestone dates without changing task state', () => {
-    const source = createTodoCommandState([todo('task')], [], null, []);
+    const source = createTodoCommandState([todo('task')], [], []);
     const snapshot = JSON.stringify(source);
     const invalid = {
       ...operationBase('invalid-milestone'),

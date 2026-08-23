@@ -1,0 +1,22 @@
+import type { Translation } from '../../types';
+export const projects: Translation['projects'] = {
+  title: '项目',
+  inbox: '收件箱',
+  addProject: '新建项目',
+  projectPlaceholder: '项目名称',
+  taskPlaceholder: '添加任务到此项目…',
+  addTaskTitle: '添加主任务',
+  cancelTask: '取消',
+  reorderTask: '拖拽排序任务',
+  addProjectAbove: '在上方添加项目',
+  addProjectBelow: '在下方添加项目',
+  renameProject: '重命名',
+  deleteProject: '删除项目',
+  confirmAdd: '添加',
+  confirmRename: '保存',
+  deleteProjectTitle: '删除这个项目？',
+  deleteProjectMessage: '项目内的任务会移至“收件箱”，任务不会被删除。',
+  count: (count) => `${count} 项`,
+  expand: '展开项目',
+  collapse: '收起项目',
+};

@@ -31,7 +31,7 @@ import {
 
 const MAX_AUDIT_RECORDS = 100;
 const MAX_REMOTE_TASKS = 160;
-const MAX_REMOTE_GROUPS = 80;
+const MAX_REMOTE_PROJECTS = 80;
 const MAX_REMOTE_MILESTONES = 80;
 
 export interface AgentTaskContext {
@@ -39,13 +39,13 @@ export interface AgentTaskContext {
   title: string;
   completed: boolean;
   scheduledDate: string;
-  groupId: string | null;
+  projectId: string;
   parentId: string | null;
   priority: TodoPriority;
   trashed: boolean;
 }
 
-export interface AgentGroupContext {
+export interface AgentProjectContext {
   id: string;
   name: string;
 }
@@ -69,17 +69,16 @@ export interface AgentMilestoneContext {
 export interface AgentContextSnapshot {
   revision: number;
   language: 'zh' | 'en';
-  ungroupedName: string | null;
   tasks: AgentTaskContext[];
-  groups: AgentGroupContext[];
+  projects: AgentProjectContext[];
   milestones: AgentMilestoneContext[];
   scope: {
     totalTasks: number;
     includedTasks: number;
     tasksTruncated: boolean;
-    totalGroups: number;
-    includedGroups: number;
-    groupsTruncated: boolean;
+    totalProjects: number;
+    includedProjects: number;
+    projectsTruncated: boolean;
     totalMilestones: number;
     includedMilestones: number;
     milestonesTruncated: boolean;
@@ -90,7 +89,7 @@ export interface AgentContextSnapshot {
 
 export interface AgentTaskSearchInput {
   query?: string;
-  groupId?: string | null;
+  projectId?: string;
   parentId?: string | null;
   scheduledFrom?: string;
   scheduledTo?: string;
@@ -205,8 +204,7 @@ const currentCommandState = () => {
   const state = useTodoStore.getState();
   return createTodoCommandState(
     state.allTodos,
-    state.groups,
-    state.ungroupedName,
+    state.projects,
     state.allMilestones,
   );
 };
@@ -217,10 +215,9 @@ const applyCommandState = (
 ) => {
   useTodoStore.setState({
     ...deriveTodoCommandCollections(state.todos),
-    groups: state.groups,
+    projects: state.projects,
     ...milestoneState(state.milestones),
     ...(taskEvents ? { taskEvents } : {}),
-    ungroupedName: state.ungroupedName,
   });
 };
 
@@ -234,13 +231,14 @@ const dateRulePreview = (rule: MilestoneDateRule) =>
 
 const remindersPreview = (offsets: number[]) => offsets.join(',');
 
-const groupPreview = (
+const projectPreview = (
   state: ReturnType<typeof currentCommandState>,
-  groupId: string | null,
+  projectId: string | undefined,
 ) =>
-  groupId === null
-    ? state.ungroupedName
-    : (state.groups.find((group) => group.id === groupId)?.name ?? groupId);
+  projectId
+    ? (state.projects.find((project) => project.id === projectId)?.name ??
+      projectId)
+    : null;
 
 const parentPreview = (
   state: ReturnType<typeof currentCommandState>,
@@ -294,9 +292,9 @@ const operationPreview = (
       addChange('scheduledDate', null, operation.scheduledDate);
       addChange('priority', null, operation.priority ?? 'none');
       addChange(
-        'group',
+        'project',
         null,
-        groupPreview(result.state, afterTask?.groupId ?? null),
+        projectPreview(result.state, afterTask?.projectId),
       );
       addChange(
         'parent',
@@ -337,9 +335,9 @@ const operationPreview = (
         afterTask?.scheduledDate ?? null,
       );
       addChange(
-        'group',
-        groupPreview(source, beforeTask?.groupId ?? null),
-        groupPreview(result.state, afterTask?.groupId ?? null),
+        'project',
+        projectPreview(source, beforeTask?.projectId),
+        projectPreview(result.state, afterTask?.projectId),
       );
       addChange(
         'parent',
@@ -364,19 +362,18 @@ const operationPreview = (
     case 'task.restore':
       addChange('trashed', true, false);
       break;
-    case 'group.create': {
-      const group = result.state.groups.find(
-        (item) => item.id === operation.groupId,
+    case 'project.create': {
+      const project = result.state.projects.find(
+        (item) => item.id === operation.projectId,
       );
-      addChange('title', null, group?.name ?? operation.name);
-      addChange('color', null, group?.color ?? operation.color ?? null);
+      addChange('title', null, project?.name ?? operation.name);
+      addChange('color', null, project?.color ?? operation.color ?? null);
       break;
     }
-    case 'group.update': {
-      const before =
-        operation.groupId === null
-          ? source.ungroupedName
-          : source.groups.find((group) => group.id === operation.groupId)?.name;
+    case 'project.update': {
+      const before = source.projects.find(
+        (project) => project.id === operation.projectId,
+      )?.name;
       addChange('title', before ?? null, operation.name);
       break;
     }
@@ -523,14 +520,14 @@ export const getAgentContextSnapshot = (): AgentContextSnapshot => {
     title: todo.title,
     completed: todo.completed,
     scheduledDate: todo.scheduledDate,
-    groupId: todo.groupId,
+    projectId: todo.projectId,
     parentId: todo.parentId,
     priority: todo.priority,
     trashed: todo.trashedAt !== null,
   }));
-  const groups = state.groups.map((group) => ({
-    id: group.id,
-    name: group.name,
+  const projects = state.projects.map((project) => ({
+    id: project.id,
+    name: project.name,
   }));
   const milestones = state.allMilestones.map((milestone) => ({
     id: milestone.id,
@@ -550,17 +547,16 @@ export const getAgentContextSnapshot = (): AgentContextSnapshot => {
   return {
     revision: commandState.revision,
     language: state.language,
-    ungroupedName: state.ungroupedName,
     tasks,
-    groups,
+    projects,
     milestones,
     scope: {
       totalTasks: tasks.length,
       includedTasks: tasks.length,
       tasksTruncated: false,
-      totalGroups: groups.length,
-      includedGroups: groups.length,
-      groupsTruncated: false,
+      totalProjects: projects.length,
+      includedProjects: projects.length,
+      projectsTruncated: false,
       totalMilestones: milestones.length,
       includedMilestones: milestones.length,
       milestonesTruncated: false,
@@ -633,7 +629,7 @@ const selectedDateFromMessage = (message: string, now: Date) => {
 const taskContextScore = (
   task: AgentTaskContext,
   message: string,
-  groupNames: Map<string, string>,
+  projectNames: Map<string, string>,
   requestedDate: string | null,
   requestedPriority: TodoPriority | null,
   overdueRequested: boolean,
@@ -642,10 +638,10 @@ const taskContextScore = (
 ) => {
   let score = 0;
   score += textMatchScore(message, task.title);
-  const groupName = task.groupId
-    ? groupNames.get(task.groupId)?.toLocaleLowerCase()
+  const projectName = task.projectId
+    ? projectNames.get(task.projectId)?.toLocaleLowerCase()
     : undefined;
-  if (groupName && message.includes(groupName)) {
+  if (projectName && message.includes(projectName)) {
     score += 40;
   }
   if (requestedDate) {
@@ -733,8 +729,8 @@ export const getAgentContextForMessage = (
     'find',
     'which task',
   ]);
-  const groupNames = new Map(
-    context.groups.map((group) => [group.id, group.name]),
+  const projectNames = new Map(
+    context.projects.map((project) => [project.id, project.name]),
   );
   const today = toDateKey(now);
   const scoredTasks = context.tasks
@@ -744,7 +740,7 @@ export const getAgentContextForMessage = (
       score: taskContextScore(
         task,
         message,
-        groupNames,
+        projectNames,
         requestedDate,
         requestedPriority,
         overdueRequested,
@@ -790,34 +786,34 @@ export const getAgentContextForMessage = (
     .filter((task) => selectedTaskIds.has(task.id))
     .slice(0, MAX_REMOTE_TASKS);
 
-  const selectedGroupIds = new Set(
+  const selectedProjectIds = new Set(
     tasks
-      .map((task) => task.groupId)
+      .map((task) => task.projectId)
       .filter((id): id is string => id !== null),
   );
-  const groupIntent = messageIncludes(message, [
-    '分组',
+  const projectIntent = messageIncludes(message, [
+    '项目',
     '清单',
-    'group',
+    'project',
     'list',
   ]);
-  const groups = context.groups
+  const projects = context.projects
     .filter(
-      (group) =>
-        selectedGroupIds.has(group.id) ||
-        message.includes(group.name.toLocaleLowerCase()) ||
-        groupIntent,
+      (project) =>
+        selectedProjectIds.has(project.id) ||
+        message.includes(project.name.toLocaleLowerCase()) ||
+        projectIntent,
     )
     .sort((a, b) => {
       const aScore =
-        (selectedGroupIds.has(a.id) ? 2 : 0) +
+        (selectedProjectIds.has(a.id) ? 2 : 0) +
         (message.includes(a.name.toLocaleLowerCase()) ? 1 : 0);
       const bScore =
-        (selectedGroupIds.has(b.id) ? 2 : 0) +
+        (selectedProjectIds.has(b.id) ? 2 : 0) +
         (message.includes(b.name.toLocaleLowerCase()) ? 1 : 0);
       return bScore - aScore || a.name.localeCompare(b.name);
     })
-    .slice(0, MAX_REMOTE_GROUPS);
+    .slice(0, MAX_REMOTE_PROJECTS);
 
   const milestoneIntent = messageIncludes(message, [
     '纪念日',
@@ -855,15 +851,15 @@ export const getAgentContextForMessage = (
   return {
     ...context,
     tasks,
-    groups,
+    projects,
     milestones,
     scope: {
       totalTasks: context.tasks.length,
       includedTasks: tasks.length,
       tasksTruncated: taskCandidates.length > tasks.length,
-      totalGroups: context.groups.length,
-      includedGroups: groups.length,
-      groupsTruncated: context.groups.length > groups.length,
+      totalProjects: context.projects.length,
+      includedProjects: projects.length,
+      projectsTruncated: context.projects.length > projects.length,
       totalMilestones: context.milestones.length,
       includedMilestones: milestones.length,
       milestonesTruncated: milestoneCandidates.length > milestones.length,
@@ -889,7 +885,7 @@ export const searchAgentTasks = (
       if (query && !task.title.toLocaleLowerCase().includes(query)) {
         return false;
       }
-      if (hasOwn(input, 'groupId') && task.groupId !== input.groupId) {
+      if (hasOwn(input, 'projectId') && task.projectId !== input.projectId) {
         return false;
       }
       if (hasOwn(input, 'parentId') && task.parentId !== input.parentId) {
@@ -918,12 +914,12 @@ export const searchAgentTasks = (
     .slice(0, limit);
 };
 
-export const searchAgentGroups = (query: string): AgentGroupContext[] => {
+export const searchAgentProjects = (query: string): AgentProjectContext[] => {
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  return getAgentContextSnapshot().groups.filter(
-    (group) =>
+  return getAgentContextSnapshot().projects.filter(
+    (project) =>
       !normalizedQuery ||
-      group.name.toLocaleLowerCase().includes(normalizedQuery),
+      project.name.toLocaleLowerCase().includes(normalizedQuery),
   );
 };
 

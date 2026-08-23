@@ -4,12 +4,14 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 export type TooltipPosition = 'top' | 'right' | 'bottom' | 'left';
 
 interface TooltipProps {
+  appearance?: 'dark' | 'light';
   label: string;
   position?: TooltipPosition;
   visible: boolean;
 }
 
 const Tooltip = ({
+  appearance = 'dark',
   label,
   position = 'top',
   visible,
@@ -22,9 +24,16 @@ const Tooltip = ({
     <View
       accessibilityElementsHidden
       aria-hidden
-      style={[styles.tooltip, styles[position]]}
+      style={[
+        styles.tooltip,
+        appearance === 'light' && styles.tooltipLight,
+        styles[position],
+      ]}
     >
-      <Text numberOfLines={1} style={styles.label}>
+      <Text
+        numberOfLines={1}
+        style={[styles.label, appearance === 'light' && styles.labelLight]}
+      >
         {label}
       </Text>
     </View>
@@ -47,11 +56,26 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     zIndex: 5000,
   },
+  tooltipLight: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E1E0E7',
+    borderRadius: 8,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    shadowColor: '#272533',
+    shadowOffset: { height: 3, width: 0 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+  },
   label: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.1,
+    fontWeight: '600',
+  },
+  labelLight: {
+    color: '#3A3B48',
+    fontSize: 12,
+    fontWeight: '400',
   },
   top: {
     alignSelf: 'center',

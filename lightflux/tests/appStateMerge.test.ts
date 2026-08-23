@@ -9,23 +9,31 @@ import { PersistedAppState, Todo } from '../types/todo';
 import { emptyRichTextDocument } from '../utils/richText';
 
 const state = (updatedAt: number): PersistedAppState => ({
-  schemaVersion: 10,
+  schemaVersion: 12,
   updatedAt,
   analyticsStartedAt: 1,
-  groups: [],
+  projects: [
+    {
+      id: 'inbox',
+      name: 'Inbox',
+      color: '#8B7EFF',
+      createdAt: 1,
+      kind: 'inbox',
+      sortOrder: 0,
+    },
+  ],
   language: 'zh',
   navigationOrder: [
     'today',
     'completed',
     'calendar',
-    'groups',
+    'projects',
     'trash',
   ],
   hiddenNavigationItems: [],
   todos: [],
   milestones: [],
   taskEvents: [],
-  ungroupedName: null,
 });
 
 describe('app-state version selection', () => {
@@ -52,7 +60,7 @@ describe('app-state version selection', () => {
       completedAt: null,
       content: emptyRichTextDocument(),
       createdAt: 10,
-      groupId: null,
+      projectId: 'inbox',
       milestoneId: null,
       parentId: null,
       priority: 'none',
@@ -74,7 +82,7 @@ describe('three-way app-state merge', () => {
     completedAt: null,
     content: emptyRichTextDocument(),
     createdAt: 1,
-    groupId: null,
+    projectId: 'inbox',
     milestoneId: null,
     parentId: null,
     priority: 'none',
@@ -154,7 +162,7 @@ describe('three-way app-state merge', () => {
       todos: [
         {
           ...task('task', 'Task', 20),
-          groupId: 'missing-group',
+          projectId: 'missing-project',
           milestoneId: 'missing-milestone',
           parentId: 'missing-parent',
         },
@@ -165,10 +173,26 @@ describe('three-way app-state merge', () => {
     expect(
       mergeConcurrentAppStates(base, local, remote, 40).todos[0],
     ).toMatchObject({
-      groupId: null,
+      projectId: 'inbox',
       milestoneId: null,
       parentId: null,
     });
+  });
+
+  it('restores Inbox when one side removes the reserved Project', () => {
+    const base = {
+      ...state(10),
+      todos: [task('task', 'Task', 10)],
+    };
+    const local = { ...base, updatedAt: 20, projects: [] };
+    const remote = { ...base, updatedAt: 30 };
+
+    const merged = mergeConcurrentAppStates(base, local, remote, 40);
+
+    expect(merged.projects).toContainEqual(
+      expect.objectContaining({ id: 'inbox', kind: 'inbox' }),
+    );
+    expect(merged.todos[0].projectId).toBe('inbox');
   });
 
   it('breaks parent cycles created by independent device moves', () => {

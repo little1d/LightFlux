@@ -2,7 +2,7 @@ import { Todo } from '../types/todo';
 
 export const searchResultView = (
   todo: Pick<Todo, 'completed'>,
-): 'completed' | 'groups' => (todo.completed ? 'completed' : 'groups');
+): 'completed' | 'projects' => (todo.completed ? 'completed' : 'projects');
 
 // Move `id` to `targetIndex` within `order`, clamping the target into range.
 // Returns the same array reference when the move is a no-op so callers can
@@ -107,7 +107,7 @@ export const buildSiblingIndexById = (
 ): Map<string, number> => {
   const siblingsByScope = new Map<string, Todo[]>();
   todos.forEach((todo) => {
-    const scope = JSON.stringify([todo.groupId, todo.parentId]);
+    const scope = JSON.stringify([todo.projectId, todo.parentId]);
     const siblings = siblingsByScope.get(scope) ?? [];
     siblings.push(todo);
     siblingsByScope.set(scope, siblings);
@@ -125,10 +125,10 @@ export const selectActiveTodos = (todos: Todo[]): Todo[] =>
     (todo) => !todo.completed && todo.trashedAt === null,
   );
 
-export const moveTodoBranchToGroup = (
+export const moveTodoBranchToProject = (
   todos: Todo[],
   id: string,
-  groupId: string | null,
+  projectId: string,
   timestamp: number,
 ): Todo[] => {
   const nonTrashedTodos = todos.filter((todo) => todo.trashedAt === null);
@@ -139,23 +139,23 @@ export const moveTodoBranchToGroup = (
 
   const branchIds = collectTodoFamily(nonTrashedTodos, [id]);
   const todoById = new Map(nonTrashedTodos.map((todo) => [todo.id, todo]));
-  const groupChanged = Array.from(branchIds).some(
+  const projectChanged = Array.from(branchIds).some(
     (branchId) =>
-      todoById.get(branchId)?.groupId !== groupId,
+      todoById.get(branchId)?.projectId !== projectId,
   );
-  if (!groupChanged) {
+  if (!projectChanged) {
     return todos;
   }
 
   const shouldDetachRoot =
-    root.parentId !== null && root.groupId !== groupId;
+    root.parentId !== null && root.projectId !== projectId;
   const nextRootOrder =
     Math.max(
       -1,
       ...nonTrashedTodos
         .filter(
           (todo) =>
-            todo.groupId === groupId &&
+            todo.projectId === projectId &&
             todo.parentId === null &&
             !branchIds.has(todo.id),
         )
@@ -169,7 +169,7 @@ export const moveTodoBranchToGroup = (
 
     return {
       ...todo,
-      groupId,
+      projectId,
       parentId:
         todo.id === id && shouldDetachRoot ? null : todo.parentId,
       sortOrder:

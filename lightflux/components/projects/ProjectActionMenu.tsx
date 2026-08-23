@@ -12,31 +12,31 @@ import { useTodoStore } from '../../store/todoStore';
 import ActionButton from '../ui/ActionButton';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface from '../ui/MenuSurface';
-import { GroupMenuPosition } from './useGroupContextMenu';
+import { ProjectMenuPosition } from './useProjectContextMenu';
 
 type EditMode = 'before' | 'after' | 'rename' | null;
 
-interface GroupActionMenuProps {
-  groupId: string | null;
-  groupName: string;
+interface ProjectActionMenuProps {
+  canDelete: boolean;
+  projectName: string;
   onAdd: (name: string, position: 'before' | 'after') => void;
   onClose: () => void;
   onDelete: () => void;
   onRename: (name: string) => void;
-  position?: GroupMenuPosition;
+  position?: ProjectMenuPosition;
 }
 
 const MENU_WIDTH = 220;
 
-const GroupActionMenu = ({
-  groupId,
-  groupName,
+const ProjectActionMenu = ({
+  canDelete,
+  projectName,
   onAdd,
   onClose,
   onDelete,
   onRename,
   position,
-}: GroupActionMenuProps) => {
+}: ProjectActionMenuProps) => {
   const language = useTodoStore((state) => state.language);
   const labels = translations[language];
   const [mode, setMode] = useState<EditMode>(null);
@@ -44,7 +44,7 @@ const GroupActionMenu = ({
 
   const beginEdit = (nextMode: Exclude<EditMode, null>) => {
     setMode(nextMode);
-    setDraft(nextMode === 'rename' ? groupName : '');
+    setDraft(nextMode === 'rename' ? projectName : '');
   };
 
   const submit = () => {
@@ -65,7 +65,7 @@ const GroupActionMenu = ({
   return (
     <MenuSurface
       closeLabel={labels.cancel}
-      estimatedHeight={mode ? 150 : groupId ? 190 : 145}
+      estimatedHeight={mode ? 150 : canDelete ? 190 : 145}
       onClose={onClose}
       position={position}
       width={MENU_WIDTH}
@@ -74,19 +74,19 @@ const GroupActionMenu = ({
         <View className="p-2.5">
           <Text className="mb-2 text-[11px] font-semibold text-[#858693]">
             {mode === 'rename'
-              ? labels.groups.renameGroup
+              ? labels.projects.renameProject
               : mode === 'before'
-                ? labels.groups.addGroupAbove
-                : labels.groups.addGroupBelow}
+                ? labels.projects.addProjectAbove
+                : labels.projects.addProjectBelow}
           </Text>
           <TextInput
             {...inputAccentProps}
-            accessibilityLabel={labels.groups.groupPlaceholder}
+            accessibilityLabel={labels.projects.projectPlaceholder}
             autoFocus
             className="h-9 rounded-[8px] border border-[#DDD9EC] bg-[#F8F7FB] px-2.5 text-[12px] text-[#303145]"
             onChangeText={setDraft}
             onSubmitEditing={submit}
-            placeholder={labels.groups.groupPlaceholder}
+            placeholder={labels.projects.projectPlaceholder}
             placeholderTextColor="#9A9BA8"
             returnKeyType="done"
             value={draft}
@@ -103,8 +103,8 @@ const GroupActionMenu = ({
               disabled={!draft.trim()}
               label={
                 mode === 'rename'
-                  ? labels.groups.confirmRename
-                  : labels.groups.confirmAdd
+                  ? labels.projects.confirmRename
+                  : labels.projects.confirmAdd
               }
               onPress={submit}
               size="small"
@@ -114,21 +114,21 @@ const GroupActionMenu = ({
       ) : (
         <>
           <MenuItem
-            label={labels.groups.renameGroup}
+            label={labels.projects.renameProject}
             onPress={() => beginEdit('rename')}
           />
           <MenuItem
-            label={labels.groups.addGroupAbove}
+            label={labels.projects.addProjectAbove}
             onPress={() => beginEdit('before')}
           />
           <MenuItem
-            label={labels.groups.addGroupBelow}
+            label={labels.projects.addProjectBelow}
             onPress={() => beginEdit('after')}
           />
-          {groupId ? (
+          {canDelete ? (
             <MenuItem
               danger
-              label={labels.groups.deleteGroup}
+              label={labels.projects.deleteProject}
               onPress={onDelete}
             />
           ) : null}
@@ -138,4 +138,4 @@ const GroupActionMenu = ({
   );
 };
 
-export default GroupActionMenu;
+export default ProjectActionMenu;

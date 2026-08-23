@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  authConfigured: true,
   getRemoteSession: vi.fn(),
   logoutRemoteSession: vi.fn(),
   resetRemoteSyncContext: vi.fn(),
@@ -17,7 +18,9 @@ vi.mock('react-native', () => ({
 
 vi.mock('../services/authApi', () => ({
   getRemoteSession: mocks.getRemoteSession,
-  isRemoteAuthConfigured: true,
+  get isRemoteAuthConfigured() {
+    return mocks.authConfigured;
+  },
   logoutRemoteSession: mocks.logoutRemoteSession,
 }));
 
@@ -36,6 +39,7 @@ const createStorage = (entries: Record<string, string> = {}) => {
 
 describe('sessionStorage', () => {
   beforeEach(() => {
+    mocks.authConfigured = true;
     mocks.getRemoteSession.mockReset();
     mocks.logoutRemoteSession.mockReset();
     mocks.resetRemoteSyncContext.mockReset();
@@ -46,9 +50,9 @@ describe('sessionStorage', () => {
     vi.resetModules();
   });
 
-  it('migrates the legacy signed-in marker to local mode', async () => {
+  it('clears legacy session markers instead of bypassing login', async () => {
     const storage = createStorage({
-      'lightflux.session.v1': 'signed-in',
+      'lightflux.session.v1': 'local',
     });
     vi.stubGlobal('localStorage', storage);
     mocks.getRemoteSession.mockResolvedValue(false);
@@ -56,14 +60,24 @@ describe('sessionStorage', () => {
       '../services/sessionStorage'
     );
 
-    await expect(loadSessionState()).resolves.toBe('local');
-    expect(storage.getItem('lightflux.session.v1')).toBe('local');
+    await expect(loadSessionState()).resolves.toBe('signed-out');
+    expect(storage.getItem('lightflux.session.v1')).toBeNull();
+  });
+
+  it('requires an explicit local-mode choice when auth is unavailable', async () => {
+    vi.stubGlobal('localStorage', createStorage());
+    mocks.authConfigured = false;
+    const { loadSessionState } = await import(
+      '../services/sessionStorage'
+    );
+
+    await expect(loadSessionState()).resolves.toBe('signed-out');
   });
 
   it('restores local mode when the remote session check is offline', async () => {
     vi.stubGlobal(
       'localStorage',
-      createStorage({ 'lightflux.session.v1': 'local' }),
+      createStorage({ 'lightflux.session.v2': 'local' }),
     );
     mocks.getRemoteSession.mockRejectedValue(new Error('offline'));
     const { loadSessionState } = await import(
@@ -76,7 +90,7 @@ describe('sessionStorage', () => {
   it('prefers an authenticated remote session over local mode', async () => {
     vi.stubGlobal(
       'localStorage',
-      createStorage({ 'lightflux.session.v1': 'local' }),
+      createStorage({ 'lightflux.session.v2': 'local' }),
     );
     mocks.getRemoteSession.mockResolvedValue(true);
     const { loadSessionState } = await import(
@@ -88,6 +102,7 @@ describe('sessionStorage', () => {
 
   it('clears local mode and remote sync context on sign out', async () => {
     const storage = createStorage({
+      'lightflux.session.v2': 'local',
       'lightflux.session.v1': 'local',
     });
     vi.stubGlobal('localStorage', storage);
@@ -98,6 +113,7 @@ describe('sessionStorage', () => {
 
     await saveSessionState('signed-out');
 
+    expect(storage.getItem('lightflux.session.v2')).toBeNull();
     expect(storage.getItem('lightflux.session.v1')).toBeNull();
     expect(mocks.logoutRemoteSession).toHaveBeenCalledOnce();
     expect(mocks.resetRemoteSyncContext).toHaveBeenCalledOnce();

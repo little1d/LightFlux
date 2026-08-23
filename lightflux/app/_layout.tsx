@@ -45,6 +45,10 @@ import AgentCommandPanel from '../components/agent/AgentCommandPanel';
 import DesktopUpdateMenu from '../components/desktop/DesktopUpdateMenu';
 import TaskEditorScreen from '../components/editor/TaskEditorScreen';
 import ResizableDivider from '../components/layout/ResizableDivider';
+import {
+  isPublicMarketingPath,
+} from '../components/marketing/marketingRoutes';
+import { isMarketingRuntime } from '../components/marketing/marketingRuntime';
 import DraggableNavigationItem from '../components/navigation/DraggableNavigationItem';
 import { NavigationDragState } from '../components/navigation/navigationDrag';
 import TaskActionMenu from '../components/tasks/TaskActionMenu';
@@ -117,7 +121,7 @@ const NAV_ICONS: Record<
   completed: 'checkmark-done-outline',
   calendar: 'calendar-outline',
   milestones: 'hourglass-outline',
-  groups: 'albums-outline',
+  projects: 'folder-open-outline',
   trash: 'trash-outline',
 };
 
@@ -126,7 +130,7 @@ const NAVIGABLE_VIEWS: AppView[] = [
   'completed',
   'calendar',
   'milestones',
-  'groups',
+  'projects',
   'trash',
   'settings',
   'statistics',
@@ -261,6 +265,8 @@ const AppShell = () => {
   const pathname = usePathname();
   const activeView = viewFromPathname(pathname);
   const isLoginRoute = pathname === '/login';
+  const isMarketingRoute =
+    isMarketingRuntime() && isPublicMarketingPath(pathname);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [currentUser, setCurrentUser] = useState<RemoteUser | null>(null);
@@ -353,7 +359,7 @@ const AppShell = () => {
     if (!todo) {
       return false;
     }
-    if (activeView === 'today' || activeView === 'groups') {
+    if (activeView === 'today' || activeView === 'projects') {
       return !todo.completed;
     }
     if (activeView === 'completed') {
@@ -658,17 +664,22 @@ const AppShell = () => {
   }, [syncRemote]);
 
   useEffect(() => {
-    if (sessionState === 'signed-out' && !isLoginRoute) {
+    if (
+      sessionState === 'signed-out' &&
+      !isLoginRoute &&
+      !isMarketingRoute
+    ) {
       router.replace('/login');
     }
-  }, [isLoginRoute, router, sessionState]);
+  }, [isLoginRoute, isMarketingRoute, router, sessionState]);
 
   useEffect(() => {
     if (
       Platform.OS !== 'web' ||
       sessionState === null ||
       sessionState === 'signed-out' ||
-      isLoginRoute
+      isLoginRoute ||
+      isMarketingRoute
     ) {
       return undefined;
     }
@@ -713,6 +724,7 @@ const AppShell = () => {
   }, [
     changeView,
     isLoginRoute,
+    isMarketingRoute,
     openAgent,
     openSearch,
     searchOpen,
@@ -730,12 +742,13 @@ const AppShell = () => {
   }, [selectedTask, selectedTaskVisible]);
 
   useEffect(() => {
-    if (persistenceErrorAt) {
+    if (persistenceErrorAt && !isMarketingRoute) {
       notify(labels.notifications.saveFailed, 'error');
       clearPersistenceError();
     }
   }, [
     clearPersistenceError,
+    isMarketingRoute,
     labels.notifications.saveFailed,
     notify,
     persistenceErrorAt,
@@ -820,7 +833,8 @@ const AppShell = () => {
     updateStatus !== 'idle' &&
     updateStatus !== 'unavailable';
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
-  const mainContentHidden = mobileEditorOpen || searchOpen;
+  const mainContentHidden =
+    !isMarketingRoute && (mobileEditorOpen || searchOpen);
   const showMobileUtilities =
     !usesDesktopLayout &&
     !selectedTask &&
@@ -829,7 +843,9 @@ const AppShell = () => {
   const showAppShell =
     sessionState !== null &&
     sessionState !== 'signed-out' &&
-    !isLoginRoute;
+    !isLoginRoute &&
+    !isMarketingRoute;
+  const showRoutedContent = showAppShell || isMarketingRoute;
 
   return (
     <>
@@ -842,7 +858,8 @@ const AppShell = () => {
       style={[
         styles.appShell,
         { width },
-        !showAppShell && styles.appShellHidden,
+        isMarketingRoute && styles.marketingShell,
+        !showRoutedContent && styles.appShellHidden,
       ]}
     >
       {showAppShell && usesDesktopLayout ? (
@@ -926,7 +943,9 @@ const AppShell = () => {
       <View
         key="route-pane"
         style={
-          usesDesktopLayout && selectedTask
+          isMarketingRoute
+            ? styles.fullPane
+            : usesDesktopLayout && selectedTask
             ? { width: resolvedListPaneWidth }
             : styles.fullPane
         }
@@ -1081,7 +1100,7 @@ const AppShell = () => {
       !usesDesktopLayout &&
       !selectedTask &&
       !settingsPanelOpen &&
-      (activeView === 'today' || activeView === 'groups') ? (
+      (activeView === 'today' || activeView === 'projects') ? (
         <MobileQuickAddButton
           label={labels.addTask}
           onPress={() => {
@@ -1189,7 +1208,7 @@ const AppShell = () => {
         </View>
       </Modal>
     ) : null}
-    {!showAppShell ? (
+    {!showAppShell && !isMarketingRoute ? (
       <View style={StyleSheet.absoluteFill}>
         {sessionState === null ? (
           <View style={[styles.appBackground, styles.bootOverlay]} />
@@ -1229,6 +1248,9 @@ const styles = StyleSheet.create({
   },
   appShellHidden: {
     display: 'none',
+  },
+  marketingShell: {
+    backgroundColor: '#FCFCFE',
   },
   bootOverlay: {
     backgroundColor: '#F3F2F7',

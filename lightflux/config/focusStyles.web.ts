@@ -77,9 +77,9 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
 
     #today-task-composer:focus-within,
     #calendar-task-composer:focus-within,
-    #group-name-composer:focus-within,
+    #project-name-composer:focus-within,
     #context-subtask-composer:focus-within,
-    [id^="group-task-composer-"]:focus-within {
+    [id^="project-task-composer-"]:focus-within {
       border-color: rgba(103, 89, 232, 0.56) !important;
       box-shadow: 0 0 0 3px rgba(103, 89, 232, 0.09);
     }

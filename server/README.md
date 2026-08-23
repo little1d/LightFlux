@@ -49,12 +49,13 @@ the checksum of every applied SQL file.
 - `app_states`: one JSONB aggregate and monotonic server revision per user.
 
 Task state remains local-first. The server stores the client's complete,
-versioned aggregate instead of duplicating task, group, milestone, and event
+versioned aggregate instead of duplicating task, project, milestone, and event
 rules in a second domain model. Clients submit `baseRevision`; PostgreSQL
 updates only when it matches the current revision. A mismatch returns HTTP
 `409` with the latest state and revision so the client can three-way merge and
 retry. `state.updatedAt` remains only as protection for older clients that do
-not yet submit a revision.
+not yet submit a revision. The public-beta boundary accepts V12 Project
+aggregates only; pre-V12 Group snapshots are intentionally unsupported.
 
 Uploaded image bytes remain beneath `UPLOAD_DIR`; they do not belong in
 PostgreSQL. The client stores returned URLs, so this boundary can later move to

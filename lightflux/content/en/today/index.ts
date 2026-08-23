@@ -38,7 +38,7 @@ export const today: TodayContent = {
     },
     subtaskPlaceholder: 'Subtask name…',
     createSubtask: 'Create',
-    moveToGroup: 'Move to group',
+    moveToProject: 'Move to project',
     backToActions: 'Back to task actions',
     moveToTrash: 'Move to trash',
     moreActions: 'More task actions',

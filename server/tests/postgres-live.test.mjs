@@ -43,10 +43,10 @@ test(
       );
 
       const current = {
-        schemaVersion: 10,
+        schemaVersion: 12,
         updatedAt: 2,
         todos: [],
-        groups: [],
+        projects: [],
       };
       const stale = { ...current, updatedAt: 1 };
       const firstWrite = await repository.putAppState(userId, current, 0);

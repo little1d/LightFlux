@@ -6,7 +6,7 @@ export default function StatisticsRoute() {
   return (
     <StatisticsScreen
       onBack={() => shell.changeView('today')}
-      onOpenGroups={() => shell.changeView('groups')}
+      onOpenProjects={() => shell.changeView('projects')}
     />
   );
 }

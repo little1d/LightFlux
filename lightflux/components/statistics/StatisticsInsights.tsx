@@ -26,10 +26,10 @@ const insightContent = (
         warning: false,
       };
     }
-    case 'group-pressure':
+    case 'project-pressure':
       return {
         icon: 'file-tray-stacked-outline' as const,
-        title: labels.pressureInsightTitle(insight.groupName),
+        title: labels.pressureInsightTitle(insight.projectName),
         description: labels.pressureInsightDescription(
           insight.pending,
           insight.overdue,
@@ -60,12 +60,12 @@ const StatisticsInsights = ({
   analytics,
   labels,
   language,
-  onOpenGroups,
+  onOpenProjects,
 }: {
   analytics: TaskAnalytics;
   labels: Translation['statistics'];
   language: 'zh' | 'en';
-  onOpenGroups: () => void;
+  onOpenProjects: () => void;
 }) => (
   <View style={[styles.card, styles.insightsCard]}>
     <View style={styles.insightsHeading}>
@@ -100,10 +100,10 @@ const StatisticsInsights = ({
               <Text style={styles.insightDescription}>
                 {content.description}
               </Text>
-              {insight.type === 'group-pressure' ? (
+              {insight.type === 'project-pressure' ? (
                 <Pressable
                   accessibilityRole="button"
-                  onPress={onOpenGroups}
+                  onPress={onOpenProjects}
                   style={({ pressed }) => [
                     styles.insightAction,
                     pressed && styles.pressed,

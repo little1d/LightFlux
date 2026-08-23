@@ -1,7 +1,7 @@
 import {
   TaskEvent,
   Todo,
-  TodoGroup,
+  Project,
 } from '../types/todo';
 import { fromDateKey, toDateKey } from './date';
 
@@ -21,8 +21,8 @@ export interface TrendBucket {
   completed: number;
 }
 
-export interface GroupPressure {
-  groupId: string | null;
+export interface ProjectPressure {
+  projectId: string;
   name: string;
   completed: number;
   pending: number;
@@ -43,9 +43,9 @@ export type AnalyticsInsight =
       advantage: number;
     }
   | {
-      type: 'group-pressure';
-      groupId: string | null;
-      groupName: string;
+      type: 'project-pressure';
+      projectId: string;
+      projectName: string;
       pending: number;
       overdue: number;
     }
@@ -69,7 +69,7 @@ export interface TaskAnalytics {
   currentOverdue: number;
   highPriorityOverdue: number;
   trend: TrendBucket[];
-  pressure: GroupPressure[];
+  pressure: ProjectPressure[];
   weekdays: WeekdayRate[];
   insights: AnalyticsInsight[];
   estimated: boolean;
@@ -299,33 +299,29 @@ const makeTrendBuckets = (
 
 const makePressure = (
   todos: Todo[],
-  groups: TodoGroup[],
+  projects: Project[],
   completedIds: Set<string>,
   todayKey: string,
-  ungroupedName: string,
-): GroupPressure[] => {
-  const groupNames = new Map(groups.map((group) => [group.id, group.name]));
-  const pressure = new Map<string | null, GroupPressure>();
-  const getRow = (groupId: string | null) => {
-    const current = pressure.get(groupId);
+): ProjectPressure[] => {
+  const projectNames = new Map(projects.map((project) => [project.id, project.name]));
+  const pressure = new Map<string, ProjectPressure>();
+  const getRow = (projectId: string) => {
+    const current = pressure.get(projectId);
     if (current) {
       return current;
     }
-    const row: GroupPressure = {
-      groupId,
-      name:
-        groupId === null
-          ? ungroupedName
-          : groupNames.get(groupId) ?? ungroupedName,
+    const row: ProjectPressure = {
+      projectId,
+      name: projectNames.get(projectId) ?? projectId,
       completed: 0,
       pending: 0,
       overdue: 0,
     };
-    pressure.set(groupId, row);
+    pressure.set(projectId, row);
     return row;
   };
   todos.forEach((todo) => {
-    const row = getRow(todo.groupId);
+    const row = getRow(todo.projectId);
     if (completedIds.has(todo.id)) {
       row.completed += 1;
     }
@@ -377,7 +373,7 @@ const makeWeekdays = (
 
 const makeInsights = (
   weekdays: WeekdayRate[],
-  pressure: GroupPressure[],
+  pressure: ProjectPressure[],
   overallRate: number | null,
 ): AnalyticsInsight[] => {
   const insights: AnalyticsInsight[] = [];
@@ -407,9 +403,9 @@ const makeInsights = (
   )[0];
   if (pressured && pressured.pending > 0) {
     insights.push({
-      type: 'group-pressure',
-      groupId: pressured.groupId,
-      groupName: pressured.name,
+      type: 'project-pressure',
+      projectId: pressured.projectId,
+      projectName: pressured.name,
       pending: pressured.pending,
       overdue: pressured.overdue,
     });
@@ -434,20 +430,18 @@ const makeInsights = (
 
 export const buildTaskAnalytics = ({
   todos,
-  groups,
+  projects,
   taskEvents,
   analyticsStartedAt,
   range,
   now = new Date(),
-  ungroupedName,
 }: {
   todos: Todo[];
-  groups: TodoGroup[];
+  projects: Project[];
   taskEvents: TaskEvent[];
   analyticsStartedAt: number;
   range: StatisticsRange;
   now?: Date;
-  ungroupedName: string;
 }): TaskAnalytics => {
   const activeTodos = todos.filter((todo) => todo.trashedAt === null);
   const activeIds = new Set(activeTodos.map((todo) => todo.id));
@@ -484,10 +478,9 @@ export const buildTaskAnalytics = ({
   const weekdays = makeWeekdays(events, activeIds, period);
   const pressure = makePressure(
     activeTodos,
-    groups,
+    projects,
     completedIds,
     todayKey,
-    ungroupedName,
   );
   const pendingStart = pendingAt(
     events,

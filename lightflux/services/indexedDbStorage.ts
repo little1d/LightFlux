@@ -1,8 +1,6 @@
 const DATABASE_NAME = 'lightflux';
 const DATABASE_VERSION = 1;
 const STORE_NAME = 'app-state';
-const LEGACY_STATE_KEY = 'current';
-const APP_STATE_KEY = 'lightflux.app-state.v1';
 
 interface WebStorage {
   getItem(key: string): string | null;
@@ -89,6 +87,14 @@ const writeIndexedState = async (
   await completion;
 };
 
+const deleteIndexedState = async (key: string): Promise<void> => {
+  const database = await openDatabase();
+  const transaction = database.transaction(STORE_NAME, 'readwrite');
+  const completion = transactionComplete(transaction);
+  await requestResult(transaction.objectStore(STORE_NAME).delete(key));
+  await completion;
+};
+
 export const loadWebState = async (
   legacyStorageKey: string,
 ): Promise<string | null> => {
@@ -96,14 +102,6 @@ export const loadWebState = async (
     const indexedState = await readIndexedState(legacyStorageKey);
     if (indexedState) {
       return indexedState;
-    }
-
-    if (legacyStorageKey === APP_STATE_KEY) {
-      const legacyIndexedState = await readIndexedState(LEGACY_STATE_KEY);
-      if (legacyIndexedState) {
-        await writeIndexedState(legacyStorageKey, legacyIndexedState);
-        return legacyIndexedState;
-      }
     }
 
     const legacyState = runtime.localStorage?.getItem(legacyStorageKey);
@@ -133,4 +131,14 @@ export const saveWebState = async (
     console.warn('Unable to save IndexedDB state; using localStorage.', error);
     runtime.localStorage?.setItem(legacyStorageKey, value);
   }
+};
+
+export const deleteWebState = async (key: string): Promise<void> => {
+  try {
+    await deleteIndexedState(key);
+  } catch (error) {
+    console.warn('Unable to delete IndexedDB state.', error);
+  }
+  runtime.localStorage?.removeItem(key);
+  runtime.localStorage?.removeItem(`${key}.backup`);
 };

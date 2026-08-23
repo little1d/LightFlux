@@ -16,123 +16,84 @@ vi.mock('../services/authApi', () => ({
 }));
 
 vi.mock('../services/indexedDbStorage', () => ({
+  deleteWebState: vi.fn(),
   loadWebState: vi.fn(),
   saveWebState: vi.fn(),
 }));
 
 import { parsePersistedAppState } from '../services/todoStorage';
 
-const legacyTodo = {
-  id: 'legacy-task',
-  title: 'Legacy task',
+const inboxProject = {
+  id: 'inbox',
+  name: '收件箱',
+  color: '#8B7EFF',
+  createdAt: 1,
+  kind: 'inbox',
+  sortOrder: 0,
+};
+
+const todo = {
+  id: 'task',
+  title: 'Task',
   completed: false,
+  completedAt: null,
   createdAt: 10,
   updatedAt: 20,
   scheduledDate: '2026-08-10',
-  groupId: null,
+  projectId: 'inbox',
+  milestoneId: null,
   parentId: null,
   priority: 'none',
   sortOrder: 0,
   trashedAt: null,
 };
 
-describe('persisted state V9 migration', () => {
-  it('upgrades V7 state with milestone and analytics defaults', () => {
-    const result = parsePersistedAppState(
-      JSON.stringify({
-        schemaVersion: 7,
-        updatedAt: 20,
-        language: 'zh',
-        navigationOrder: [
-          'search',
-          'today',
-          'completed',
-          'calendar',
-          'groups',
-          'trash',
-        ],
-        ungroupedName: null,
-        todos: [legacyTodo],
-        groups: [],
-      }),
-      100,
-    );
+const state = {
+  schemaVersion: 12,
+  updatedAt: 20,
+  analyticsStartedAt: 15,
+  language: 'zh',
+  navigationOrder: [
+    'today',
+    'completed',
+    'calendar',
+    'milestones',
+    'projects',
+    'trash',
+  ],
+  hiddenNavigationItems: [
+    'completed',
+    'calendar',
+    'milestones',
+    'trash',
+  ],
+  todos: [todo],
+  projects: [inboxProject],
+  milestones: [],
+  taskEvents: [],
+};
 
-    expect(result).toMatchObject({
-      schemaVersion: 10,
-      analyticsStartedAt: 100,
-      milestones: [],
-      taskEvents: [
-        expect.objectContaining({
-          id: 'migration-legacy-task-created',
-          taskId: 'legacy-task',
-          type: 'created',
-        }),
-      ],
-      todos: [expect.objectContaining({ milestoneId: null })],
-    });
-    expect(result?.navigationOrder).toContain('milestones');
-    expect(result?.navigationOrder).not.toContain('search');
-    expect(result?.hiddenNavigationItems).toEqual([]);
+describe('persisted state V12 validation', () => {
+  it('rejects every pre-V12 aggregate instead of migrating Group data', () => {
+    for (const schemaVersion of [7, 8, 9, 10, 11]) {
+      expect(
+        parsePersistedAppState(
+          JSON.stringify({
+            ...state,
+            schemaVersion,
+            projects: undefined,
+            groups: [],
+          }),
+        ),
+      ).toBeNull();
+    }
   });
 
-  it('normalizes persisted V9 events and filters unknown tasks', () => {
+  it('accepts V12 Projects and normalizes navigation preferences', () => {
     const result = parsePersistedAppState(
       JSON.stringify({
-        schemaVersion: 9,
-        updatedAt: 20,
-        analyticsStartedAt: 15,
-        language: 'zh',
-        todos: [legacyTodo],
-        groups: [],
-        milestones: [],
-        taskEvents: [
-          {
-            id: 'created',
-            taskId: 'legacy-task',
-            type: 'created',
-            occurredAt: 10,
-            metadata: {
-              scheduledDate: '2026-08-10',
-            },
-          },
-          {
-            id: 'unknown',
-            taskId: 'missing-task',
-            type: 'completed',
-            occurredAt: 11,
-          },
-          {
-            id: 'invalid',
-            taskId: 'legacy-task',
-            type: 'deleted',
-            occurredAt: 12,
-          },
-        ],
-      }),
-      100,
-    );
-
-    expect(result?.analyticsStartedAt).toBe(15);
-    expect(result?.taskEvents).toEqual([
-      expect.objectContaining({
-        id: 'created',
-        taskId: 'legacy-task',
-      }),
-    ]);
-  });
-
-  it('preserves only optional hidden navigation views in V10 state', () => {
-    const result = parsePersistedAppState(
-      JSON.stringify({
-        schemaVersion: 10,
-        updatedAt: 20,
-        analyticsStartedAt: 15,
-        language: 'zh',
-        todos: [legacyTodo],
-        groups: [],
-        milestones: [],
-        taskEvents: [],
+        ...state,
+        navigationOrder: ['projects', 'today', 'unknown', 'projects'],
         hiddenNavigationItems: [
           'completed',
           'today',
@@ -144,92 +105,87 @@ describe('persisted state V9 migration', () => {
       100,
     );
 
-    expect(result?.hiddenNavigationItems).toEqual(['completed', 'trash']);
+    expect(result).toMatchObject({
+      schemaVersion: 12,
+      hiddenNavigationItems: ['completed', 'trash'],
+      projects: [expect.objectContaining({ id: 'inbox', kind: 'inbox' })],
+      todos: [expect.objectContaining({ id: 'task', projectId: 'inbox' })],
+    });
+    expect(result?.navigationOrder.slice(0, 2)).toEqual([
+      'projects',
+      'today',
+    ]);
+    expect(result?.navigationOrder).toHaveLength(6);
   });
 
-  it('keeps valid milestones and filters invalid records', () => {
+  it('restores Inbox and repairs invalid Project references in V12', () => {
     const result = parsePersistedAppState(
       JSON.stringify({
-        schemaVersion: 8,
-        updatedAt: 1,
-        language: 'en',
-        todos: [
-          { ...legacyTodo, id: 'linked-valid', milestoneId: 'valid' },
-          { ...legacyTodo, id: 'linked-invalid', milestoneId: 'invalid' },
-          { ...legacyTodo, id: 'linked-missing', milestoneId: 'missing' },
+        ...state,
+        projects: [
+          {
+            id: 'work',
+            name: '工作',
+            color: '#55B9A5',
+            createdAt: 5,
+            kind: 'standard',
+            sortOrder: 1,
+          },
         ],
-        groups: [],
-        milestones: [
+        todos: [{ ...todo, projectId: 'missing' }],
+      }),
+      100,
+    );
+
+    expect(result?.projects).toEqual([
+      expect.objectContaining({
+        id: 'inbox',
+        kind: 'inbox',
+        name: '收件箱',
+      }),
+      expect.objectContaining({ id: 'work', kind: 'standard' }),
+    ]);
+    expect(result?.todos[0]).toMatchObject({ projectId: 'inbox' });
+  });
+
+  it('normalizes current task events and filters invalid references', () => {
+    const result = parsePersistedAppState(
+      JSON.stringify({
+        ...state,
+        taskEvents: [
           {
-            id: 'valid',
-            title: 'Lunar birthday',
-            type: 'birthday',
-            dateRule: {
-              calendar: 'lunar',
-              year: null,
-              month: 6,
-              day: 1,
-              isLeapMonth: false,
-              missingLeapMonthPolicy: 'regular-month',
-            },
-            startYear: 2000,
-            reminderOffsets: [7, 0, 7, 400],
-            notes: 'Note',
-            icon: 'gift-outline',
-            color: '#F2A65A',
-            pinned: true,
-            archivedAt: null,
-            trashedAt: null,
-            createdAt: 10,
-            updatedAt: 11,
-            revision: 2,
+            id: 'created',
+            taskId: 'task',
+            type: 'created',
+            occurredAt: 10,
           },
           {
-            id: 'invalid',
-            title: 'Invalid date',
-            dateRule: {
-              calendar: 'solar',
-              year: 2026,
-              month: 2,
-              day: 31,
-            },
-            createdAt: 10,
+            id: 'missing-task',
+            taskId: 'missing',
+            type: 'completed',
+            occurredAt: 11,
           },
           {
-            id: 'unknown-calendar',
-            title: 'Unknown calendar',
-            dateRule: {
-              calendar: 'other',
-              year: null,
-              month: 8,
-              day: 10,
-            },
-            createdAt: 10,
+            id: 'invalid-type',
+            taskId: 'task',
+            type: 'deleted',
+            occurredAt: 12,
           },
         ],
       }),
     );
 
-    expect(result?.milestones).toEqual([
-      expect.objectContaining({
-        id: 'valid',
-        reminderOffsets: [0, 7],
-        revision: 2,
-      }),
+    expect(result?.taskEvents).toEqual([
+      expect.objectContaining({ id: 'created', taskId: 'task' }),
     ]);
-    expect(result?.todos).toEqual([
-      expect.objectContaining({
-        id: 'linked-valid',
-        milestoneId: 'valid',
-      }),
-      expect.objectContaining({
-        id: 'linked-invalid',
-        milestoneId: null,
-      }),
-      expect.objectContaining({
-        id: 'linked-missing',
-        milestoneId: null,
-      }),
-    ]);
+  });
+
+  it('rejects malformed JSON and V12 aggregates without Projects', () => {
+    expect(parsePersistedAppState('{')).toBeNull();
+    expect(
+      parsePersistedAppState(
+        JSON.stringify({ ...state, projects: undefined }),
+      ),
+    ).toBeNull();
   });
 });

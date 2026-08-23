@@ -11,7 +11,9 @@ Web · iOS · Android · macOS · Windows · Linux 一套代码，多端运行�
 [![React Native](https://img.shields.io/badge/React%20Native-0.86-61dafb?logo=react)](https://reactnative.dev)
 [![Tauri](https://img.shields.io/badge/Tauri-2-ffc131?logo=tauri)](https://tauri.app)
 
-🌐 在线体验：**<https://lightflux.site>**
+🌐 官网：**<https://lightflux.site>**
+
+✅ Web 应用：**<https://lightflux.site/today>**
 
 </div>
 
@@ -31,15 +33,15 @@ LightFlux（流光）是一款注重信息密度与交互质感的任务管理�
 - 今日任务的新增、完成、删除与筛选
 - 已完成任务按完成日期归档，可恢复为待办
 - 月历视图、日期选取与指定日期添加任务
-- 可折叠任务分组、分组创建与组内快速添加
+- 可折叠项目、项目创建与项目内快速添加
 - 子任务拖拽排序，顺序持久化
-- 全局搜索（`Ctrl/⌘ + F`）任务标题、正文与分组名
+- 全局搜索（`Ctrl/⌘ + F`）任务标题、正文与项目名
 - Web 右键 / 移动端长按任务菜单，可创建子任务
 - 可恢复垃圾桶、永久删除与清空垃圾桶
 - 宽屏可拖拽详情栏，窄屏使用保留列表上下文的底部详情面板
 - Tiptap 富文本正文，任务详情自动保存
 - 设置页提供语言切换、统计入口与可选导航页面可见性配置
-- 版本化本地数据结构，支持旧数据无损迁移
+- 版本化本地数据结构，当前严格使用 V12 Project 模型
 - 邮箱密码 / 验证码（OTP）登录与跨端云状态同步
 
 ## 技术栈
@@ -110,7 +112,7 @@ EXPO_PUBLIC_UPLOAD_API_URL=http://localhost:8787
 
 ## 数据持久化
 
-任务数据使用 `schemaVersion: 10` 的 JSON 结构。Web 写入 IndexedDB（不可用时回退到 `localStorage`），iOS/Android 写入应用文档目录。每个任务包含稳定 ID、父任务 ID、分组 ID、完成/删除时间、富文本 JSON 与持久化排序字段 `sortOrder`；应用状态携带全局更新时间以协调本地与云端版本。
+任务数据使用 `schemaVersion: 12` 的 JSON 结构。Web 写入独立的 V12 IndexedDB key（不可用时回退到 `localStorage`），iOS/Android 写入独立的 V12 应用文档。每个任务包含稳定 ID、父任务 ID、项目 ID、完成/删除时间、富文本 JSON 与持久化排序字段 `sortOrder`。公测前的 Group 数据已清空，客户端不会读取低于 V12 的状态。应用状态携带全局更新时间以协调本地与云端版本。
 
 登录后以完整版本化聚合同步到 PostgreSQL 的 `JSONB` 字段；云写入使用服务端 revision CAS，发生 409 冲突时客户端基于持久化云端基线执行三方合并并自动重试。历史统计来源于 `TaskEvent`，不从当前快照推断。
 
@@ -121,7 +123,7 @@ EXPO_PUBLIC_UPLOAD_API_URL=http://localhost:8787
 - Web / Tauri 使用 HttpOnly Cookie 维持会话；
 - iOS / Android 通过 Better Auth Expo 客户端将会话保存在 SecureStore。
 
-未登录时应用完全使用设备本地数据，不会尝试云同步。
+用户明确选择本地模式后，应用完全使用设备本地数据，不会尝试云同步。
 
 ## 部署
 

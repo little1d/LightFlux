@@ -36,26 +36,24 @@ const RANGES: StatisticsRange[] = ['7d', '30d', '90d', 'year'];
 
 const StatisticsScreen = ({
   onBack,
-  onOpenGroups,
+  onOpenProjects,
 }: {
   onBack: () => void;
-  onOpenGroups: () => void;
+  onOpenProjects: () => void;
 }) => {
   const {
     allTodos,
-    groups,
+    projects,
     taskEvents,
     analyticsStartedAt,
     language,
-    ungroupedName,
   } = useTodoStore(
     useShallow((state) => ({
       allTodos: state.allTodos,
-      groups: state.groups,
+      projects: state.projects,
       taskEvents: state.taskEvents,
       analyticsStartedAt: state.analyticsStartedAt,
       language: state.language,
-      ungroupedName: state.ungroupedName,
     })),
   );
   const [range, setRange] = useState<StatisticsRange>('30d');
@@ -70,23 +68,20 @@ const StatisticsScreen = ({
     () =>
       buildTaskAnalytics({
         todos: allTodos,
-        groups,
+        projects,
         taskEvents,
         analyticsStartedAt,
         range,
         now: fromDateKey(dateKey),
-        ungroupedName:
-          ungroupedName ?? translations[language].groups.ungrouped,
       }),
     [
       allTodos,
       analyticsStartedAt,
       dateKey,
-      groups,
+      projects,
       language,
       range,
       taskEvents,
-      ungroupedName,
     ],
   );
   const rateValue =
@@ -244,7 +239,7 @@ const StatisticsScreen = ({
             analytics={analytics}
             labels={labels}
             language={language}
-            onOpenGroups={onOpenGroups}
+            onOpenProjects={onOpenProjects}
           />
 
           <View

@@ -21,7 +21,7 @@ import { translations } from '../../content';
 import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 import { useWebVisualViewport } from '../../hooks/useWebVisualViewport';
 import { useTodoStore } from '../../store/todoStore';
-import { TodoPriority } from '../../types/todo';
+import { INBOX_PROJECT_ID, TodoPriority } from '../../types/todo';
 import {
   addMonths,
   fromDateKey,
@@ -32,7 +32,7 @@ import {
 import IconButton from '../ui/IconButton';
 import { TASK_PRIORITY_THEME, TaskPriorityIcon } from './TaskPriorityIndicator';
 
-type Picker = 'date' | 'group' | 'priority' | null;
+type Picker = 'date' | 'project' | 'priority' | null;
 
 const QuickAddTaskSheet = ({
   initialDate,
@@ -49,25 +49,23 @@ const QuickAddTaskSheet = ({
   const wide = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const {
     addTodo,
-    groups,
+    projects,
     language,
-    ungroupedName,
   } = useTodoStore(
     useShallow((state) => ({
       addTodo: state.addTodo,
-      groups: state.groups,
+      projects: state.projects,
       language: state.language,
-      ungroupedName: state.ungroupedName,
     })),
   );
   const labels = translations[language];
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(todayKey());
-  const [groupId, setGroupId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState(INBOX_PROJECT_ID);
   const [priority, setPriority] = useState<TodoPriority>('none');
   const [picker, setPicker] = useState<Picker>(null);
   const [month, setMonth] = useState(() => fromDateKey(todayKey()));
-  const orderedGroups = [...groups].sort(
+  const orderedProjects = [...projects].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
   );
 
@@ -88,7 +86,7 @@ const QuickAddTaskSheet = ({
   const resetAndClose = () => {
     setTitle('');
     setDate(todayKey());
-    setGroupId(null);
+    setProjectId(INBOX_PROJECT_ID);
     setPriority('none');
     setPicker(null);
     onClose();
@@ -98,17 +96,16 @@ const QuickAddTaskSheet = ({
       inputRef.current?.focus();
       return;
     }
-    addTodo({ title, scheduledDate: date, groupId, priority });
+    addTodo({ title, scheduledDate: date, projectId, priority });
     resetAndClose();
   };
   const dateLabel = fromDateKey(date).toLocaleDateString(
     language === 'zh' ? 'zh-CN' : 'en-US',
     { day: 'numeric', month: 'short', weekday: 'short' },
   );
-  const groupLabel =
-    orderedGroups.find((group) => group.id === groupId)?.name ??
-    ungroupedName ??
-    labels.groups.ungrouped;
+  const projectLabel =
+    orderedProjects.find((project) => project.id === projectId)?.name ??
+    labels.projects.inbox;
   const webViewportStyle: ViewStyle | undefined = webViewportFrame
     ? {
         height: webViewportFrame.height,
@@ -182,12 +179,12 @@ const QuickAddTaskSheet = ({
                   }
                 />
                 <PickerButton
-                  active={picker === 'group'}
+                  active={picker === 'project'}
                   icon="folder-outline"
-                  label={groupLabel}
+                  label={projectLabel}
                   onPress={() =>
                     setPicker((current) =>
-                      current === 'group' ? null : 'group',
+                      current === 'project' ? null : 'project',
                     )
                   }
                 />
@@ -274,28 +271,20 @@ const QuickAddTaskSheet = ({
                 </View>
               ) : null}
 
-              {picker === 'group' ? (
+              {picker === 'project' ? (
                 <ScrollView
                   contentContainerStyle={styles.optionList}
                   style={styles.optionPanel}
                 >
-                  <OptionRow
-                    label={ungroupedName ?? labels.groups.ungrouped}
-                    onPress={() => {
-                      setGroupId(null);
-                      setPicker(null);
-                    }}
-                    selected={groupId === null}
-                  />
-                  {orderedGroups.map((group) => (
+                  {orderedProjects.map((project) => (
                     <OptionRow
-                      key={group.id}
-                      label={group.name}
+                      key={project.id}
+                      label={project.name}
                       onPress={() => {
-                        setGroupId(group.id);
+                        setProjectId(project.id);
                         setPicker(null);
                       }}
-                      selected={group.id === groupId}
+                      selected={project.id === projectId}
                     />
                   ))}
                 </ScrollView>

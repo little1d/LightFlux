@@ -6,7 +6,7 @@ import { settings } from './settings';
 import { desktop } from './desktop';
 import { statistics } from './statistics';
 import { calendar } from './calendar';
-import { groups } from './groups';
+import { projects } from './projects';
 import { editor } from './editor';
 import { agent } from './agent';
 import { milestones } from './milestones';
@@ -19,7 +19,7 @@ export const zh: Translation = {
   desktop,
   statistics,
   calendar,
-  groups,
+  projects,
   editor,
   agent,
   milestones,

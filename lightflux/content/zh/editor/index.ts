@@ -28,7 +28,7 @@ export const editor: Translation['editor'] = {
   resizePane: '调整任务列表与详情宽度',
   metadataTitle: '任务信息',
   dateLabel: '日期',
-  groupLabel: '分组',
+  projectLabel: '项目',
   priorityLabel: '优先级',
   scheduleToday: '今天',
   scheduleTomorrow: '明天',

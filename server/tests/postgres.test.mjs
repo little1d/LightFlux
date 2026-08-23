@@ -177,16 +177,16 @@ test('uses revision CAS and returns the current snapshot on conflict', async () 
     avatarUrl: null,
   });
   const currentState = {
-    schemaVersion: 10,
+    schemaVersion: 12,
     updatedAt: 200,
     todos: [],
-    groups: [],
+    projects: [],
   };
   const staleState = {
-    schemaVersion: 10,
+    schemaVersion: 12,
     updatedAt: 100,
     todos: [{ id: 'stale' }],
-    groups: [],
+    projects: [],
   };
 
   const firstWrite = await repository.putAppState(
@@ -222,10 +222,10 @@ test('keeps updatedAt protection for clients without baseRevision', async () => 
     avatarUrl: null,
   });
   const currentState = {
-    schemaVersion: 10,
+    schemaVersion: 12,
     updatedAt: 200,
     todos: [],
-    groups: [],
+    projects: [],
   };
   const staleState = { ...currentState, updatedAt: 100 };
 
@@ -247,10 +247,10 @@ test('imports the legacy JSON snapshot idempotently', async () => {
         displayName: 'Legacy user',
         avatarUrl: null,
         appState: {
-          schemaVersion: 10,
+          schemaVersion: 12,
           updatedAt: 300,
           todos: [],
-          groups: [],
+          projects: [],
         },
         createdAt: 100,
         updatedAt: 300,

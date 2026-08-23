@@ -38,7 +38,7 @@ export const today: TodayContent = {
     },
     subtaskPlaceholder: '输入子任务名称…',
     createSubtask: '创建',
-    moveToGroup: '移动到分组',
+    moveToProject: '移动到项目',
     backToActions: '返回任务操作',
     moveToTrash: '移至垃圾桶',
     moreActions: '更多任务操作',

@@ -18,20 +18,20 @@ import { TaskDragState } from '../tasks/taskDrag';
 import { OpenTaskMenu } from '../tasks/useTaskContextMenu';
 import ActionButton from '../ui/ActionButton';
 import {
-  GroupMenuPosition,
-  OpenGroupMenu,
-  useGroupContextMenu,
-} from './useGroupContextMenu';
+  ProjectMenuPosition,
+  OpenProjectMenu,
+  useProjectContextMenu,
+} from './useProjectContextMenu';
 import {
-  GroupTask,
+  ProjectTask,
   InlineTaskComposer,
-} from './GroupsTaskRows';
+} from './ProjectTaskRows';
 import {
-  GroupSection,
+  ProjectSection,
   InlineComposerState,
 } from './types';
 
-const CollapsibleGroupBody = ({
+const CollapsibleProjectBody = ({
   children,
   expanded,
 }: {
@@ -99,7 +99,7 @@ const CollapsibleGroupBody = ({
   );
 };
 
-const GroupHeader = ({
+const ProjectHeader = ({
   isExpanded,
   labels,
   onAddTask,
@@ -111,12 +111,12 @@ const GroupHeader = ({
   isExpanded: boolean;
   labels: Translation;
   onAddTask: () => void;
-  onOpenMenu: OpenGroupMenu;
+  onOpenMenu: OpenProjectMenu;
   onToggle: () => void;
-  section: GroupSection;
+  section: ProjectSection;
   selected: boolean;
 }) => {
-  const { targetRef, openFromLongPress } = useGroupContextMenu(
+  const { targetRef, openFromLongPress } = useProjectContextMenu(
     section.id,
     onOpenMenu,
   );
@@ -136,12 +136,12 @@ const GroupHeader = ({
       accessibilityState={{ selected }}
       className="flex-row items-center px-4 py-4"
       ref={targetRef}
-      style={selected && styles.groupHeaderSelected}
+      style={selected && styles.projectHeaderSelected}
     >
-      {selected ? <View style={styles.groupSelectionMarker} /> : null}
+      {selected ? <View style={styles.projectSelectionMarker} /> : null}
       <Pressable
         accessibilityLabel={
-          isExpanded ? labels.groups.collapse : labels.groups.expand
+          isExpanded ? labels.projects.collapse : labels.projects.expand
         }
         accessibilityRole="button"
         className="flex-1 flex-row items-center"
@@ -182,7 +182,7 @@ const GroupHeader = ({
           {section.name}
         </Text>
         <Text className="ml-2 text-xs font-semibold text-[#A0A1AC]">
-          {labels.groups.count(section.todos.length)}
+          {labels.projects.count(section.todos.length)}
         </Text>
       </Pressable>
       <Pressable
@@ -197,7 +197,7 @@ const GroupHeader = ({
   );
 };
 
-const GroupSectionCard = ({
+const ProjectSectionCard = ({
   activeComposer,
   childCountByParent,
   expanded,
@@ -209,7 +209,7 @@ const GroupSectionCard = ({
   onEditTask,
   onInlineDraftChange,
   onMoveTask,
-  onOpenGroupMenu,
+  onOpenProjectMenu,
   onOpenInlineComposer,
   onOpenTaskComposer,
   onOpenTaskMenu,
@@ -236,9 +236,9 @@ const GroupSectionCard = ({
   onEditTask: (id: string) => void;
   onInlineDraftChange: (value: string) => void;
   onMoveTask: (id: string, targetIndex: number) => void;
-  onOpenGroupMenu: (
+  onOpenProjectMenu: (
     sectionId: string,
-    position?: GroupMenuPosition,
+    position?: ProjectMenuPosition,
   ) => void;
   onOpenInlineComposer: (todo: Todo) => void;
   onOpenTaskComposer: () => void;
@@ -249,7 +249,7 @@ const GroupSectionCard = ({
   onTaskDraftChange: (value: string) => void;
   onToggle: () => void;
   onToggleTask: (id: string) => void;
-  section: GroupSection;
+  section: ProjectSection;
   selected: boolean;
   selectedTaskId: string | null;
   siblingIndexById: Map<string, number>;
@@ -260,43 +260,43 @@ const GroupSectionCard = ({
   return (
     <View
       className="mb-3 overflow-hidden rounded-[20px] border border-[#E8E7EE] bg-white"
-      style={[styles.cardShadow, selected && styles.groupCardSelected]}
+      style={[styles.cardShadow, selected && styles.projectCardSelected]}
     >
-      <GroupHeader
+      <ProjectHeader
         isExpanded={expanded}
         labels={labels}
         onAddTask={onOpenTaskComposer}
-        onOpenMenu={onOpenGroupMenu}
+        onOpenMenu={onOpenProjectMenu}
         onToggle={onToggle}
         section={section}
         selected={selected}
       />
 
-      <CollapsibleGroupBody expanded={expanded}>
+      <CollapsibleProjectBody expanded={expanded}>
         <View className="border-t border-[#ECEBF1] px-4 py-1.5">
         {activeComposer === section.id ? (
           <View
             className="mb-3 mt-3 rounded-[14px] border border-[#E0DDEE] bg-[#F8F7FB] p-3"
-            nativeID={`group-task-composer-${section.id}`}
+            nativeID={`project-task-composer-${section.id}`}
           >
             <Text className="mb-2 text-[11px] font-bold text-[#777889]">
-              {labels.groups.addTaskTitle}
+              {labels.projects.addTaskTitle}
             </Text>
             <TextInput
               {...inputAccentProps}
-              accessibilityLabel={labels.groups.taskPlaceholder}
+              accessibilityLabel={labels.projects.taskPlaceholder}
               autoFocus
               className="h-11 rounded-[10px] border border-[#E3E1EA] bg-white px-3 text-[13px] text-[#303145]"
               onChangeText={onTaskDraftChange}
               onSubmitEditing={onSubmitTask}
-              placeholder={labels.groups.taskPlaceholder}
+              placeholder={labels.projects.taskPlaceholder}
               placeholderTextColor="#A0A1AD"
               returnKeyType="done"
               value={taskDraft}
             />
             <View className="mt-2 flex-row justify-end">
               <ActionButton
-                label={labels.groups.cancelTask}
+                label={labels.projects.cancelTask}
                 onPress={onCancelTaskComposer}
                 variant="ghost"
               />
@@ -317,7 +317,7 @@ const GroupSectionCard = ({
             onPress={onOpenTaskComposer}
           >
             <Text className="text-xs text-[#9899A6]">
-              ＋ {labels.groups.taskPlaceholder}
+              ＋ {labels.projects.taskPlaceholder}
             </Text>
           </Pressable>
         ) : (
@@ -334,17 +334,17 @@ const GroupSectionCard = ({
                       (item) => item.parentId === todo.parentId,
                     ).length
                   }
-                  label={`${labels.groups.reorderTask}: ${todo.title}`}
+                  label={`${labels.projects.reorderTask}: ${todo.title}`}
                   nested={nested}
                   onDragStateChange={setTaskDrag}
                   onMove={onMoveTask}
                   scopeId={
                     todo.parentId
                       ? `parent:${todo.parentId}`
-                      : `group:${section.id}:root`
+                      : `project:${section.id}:root`
                   }
                 >
-                  <GroupTask
+                  <ProjectTask
                     childCount={childCountByParent.get(todo.id) ?? 0}
                     editLabel={labels.editor.title}
                     markActive={labels.markActive}
@@ -370,7 +370,7 @@ const GroupSectionCard = ({
                     placeholder={
                       inlineComposer.parentId
                         ? labels.taskMenu.subtaskPlaceholder
-                        : labels.groups.taskPlaceholder
+                        : labels.projects.taskPlaceholder
                     }
                   />
                 ) : null}
@@ -379,7 +379,7 @@ const GroupSectionCard = ({
           })
         )}
         </View>
-      </CollapsibleGroupBody>
+      </CollapsibleProjectBody>
     </View>
   );
 };
@@ -391,16 +391,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 12,
   },
-  groupCardSelected: {
+  projectCardSelected: {
     borderColor: '#CFC9FA',
     shadowColor: '#6759E8',
     shadowOpacity: 0.12,
   },
-  groupHeaderSelected: {
+  projectHeaderSelected: {
     backgroundColor: '#F3F1FF',
     position: 'relative',
   },
-  groupSelectionMarker: {
+  projectSelectionMarker: {
     backgroundColor: '#7768EE',
     borderRadius: 2,
     bottom: 10,
@@ -411,4 +411,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default GroupSectionCard;
+export default ProjectSectionCard;

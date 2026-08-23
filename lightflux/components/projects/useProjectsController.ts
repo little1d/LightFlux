@@ -14,18 +14,17 @@ import {
   selectActiveTodos,
 } from '../../store/todoDomain';
 import { useTodoStore } from '../../store/todoStore';
-import { Todo } from '../../types/todo';
+import { INBOX_PROJECT_ID, Todo } from '../../types/todo';
 import { todayKey } from '../../utils/date';
 import { useConfirmation } from '../ui/ConfirmationProvider';
 import { ToastVariant } from '../ui/ToastProvider';
 import {
-  GroupMenuPosition,
-  OpenGroupMenu,
-} from './useGroupContextMenu';
+  ProjectMenuPosition,
+  OpenProjectMenu,
+} from './useProjectContextMenu';
 import {
-  GroupSection,
+  ProjectSection,
   InlineComposerState,
-  UNGROUPED_ID,
 } from './types';
 
 const familyTailId = (todos: Todo[], rootId: string): string => {
@@ -48,78 +47,69 @@ const familyTailId = (todos: Todo[], rootId: string): string => {
   return tailId;
 };
 
-export const useGroupsController = (
+export const useProjectsController = (
   selectedTaskId: string | null,
   notify: (message: string, variant?: ToastVariant) => void,
 ) => {
   const requestConfirmation = useConfirmation();
   const {
-    addGroup,
+    addProject,
     addTodo,
-    deleteGroup,
-    groups,
+    deleteProject,
+    projects,
     language,
-    renameGroup,
+    renameProject,
     reorderTask,
     todos,
     toggleTodo,
-    ungroupedName,
     updateTodo,
   } = useTodoStore(
     useShallow((state) => ({
-      addGroup: state.addGroup,
+      addProject: state.addProject,
       addTodo: state.addTodo,
-      deleteGroup: state.deleteGroup,
-      groups: state.groups,
+      deleteProject: state.deleteProject,
+      projects: state.projects,
       language: state.language,
-      renameGroup: state.renameGroup,
+      renameProject: state.renameProject,
       reorderTask: state.reorderTask,
       todos: state.todos,
       toggleTodo: state.toggleTodo,
-      ungroupedName: state.ungroupedName,
       updateTodo: state.updateTodo,
     })),
   );
   const labels = translations[language];
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    [UNGROUPED_ID]: true,
+    [INBOX_PROJECT_ID]: true,
   });
   const [activeComposer, setActiveComposer] = useState<string | null>(null);
   const [taskDraft, setTaskDraft] = useState('');
   const [inlineDraft, setInlineDraft] = useState('');
   const [inlineComposer, setInlineComposer] =
     useState<InlineComposerState | null>(null);
-  const [groupDraft, setGroupDraft] = useState('');
-  const [groupMenu, setGroupMenu] = useState<{
+  const [projectDraft, setProjectDraft] = useState('');
+  const [projectMenu, setProjectMenu] = useState<{
     sectionId: string;
-    position?: GroupMenuPosition;
+    position?: ProjectMenuPosition;
   } | null>(null);
 
   const activeTodos = useMemo(() => selectActiveTodos(todos), [todos]);
-  const todosByGroup = useMemo(() => {
-    const grouped = new Map<string | null, Todo[]>();
+  const todosByProject = useMemo(() => {
+    const mapped = new Map<string, Todo[]>();
     activeTodos.forEach((todo) => {
-      const groupTodos = grouped.get(todo.groupId) ?? [];
-      groupTodos.push(todo);
-      grouped.set(todo.groupId, groupTodos);
+      const projectTodos = mapped.get(todo.projectId) ?? [];
+      projectTodos.push(todo);
+      mapped.set(todo.projectId, projectTodos);
     });
-    return grouped;
+    return mapped;
   }, [activeTodos]);
-  const sections = useMemo<GroupSection[]>(
+  const sections = useMemo<ProjectSection[]>(
     () =>
-      [
-        {
-          id: UNGROUPED_ID,
-          name: ungroupedName ?? labels.groups.ungrouped,
-          color: '#9A97AD',
-          sortOrder: 0,
-          todos: todosByGroup.get(null) ?? [],
-        },
-        ...groups.map((group) => ({
-          ...group,
-          todos: todosByGroup.get(group.id) ?? [],
-        })),
-      ].sort(
+      projects
+        .map((project) => ({
+          ...project,
+          todos: todosByProject.get(project.id) ?? [],
+        }))
+        .sort(
         (left, right) =>
           left.sortOrder - right.sortOrder ||
           left.name.localeCompare(
@@ -127,7 +117,7 @@ export const useGroupsController = (
             language === 'zh' ? 'zh-CN' : 'en-US',
           ),
       ),
-    [groups, labels.groups.ungrouped, language, todosByGroup, ungroupedName],
+    [projects, language, todosByProject],
   );
   const childCountByParent = useMemo(
     () => buildChildCountByParent(activeTodos),
@@ -137,25 +127,25 @@ export const useGroupsController = (
     () => buildSiblingIndexById(activeTodos),
     [activeTodos],
   );
-  const activeMenuSection = groupMenu
-    ? sections.find((section) => section.id === groupMenu.sectionId)
+  const activeMenuSection = projectMenu
+    ? sections.find((section) => section.id === projectMenu.sectionId)
     : undefined;
-  const openGroupMenu = useCallback<OpenGroupMenu>(
+  const openProjectMenu = useCallback<OpenProjectMenu>(
     (sectionId, position) => {
-      setGroupMenu({ sectionId, position });
+      setProjectMenu({ sectionId, position });
     },
     [],
   );
   const openInlineComposer = useCallback(
     (todo: Todo) => {
-      const sectionId = todo.groupId ?? UNGROUPED_ID;
+      const sectionId = todo.projectId;
       const section = sections.find((item) => item.id === sectionId);
       setExpanded((current) => ({ ...current, [sectionId]: true }));
       setActiveComposer(null);
       setInlineDraft('');
       setInlineComposer({
         anchorId: todo.id,
-        groupId: todo.groupId,
+        projectId: todo.projectId,
         parentId: todo.parentId,
         renderAfterId: section
           ? familyTailId(section.todos, todo.id)
@@ -175,7 +165,7 @@ export const useGroupsController = (
       const siblings = activeTodos.filter(
         (todo) =>
           todo.parentId === dragged.parentId &&
-          todo.groupId === dragged.groupId,
+          todo.projectId === dragged.projectId,
       );
       const sourceIndex = siblings.findIndex((todo) => todo.id === id);
       const boundedTarget = Math.max(
@@ -190,7 +180,7 @@ export const useGroupsController = (
       const persistedSiblings = todos.filter(
         (todo) =>
           todo.parentId === dragged.parentId &&
-          todo.groupId === dragged.groupId,
+          todo.projectId === dragged.projectId,
       );
       const persistedTargetIndex = persistedSiblings.findIndex(
         (todo) => todo.id === target.id,
@@ -274,7 +264,7 @@ export const useGroupsController = (
     addTodo({
       title: taskDraft,
       scheduledDate: todayKey(),
-      groupId: sectionId === UNGROUPED_ID ? null : sectionId,
+      projectId: sectionId,
     });
     cancelTaskComposer();
     Keyboard.dismiss();
@@ -291,59 +281,56 @@ export const useGroupsController = (
     addTodo({
       title,
       scheduledDate: inlineComposer.scheduledDate,
-      groupId: inlineComposer.groupId,
+      projectId: inlineComposer.projectId,
       parentId: inlineComposer.parentId,
       insertAfterId: inlineComposer.anchorId,
     });
     cancelInlineComposer();
     Keyboard.dismiss();
   };
-  const submitGroup = () => {
-    const name = groupDraft.trim();
+  const submitProject = () => {
+    const name = projectDraft.trim();
     if (!name) {
       return;
     }
-    const id = addGroup(name);
+    const id = addProject(name);
     setExpanded((current) => ({ ...current, [id]: true }));
-    setGroupDraft('');
+    setProjectDraft('');
     setActiveComposer(id);
     Keyboard.dismiss();
   };
-  const addGroupNear = (name: string, position: 'before' | 'after') => {
+  const addProjectNear = (name: string, position: 'before' | 'after') => {
     if (!activeMenuSection) {
       return;
     }
-    const id = addGroup(name, {
-      anchorGroupId:
-        activeMenuSection.id === UNGROUPED_ID
-          ? null
-          : activeMenuSection.id,
+    const id = addProject(name, {
+      anchorProjectId: activeMenuSection.id,
       position,
     });
     setExpanded((current) => ({ ...current, [id]: true }));
   };
-  const deleteActiveGroup = () => {
-    if (!activeMenuSection || activeMenuSection.id === UNGROUPED_ID) {
+  const deleteActiveProject = () => {
+    if (!activeMenuSection || activeMenuSection.id === INBOX_PROJECT_ID) {
       return;
     }
-    const groupId = activeMenuSection.id;
-    setGroupMenu(null);
+    const projectId = activeMenuSection.id;
+    setProjectMenu(null);
     requestConfirmation({
       cancelText: labels.cancel,
-      confirmText: labels.groups.deleteGroup,
-      message: labels.groups.deleteGroupMessage,
+      confirmText: labels.projects.deleteProject,
+      message: labels.projects.deleteProjectMessage,
       onConfirm: () => {
-        deleteGroup(groupId);
+        deleteProject(projectId);
         setExpanded((current) => {
           const next = { ...current };
-          delete next[groupId];
+          delete next[projectId];
           return next;
         });
-        if (activeComposer === groupId) {
+        if (activeComposer === projectId) {
           setActiveComposer(null);
         }
       },
-      title: labels.groups.deleteGroupTitle,
+      title: labels.projects.deleteProjectTitle,
     });
   };
 
@@ -368,44 +355,42 @@ export const useGroupsController = (
   return {
     activeComposer,
     activeMenuSection,
-    addGroupNear,
+    addProjectNear,
     cancelInlineComposer,
     cancelTaskComposer,
     childCountByParent,
-    closeGroupMenu: () => setGroupMenu(null),
-    deleteActiveGroup,
+    closeProjectMenu: () => setProjectMenu(null),
+    deleteActiveProject,
     expanded,
-    groupDraft,
-    groupMenu,
+    projectDraft,
+    projectMenu,
     inlineComposer,
     inlineDraft,
     labels,
     moveTask,
     openComposer,
-    openGroupMenu,
+    openProjectMenu,
     openInlineComposer,
-    renameActiveGroup: (name: string) => {
+    renameActiveProject: (name: string) => {
       if (!activeMenuSection) {
         return;
       }
-      renameGroup(
-        activeMenuSection.id === UNGROUPED_ID
-          ? null
-          : activeMenuSection.id,
+      renameProject(
+        activeMenuSection.id,
         name,
       );
     },
     renameTask: (id: string, title: string) => updateTodo(id, { title }),
     sections,
-    setGroupDraft,
+    setProjectDraft,
     setInlineDraft,
     setTaskDraft,
     siblingIndexById,
-    submitGroup,
+    submitProject,
     submitInlineTask,
     submitTask,
     taskDraft,
-    toggleGroup: (id: string) =>
+    toggleProject: (id: string) =>
       setExpanded((current) => ({ ...current, [id]: !current[id] })),
     toggleTodo: handleToggleTodo,
   };

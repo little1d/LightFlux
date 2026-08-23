@@ -30,6 +30,9 @@ vi.mock('react-native', () => ({
 }));
 
 vi.mock('../services/indexedDbStorage', () => ({
+  deleteWebState: vi.fn(async (key: string) => {
+    storage.delete(key);
+  }),
   loadWebState: vi.fn(async (key: string) => storage.get(key) ?? null),
   saveWebState: vi.fn(async (key: string, value: string) => {
     storage.set(key, value);
@@ -50,7 +53,7 @@ const task = (id: string, title: string, updatedAt: number): Todo => ({
   completedAt: null,
   content: emptyRichTextDocument(),
   createdAt: 1,
-  groupId: null,
+  projectId: 'inbox',
   milestoneId: null,
   parentId: null,
   priority: 'none',
@@ -65,7 +68,7 @@ const state = (
   firstTitle: string,
   secondTitle: string,
 ): PersistedAppState => ({
-  schemaVersion: 10,
+  schemaVersion: 12,
   updatedAt,
   analyticsStartedAt: 1,
   language: 'zh',
@@ -74,16 +77,24 @@ const state = (
     'completed',
     'calendar',
     'milestones',
-    'groups',
+    'projects',
     'trash',
   ],
   hiddenNavigationItems: [],
-  ungroupedName: null,
   todos: [
     task('first', firstTitle, firstTitle === 'First' ? 1 : updatedAt),
     task('second', secondTitle, secondTitle === 'Second' ? 1 : updatedAt),
   ],
-  groups: [],
+  projects: [
+    {
+      id: 'inbox',
+      name: '收件箱',
+      color: '#8B7EFF',
+      createdAt: 1,
+      kind: 'inbox',
+      sortOrder: 0,
+    },
+  ],
   milestones: [],
   taskEvents: [],
 });
@@ -106,11 +117,20 @@ describe('revision conflict recovery', () => {
     expect(loadRemoteAppState).not.toHaveBeenCalled();
     expect(saveRemoteAppState).not.toHaveBeenCalled();
     expect(
-      JSON.parse(storage.get('lightflux.app-state.v1') ?? '{}'),
+      JSON.parse(storage.get('lightflux.app-state.v12') ?? '{}'),
     ).toMatchObject({
+      projects: [
+        expect.objectContaining({ id: 'inbox', kind: 'inbox' }),
+      ],
       todos: [
-        expect.objectContaining({ title: 'Local edit' }),
-        expect.objectContaining({ title: 'Second' }),
+        expect.objectContaining({
+          projectId: 'inbox',
+          title: 'Local edit',
+        }),
+        expect.objectContaining({
+          projectId: 'inbox',
+          title: 'Second',
+        }),
       ],
     });
   });
@@ -150,7 +170,18 @@ describe('revision conflict recovery', () => {
       expect.objectContaining({ id: 'first', title: 'Local edit' }),
       expect.objectContaining({ id: 'second', title: 'Remote edit' }),
     ]);
-    expect(saveRemoteAppState).toHaveBeenNthCalledWith(1, local, 1);
+    expect(saveRemoteAppState).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        projects: local.projects,
+        todos: expect.arrayContaining([
+          expect.objectContaining({
+            projectId: 'inbox',
+          }),
+        ]),
+      }),
+      1,
+    );
     expect(saveRemoteAppState).toHaveBeenNthCalledWith(
       2,
       expect.objectContaining({
@@ -162,7 +193,7 @@ describe('revision conflict recovery', () => {
       2,
     );
     expect(
-      JSON.parse(storage.get('lightflux.sync-metadata.v1') ?? '{}'),
+      JSON.parse(storage.get('lightflux.sync-metadata.v12') ?? '{}'),
     ).toMatchObject({ ownerId: 'owner', revision: 3 });
   });
 
@@ -170,7 +201,7 @@ describe('revision conflict recovery', () => {
     vi.resetModules();
     const previousAccountState = state(20, 'Private task', 'Second');
     storage.set(
-      'lightflux.sync-metadata.v1',
+      'lightflux.sync-metadata.v12',
       JSON.stringify({
         ownerId: 'previous-owner',
         revision: 4,
@@ -193,7 +224,7 @@ describe('revision conflict recovery', () => {
       0,
     );
     expect(
-      JSON.parse(storage.get('lightflux.sync-metadata.v1') ?? '{}'),
+      JSON.parse(storage.get('lightflux.sync-metadata.v12') ?? '{}'),
     ).toMatchObject({ ownerId: 'new-owner', revision: 1 });
   });
 
@@ -221,7 +252,7 @@ describe('revision conflict recovery', () => {
     ]);
 
     expect(
-      JSON.parse(storage.get('lightflux.app-state.v1') ?? '{}'),
+      JSON.parse(storage.get('lightflux.app-state.v12') ?? '{}'),
     ).toMatchObject({
       todos: [
         expect.objectContaining({ title: 'Second save' }),

@@ -8,8 +8,11 @@ import {
 } from './authApi';
 import { resetRemoteSyncContext } from './todoStorage';
 
-const STORAGE_KEY = 'lightflux.session.v1';
+const STORAGE_KEY = 'lightflux.session.v2';
+const LEGACY_STORAGE_KEY = 'lightflux.session.v1';
 const sessionFile = () =>
+  new File(Paths.document, 'lightflux-session-v2.json');
+const legacySessionFile = () =>
   new File(Paths.document, 'lightflux-session.json');
 
 export type SessionState = 'authenticated' | 'local' | 'signed-out';
@@ -30,22 +33,27 @@ const getWebStorage = (): WebStorage | null => {
 const loadLocalSessionState = async (): Promise<boolean> => {
   if (Platform.OS === 'web') {
     const storage = getWebStorage();
+    storage?.removeItem(LEGACY_STORAGE_KEY);
     const value = storage?.getItem(STORAGE_KEY);
     if (value === 'signed-in') {
-      storage?.setItem(STORAGE_KEY, 'local');
-      return true;
+      storage?.removeItem(STORAGE_KEY);
+      return false;
     }
     return value === 'local';
   }
 
+  const legacyFile = legacySessionFile();
+  if (legacyFile.exists) {
+    legacyFile.delete();
+  }
   const file = sessionFile();
   if (!file.exists) {
     return false;
   }
   const value = await file.text();
   if (value === 'signed-in') {
-    file.write('local');
-    return true;
+    file.delete();
+    return false;
   }
   return value === 'local';
 };
@@ -65,7 +73,7 @@ export const loadSessionState = async (): Promise<SessionState> => {
     return 'local';
   }
 
-  return isRemoteAuthConfigured ? 'signed-out' : 'local';
+  return 'signed-out';
 };
 
 export const saveSessionState = async (
@@ -78,6 +86,7 @@ export const saveSessionState = async (
 
   if (Platform.OS === 'web') {
     const storage = getWebStorage();
+    storage?.removeItem(LEGACY_STORAGE_KEY);
     if (state === 'local') {
       storage?.setItem(STORAGE_KEY, state);
     } else {
@@ -86,6 +95,10 @@ export const saveSessionState = async (
     return;
   }
 
+  const legacyFile = legacySessionFile();
+  if (legacyFile.exists) {
+    legacyFile.delete();
+  }
   const file = sessionFile();
   if (state === 'local') {
     file.write(state);

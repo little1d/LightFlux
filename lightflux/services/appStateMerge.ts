@@ -1,13 +1,14 @@
 import {
+  INBOX_PROJECT_ID,
   Milestone,
   PersistedAppState,
+  Project,
   Todo,
-  TodoGroup,
 } from '../types/todo';
 
 export const deriveStateUpdatedAt = (
   todos: Todo[],
-  groups: TodoGroup[],
+  projects: Project[],
   milestones: Milestone[],
   value: unknown,
 ): number => {
@@ -18,7 +19,7 @@ export const deriveStateUpdatedAt = (
   return Math.max(
     0,
     ...todos.map((todo) => todo.updatedAt),
-    ...groups.map((group) => group.createdAt),
+    ...projects.map((project) => project.createdAt),
     ...milestones.map((milestone) => milestone.updatedAt),
   );
 };
@@ -134,14 +135,29 @@ export const mergeConcurrentAppStates = (
     remoteUpdatedAt,
     (todo, stateUpdatedAt) => todo?.updatedAt ?? stateUpdatedAt,
   );
-  const groups = mergeRecords(
-    base?.groups ?? [],
-    localState.groups,
-    remoteState.groups,
+  const mergedProjects = mergeRecords(
+    base?.projects ?? [],
+    localState.projects,
+    remoteState.projects,
     localUpdatedAt,
     remoteUpdatedAt,
-    (_group, stateUpdatedAt) => stateUpdatedAt,
+    (_project, stateUpdatedAt) => stateUpdatedAt,
   );
+  const projects = mergedProjects.some((project) => project.kind === 'inbox')
+    ? mergedProjects
+    : [
+        localState.projects.find((project) => project.kind === 'inbox') ??
+          remoteState.projects.find((project) => project.kind === 'inbox') ??
+          base?.projects.find((project) => project.kind === 'inbox') ?? {
+            id: INBOX_PROJECT_ID,
+            name: localState.language === 'en' ? 'Inbox' : '收件箱',
+            color: '#8B7EFF',
+            createdAt: Math.min(localUpdatedAt, remoteUpdatedAt),
+            kind: 'inbox',
+            sortOrder: 0,
+          },
+        ...mergedProjects,
+      ];
   const milestones = mergeRecords(
     base?.milestones ?? [],
     localState.milestones,
@@ -162,14 +178,16 @@ export const mergeConcurrentAppStates = (
     (left, right) =>
       left.occurredAt - right.occurredAt || left.id.localeCompare(right.id),
   );
-  const groupIds = new Set(groups.map((group) => group.id));
+  const projectIds = new Set(projects.map((project) => project.id));
   const milestoneIds = new Set(
     milestones.map((milestone) => milestone.id),
   );
   const normalizedReferences = todos.map((todo) => ({
       ...todo,
-      groupId:
-        todo.groupId && groupIds.has(todo.groupId) ? todo.groupId : null,
+      projectId: projectIds.has(todo.projectId)
+        ? todo.projectId
+        : projects.find((project) => project.kind === 'inbox')?.id ??
+          INBOX_PROJECT_ID,
       milestoneId:
         todo.milestoneId && milestoneIds.has(todo.milestoneId)
           ? todo.milestoneId
@@ -183,7 +201,9 @@ export const mergeConcurrentAppStates = (
     return {
       ...todo,
       parentId:
-        parent && parent.id !== todo.id && parent.groupId === todo.groupId
+        parent &&
+        parent.id !== todo.id &&
+        parent.projectId === todo.projectId
           ? parent.id
           : null,
     };
@@ -225,7 +245,7 @@ export const mergeConcurrentAppStates = (
     ) ?? localValue;
 
   return {
-    schemaVersion: 10,
+    schemaVersion: 12,
     updatedAt: Math.max(
       now,
       localUpdatedAt + 1,
@@ -250,13 +270,8 @@ export const mergeConcurrentAppStates = (
       localState.hiddenNavigationItems,
       remoteState.hiddenNavigationItems,
     ),
-    ungroupedName: chooseTopLevel(
-      base?.ungroupedName,
-      localState.ungroupedName,
-      remoteState.ungroupedName,
-    ),
     todos: acyclicTodos,
-    groups,
+    projects,
     milestones,
     taskEvents,
   };

@@ -73,7 +73,7 @@ const HighlightedText = ({
 
 interface SearchResultRowProps {
   childCount: number;
-  groupName?: string;
+  projectName?: string;
   onOpen: (id: string) => void;
   onToggle: (id: string) => void;
   query: string;
@@ -83,7 +83,7 @@ interface SearchResultRowProps {
 
 const SearchResultRow = ({
   childCount,
-  groupName,
+  projectName,
   onOpen,
   onToggle,
   query,
@@ -130,9 +130,9 @@ const SearchResultRow = ({
           >
             <HighlightedText query={query} text={todo.title} />
           </Text>
-          {groupName ? (
-            <Text numberOfLines={1} style={styles.groupName}>
-              {groupName}
+          {projectName ? (
+            <Text numberOfLines={1} style={styles.projectName}>
+              {projectName}
             </Text>
           ) : null}
         </View>
@@ -166,11 +166,11 @@ const SearchOverlay = ({
   selectedTaskId,
   visible,
 }: SearchOverlayProps) => {
-  const { language, todos, groups, toggleTodo } = useTodoStore(
+  const { language, todos, projects, toggleTodo } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
-      groups: state.groups,
+      projects: state.projects,
       toggleTodo: state.toggleTodo,
     })),
   );
@@ -182,9 +182,9 @@ const SearchOverlay = ({
   const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
   const nativeWorkspace = Platform.OS !== 'web';
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  const groupNames = useMemo(
-    () => new Map(groups.map((group) => [group.id, group.name])),
-    [groups],
+  const projectNames = useMemo(
+    () => new Map(projects.map((project) => [project.id, project.name])),
+    [projects],
   );
   const childCountByParent = useMemo(
     () => buildChildCountByParent(todos),
@@ -198,13 +198,13 @@ const SearchOverlay = ({
       [
         todo.title,
         richTextPreview(todo.content, Number.MAX_SAFE_INTEGER),
-        groupNames.get(todo.groupId ?? '') ?? '',
+        projectNames.get(todo.projectId ?? '') ?? '',
       ]
         .join(' ')
         .toLocaleLowerCase()
         .includes(normalizedQuery),
     );
-  }, [groupNames, normalizedQuery, todos]);
+  }, [projectNames, normalizedQuery, todos]);
 
   useEffect(() => {
     if (!visible) {
@@ -365,7 +365,7 @@ const SearchOverlay = ({
               renderItem={({ item }) => (
                 <SearchResultRow
                   childCount={childCountByParent.get(item.id) ?? 0}
-                  groupName={groupNames.get(item.groupId ?? '')}
+                  projectName={projectNames.get(item.projectId ?? '')}
                   onOpen={openTask}
                   onToggle={toggleTodo}
                   query={query}
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
     color: '#999AAA',
     textDecorationLine: 'line-through',
   },
-  groupName: {
+  projectName: {
     color: '#A0A1AC',
     fontSize: 10,
     marginLeft: 12,

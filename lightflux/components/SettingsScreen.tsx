@@ -54,7 +54,7 @@ const SettingsScreen = ({
 }) => {
   const { width } = useWindowDimensions();
   const compact = width < 520;
-  const stacked = width >= 520 && width < 760;
+  const stacked = width >= 520 && width < 640;
   const controlWidth: DimensionValue = compact
     ? 148
     : stacked
@@ -77,8 +77,8 @@ const SettingsScreen = ({
         accountCard: {
           alignItems: 'center',
           flexDirection: 'row',
-          paddingHorizontal: compact ? 0 : 16,
-          paddingVertical: compact ? 6 : 14,
+          paddingHorizontal: compact ? 0 : 14,
+          paddingVertical: compact ? 5 : 10,
         },
         accountInfo: {
           flex: 1,
@@ -89,9 +89,8 @@ const SettingsScreen = ({
           borderRadius: 8,
           flexDirection: 'row',
           gap: 5,
-          minHeight: compact ? 32 : undefined,
-          paddingHorizontal: compact ? 9 : 14,
-          paddingVertical: compact ? 0 : 9,
+          minHeight: compact ? 30 : 32,
+          paddingHorizontal: compact ? 9 : 11,
         },
         signInButtonHovered: {
           backgroundColor: '#594CCD',
@@ -102,22 +101,22 @@ const SettingsScreen = ({
         },
         signInText: {
           color: '#FFFFFF',
-          fontSize: compact ? 11 : 13,
-          fontWeight: compact ? '600' : '700',
+          fontSize: compact ? 11 : 12,
+          fontWeight: '500',
         },
         localAvatar: {
           alignItems: 'center',
           backgroundColor: '#EDE9FF',
-          borderRadius: compact ? 16 : 22,
-          height: compact ? 32 : 44,
+          borderRadius: compact ? 15 : 20,
+          height: compact ? 30 : 40,
           justifyContent: 'center',
-          marginRight: compact ? 8 : 13,
-          width: compact ? 32 : 44,
+          marginRight: compact ? 8 : 10,
+          width: compact ? 30 : 40,
         },
         localEmail: {
           color: '#2E2F41',
-          fontSize: compact ? 13 : 15,
-          fontWeight: compact ? '600' : '800',
+          fontSize: compact ? 13 : 14,
+          fontWeight: '500',
         },
       }),
     [compact],

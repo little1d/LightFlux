@@ -12,8 +12,10 @@ afterEach(() => {
 const context = {
   revision: 42,
   language: 'zh',
-  ungroupedName: null,
-  groups: [{ id: 'work', name: '工作' }],
+  projects: [
+    { id: 'inbox', name: '收件箱' },
+    { id: 'work', name: '工作' },
+  ],
   milestones: [
     {
       id: 'anniversary',
@@ -43,7 +45,7 @@ const context = {
       title: '现有任务',
       completed: false,
       scheduledDate: '2026-08-10',
-      groupId: 'work',
+      projectId: 'work',
       parentId: null,
       priority: 'none',
       trashed: false,
@@ -83,7 +85,7 @@ test('normalizes model operations into a confirmed proposal', async () => {
           clientRef: 'parent',
           title: '处理报销',
           scheduledDate: '2026-08-11',
-          groupId: 'work',
+          projectId: 'work',
           priority: 'high',
         },
         {
@@ -145,10 +147,10 @@ test('normalizes model operations into a confirmed proposal', async () => {
 
 test('orders forward references before dependent operations', async () => {
   responseWith({
-    message: '准备创建分组和任务。',
+    message: '准备创建项目和任务。',
     clarification: null,
     proposal: {
-      summary: '创建工作分组和任务',
+      summary: '创建工作项目和任务',
       assumptions: [],
       operations: [
         {
@@ -156,12 +158,12 @@ test('orders forward references before dependent operations', async () => {
           clientRef: 'task',
           title: '先展示的任务',
           scheduledDate: '2026-08-11',
-          groupRef: 'later-group',
+          projectRef: 'later-project',
         },
         {
-          type: 'group.create',
-          clientRef: 'later-group',
-          name: '稍后创建的分组',
+          type: 'project.create',
+          clientRef: 'later-project',
+          name: '稍后创建的项目',
         },
       ],
     },
@@ -174,7 +176,7 @@ test('orders forward references before dependent operations', async () => {
   const result = await service.turn({
     ownerId: 'user',
     request: {
-      message: '创建工作分组和任务',
+      message: '创建工作项目和任务',
       currentTime: '2026-08-10T01:00:00.000Z',
       timeZone: 'Asia/Shanghai',
       context,
@@ -183,11 +185,47 @@ test('orders forward references before dependent operations', async () => {
 
   assert.deepEqual(
     result.proposal.operations.map((operation) => operation.type),
-    ['group.create', 'task.create'],
+    ['project.create', 'task.create'],
   );
   assert.equal(
-    result.proposal.operations[0].groupId,
-    result.proposal.operations[1].groupId,
+    result.proposal.operations[0].projectId,
+    result.proposal.operations[1].projectId,
+  );
+});
+
+test('rejects null Project IDs now that Inbox is a real Project', async () => {
+  responseWith({
+    message: '准备修改项目。',
+    clarification: null,
+    proposal: {
+      summary: '修改收件箱',
+      assumptions: [],
+      operations: [
+        {
+          type: 'project.update',
+          projectId: null,
+          name: 'Inbox',
+        },
+      ],
+    },
+  });
+  const service = createAgentService({
+    baseUrl: 'https://model.example/v1',
+    apiKey: '',
+    model: 'test-model',
+  });
+
+  await assert.rejects(
+    service.turn({
+      ownerId: 'user',
+      request: {
+        message: '修改收件箱',
+        currentTime: '2026-08-10T01:00:00.000Z',
+        timeZone: 'Asia/Shanghai',
+        context,
+      },
+    }),
+    /invalid projectId/,
   );
 });
 

@@ -12,6 +12,7 @@ import { resolve } from 'node:path';
 import { fromNodeHeaders, toNodeHandler } from 'better-auth/node';
 
 import { createAgentService } from './agent.mjs';
+import { isCurrentAppState } from './app-state.mjs';
 import {
   createEmailAuth,
   EMAIL_AUTH_BASE_PATH,
@@ -771,11 +772,7 @@ const handleRequest = async (request, response) => {
       return;
     }
     const body = await parseBody(request);
-    if (
-      !body?.state ||
-      !Array.isArray(body.state.todos) ||
-      !Array.isArray(body.state.groups)
-    ) {
+    if (!isCurrentAppState(body?.state)) {
       json(response, 400, { error: 'Invalid app state.' }, corsHeaders);
       return;
     }

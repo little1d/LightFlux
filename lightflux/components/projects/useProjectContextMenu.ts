@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Platform, View } from 'react-native';
 
-export interface GroupMenuPosition {
+export interface ProjectMenuPosition {
   x: number;
   y: number;
 }
 
-export type OpenGroupMenu = (
+export type OpenProjectMenu = (
   sectionId: string,
-  position?: GroupMenuPosition,
+  position?: ProjectMenuPosition,
 ) => void;
 
-export const useGroupContextMenu = (
+export const useProjectContextMenu = (
   sectionId: string,
-  onOpen: OpenGroupMenu,
+  onOpen: OpenProjectMenu,
 ) => {
   const targetRef = useRef<View>(null);
 

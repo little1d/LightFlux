@@ -123,14 +123,14 @@ const TaskEditorScreen = ({
   const { width } = useWindowDimensions();
   const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
   const {
-    groups,
+    projects,
     language,
     todos,
     trashedTodos,
     updateTodo,
   } = useTodoStore(
     useShallow((state) => ({
-      groups: state.groups,
+      projects: state.projects,
       language: state.language,
       todos: state.todos,
       trashedTodos: state.trashedTodos,
@@ -141,9 +141,9 @@ const TaskEditorScreen = ({
   const todo = (readOnly ? trashedTodos : todos).find(
     (item) => item.id === todoId,
   );
-  const groupName =
-    groups.find((group) => group.id === todo?.groupId)?.name ??
-    labels.groups.ungrouped;
+  const projectName =
+    projects.find((project) => project.id === todo?.projectId)?.name ??
+    labels.projects.inbox;
   const [title, setTitle] = useState(todo?.title ?? '');
   const [titleError, setTitleError] = useState('');
   const [imageUploadStatus, setImageUploadStatus] = useState<
@@ -368,7 +368,7 @@ const TaskEditorScreen = ({
           </View>
 
           <TaskEditorMetadata
-            groupName={groupName}
+            projectName={projectName}
             labels={labels}
             language={language}
             todo={todo}

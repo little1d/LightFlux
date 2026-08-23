@@ -43,12 +43,15 @@ subdirectory overrides it for that subtree.
   differences at `.web`, `.native`, Expo, or Tauri boundaries.
 - Global search uses `Command/Ctrl + F` and suppresses the browser default.
   Do not reintroduce a persistent search navigation item.
-- Today and Groups are active-task surfaces: completed and trashed tasks must
+- Today and Projects are active-task surfaces: completed and trashed tasks must
   disappear immediately, while Today summaries may still use the full day's
   task set. Completed owns the completed-task list.
-- Moving a task between groups moves its non-trashed descendant branch in one
-  state update. A subtask moved away from its parent's group becomes a root
-  task so cross-group parent links are never created.
+- Every task belongs to a Project. The reserved Inbox Project replaces
+  unassigned tasks and cannot be deleted. V12 readers reject pre-V12 Group
+  data; the pre-beta reset intentionally removed those accounts and snapshots.
+- Moving a task between projects moves its non-trashed descendant branch in one
+  state update. A subtask moved away from its parent's project becomes a root
+  task so cross-project parent links are never created.
 - On narrow screens below 360 px, action menus stack. A subtask context-menu
   action must not also open task details.
 - Drag previews must be built from the actually visible row so nested task
@@ -123,9 +126,9 @@ Use this format:
 ```
 
 ### 2026-08-12 - Destructive confirmation boundary
-- Context: Permanent trash deletion and group deletion silently did nothing in desktop WebView builds because `globalThis.confirm` was unavailable.
+- Context: Permanent trash deletion and project deletion silently did nothing in desktop WebView builds because `globalThis.confirm` was unavailable.
 - Rule: Route destructive actions through the shared in-app confirmation provider; never depend on browser-native `confirm()` for Web or Tauri behavior.
-- Evidence: `lightflux/components/ui/ConfirmationProvider.tsx`; verified delete-group, permanent-delete, cancel, reload, and empty-trash confirmation workflows.
+- Evidence: `lightflux/components/ui/ConfirmationProvider.tsx`; verified delete-project, permanent-delete, cancel, reload, and empty-trash confirmation workflows.
 
 ### 2026-08-14 - Manual pointer-drag listeners attach synchronously
 - Context: Sidebar reorder used `draggable`/HTML5 DnD, then window `mousemove`/`mouseup` listeners registered from a `useEffect` keyed on a `dragging` state. Fast or synthetic events fired before the effect ran, so the drag silently no-opped.
@@ -133,24 +136,24 @@ Use this format:
 - Evidence: `lightflux/components/navigation/DraggableNavigationItem.web.tsx`, `lightflux/components/tasks/DraggableTaskRow.web.tsx`, `DraggableTaskRow.native.tsx`, and `taskDrag.ts`; `lightflux/tests/todoDomain.test.ts` and `taskDrag.test.ts`.
 
 ### 2026-08-14 - Cascading submenus flyout, never replace in place
-- Context: "Move to group" replaced the whole action menu on hover, which mismatched the requested right-side cascade and let a pointer heading toward "移至垃圾桶" accidentally swap the menu.
+- Context: "Move to project" replaced the whole action menu on hover, which mismatched the requested right-side cascade and let a pointer heading toward "移至垃圾桶" accidentally swap the menu.
 - Rule: Render nested menus as an absolutely-positioned side flyout (right by default, flip left near the viewport edge) with a short close grace period; set `allowOverflow` on `MenuSurface` so the flyout can extend past the panel. Keep in-place mode swapping for native (non-web) only.
 - Evidence: `lightflux/components/tasks/TaskActionMenu.tsx`, `lightflux/components/ui/MenuSurface.tsx`; verified hover-expand and click-to-move at desktop width.
 
 ### 2026-08-18 - Viewport-anchored popovers must use position:fixed on web
 - Context: The Settings language `MenuSurface` mounted but was invisible: its overlay used `position:absolute`, and React Native Web makes every `View` `position:relative`, so the overlay resolved against its nearest ancestor `View` (the setting-control box) instead of the window. The menu's `measureInWindow`-derived viewport coordinates were then added on top of that ancestor offset, so a box at x≈669 rendered its menu at x≈1338 — fully off-screen. Menus triggered near the top-left only shifted slightly, hiding the bug for a long time.
 - Rule: Any web overlay meant to cover/position against the viewport (menus, popovers built on `measureInWindow` coordinates) must be `position:fixed`, not `absolute`. RNW accepts `'fixed'` at runtime though its style types omit it; apply via a small typed cast. Verify with a control placed far from the top-left, not just near it.
-- Evidence: `lightflux/components/ui/MenuSurface.tsx` (`webFixedPosition`); verified the language, group, priority, and date pickers open on-screen directly below their trigger and both language directions switch the whole UI.
+- Evidence: `lightflux/components/ui/MenuSurface.tsx` (`webFixedPosition`); verified the language, project, priority, and date pickers open on-screen directly below their trigger and both language directions switch the whole UI.
 
 ### 2026-08-18 - Web overlays must portal to document.body
 - Context: After the `position:fixed` fix the language dropdown was still clipped behind a Settings card, and task-detail metadata menus later rendered visibly but could not receive clicks because their root Portal was below RNW's z-index 9999 `Modal` host.
 - Rule: Render web popovers/menus through a `Portal` into `document.body`; when a menu can open from an RNW `Modal`, its root overlay must also stack above the Modal host. Keep a platform-split `Portal` (`.web` via `createPortal`, `.native` pass-through since `Modal` already escapes the tree) with a base re-export for TS resolution.
-- Evidence: `lightflux/components/ui/Portal.web.tsx`, `Portal.native.tsx`, `Portal.tsx`, `MenuSurface.tsx`; verified the language dropdown, move-to-group cascade, and task-detail date/group/priority menus render and receive pointer input.
+- Evidence: `lightflux/components/ui/Portal.web.tsx`, `Portal.native.tsx`, `Portal.tsx`, `MenuSurface.tsx`; verified the language dropdown, move-to-project cascade, and task-detail date/project/priority menus render and receive pointer input.
 
 ### 2026-08-19 - Native menus anchor to their trigger
-- Context: Native `MenuSurface` ignored a supplied position and always used its bottom-sheet fallback, so task, group, and milestone actions appeared detached from their trigger on iOS/Android.
+- Context: Native `MenuSurface` ignored a supplied position and always used its bottom-sheet fallback, so task, project, and milestone actions appeared detached from their trigger on iOS/Android.
 - Rule: Preserve one shared action-menu contract, but measure native trigger views with `measureInWindow`, pass a position, and clamp it against the viewport in `MenuSurface`. Reserve the bottom sheet layout only for intentionally unanchored native overlays; retain the Web `Portal` and fixed-position path.
-- Evidence: `lightflux/components/tasks/useTaskContextMenu.ts`, `components/groups/useGroupContextMenu.ts`, `components/milestones/useMilestoneContextMenu.ts`, `components/ui/MenuSurface.tsx`, `components/ui/menuPosition.ts`; `lightflux/tests/menuPosition.test.ts`.
+- Evidence: `lightflux/components/tasks/useTaskContextMenu.ts`, `components/projects/useProjectContextMenu.ts`, `components/milestones/useMilestoneContextMenu.ts`, `components/ui/MenuSurface.tsx`, `components/ui/menuPosition.ts`; `lightflux/tests/menuPosition.test.ts`.
 
 ### 2026-08-19 - Native focus workflows use task-appropriate depth
 - Context: Search benefits from a full-screen result workspace, while a full-screen AI prompt consumed the source context and left little usable room once the phone keyboard appeared.
@@ -158,9 +161,9 @@ Use this format:
 - Evidence: `lightflux/components/agent/AgentCommandPanel.tsx`, `lightflux/components/SearchOverlay.tsx`, and `lightflux/app/_layout.tsx`; verified at 393x852 and a keyboard-reduced 393x500 viewport.
 
 ### 2026-08-21 - Mobile utilities belong to the routed shell
-- Context: Restricting settings, search, and AI to Today and Groups made the six primary routes inconsistent, while repeating page titles consumed the space needed for a stable shared header.
+- Context: Restricting settings, search, and AI to Today and Projects made the six primary routes inconsistent, while repeating page titles consumed the space needed for a stable shared header.
 - Rule: On narrow layouts, render settings, search, and AI from the routed shell on every primary navigation route; page surfaces reserve that space and omit redundant top-level titles. Suppress those utilities and the FAB while the Settings panel owns the foreground. Never render application shell chrome, navigation, FAB, search, or Agent underneath `/login`.
-- Evidence: `lightflux/app/_layout.tsx`, `lightflux/components/GroupsScreen.tsx`, `CompletedScreen.tsx`, `CalendarScreen.tsx`, `MilestonesScreen.tsx`, and `TrashScreen.tsx`; verified every primary route at 402x874 and 858x781.
+- Evidence: `lightflux/app/_layout.tsx`, `lightflux/components/ProjectsScreen.tsx`, `CompletedScreen.tsx`, `CalendarScreen.tsx`, `MilestonesScreen.tsx`, and `TrashScreen.tsx`; verified every primary route at 402x874 and 858x781.
 
 ### 2026-08-21 - Authentication routes preserve the Router Slot
 - Context: Navigating from Settings to `/login` briefly reached the route, then reset through `/` to `/today` because the root layout replaced the tree and unmounted Expo Router's `<Slot />`.
@@ -172,10 +175,10 @@ Use this format:
 - Rule: Use a non-interactive `View` for composite rows that contain independent controls, then make only the intended title/content region pressable. Validate populated Web routes with `document.querySelectorAll('button button')`.
 - Evidence: `lightflux/components/CalendarScreen.tsx`, `lightflux/components/ui/IconButton.tsx`; populated-route browser checks reported zero nested buttons and no hydration errors.
 
-### 2026-08-19 - Navigation visibility is a V10 preference
+### 2026-08-23 - Navigation visibility is a V11 preference
 - Context: Optional navigation views need to be hidden without deleting their local data or destroying desktop navigation order.
-- Rule: Persist only optional hidden IDs in `hiddenNavigationItems`; Today and Groups remain visible active-task surfaces. Normalize older state to an empty hidden set, and map visible drag targets back to the full navigation order before reordering.
-- Evidence: `lightflux/types/todo.ts`, `services/todoStorage.ts`, `store/todoStore.tsx`, `App.tsx`; `tests/todoStorageMigration.test.ts`.
+- Rule: Persist only optional hidden IDs in `hiddenNavigationItems`; Today and Projects remain visible active-task surfaces. New and previously untouched visibility preferences hide Completed, Calendar, Milestones, and Trash by default, while explicit V11 choices remain intact. Map visible drag targets back to the full navigation order before reordering.
+- Evidence: `lightflux/types/todo.ts`, `services/todoStorage.ts`, `store/todoStore.tsx`, `app/_layout.tsx`; `tests/todoStorageMigration.test.ts`.
 
 ### 2026-08-19 - Native keyboard workflows require explicit avoidance
 - Context: Native full-screen AI and detail workflows can leave text composers behind the iOS keyboard when only safe-area padding is applied.
@@ -194,13 +197,13 @@ Use this format:
 
 ### 2026-08-20 - Phone layouts remove explanatory duplication
 - Context: At 402 px, Settings repeated control descriptions, task details nested a bordered editor card inside a sheet, and Calendar repeated the selected date above a second task/composer card.
-- Rule: Below phone-width breakpoints, omit copy that restates a control and treat bounded workspaces as one surface. Keep Settings typography and controls compact, and omit promotional account copy. On Calendar, let the selected cell carry date context, create through one selected-date add action, show matching task rows directly below the month grid, and omit group-color dots already represented by the task adjustment sheet.
+- Rule: Below phone-width breakpoints, omit copy that restates a control and treat bounded workspaces as one surface. Keep Settings typography and controls compact, and omit promotional account copy. On Calendar, let the selected cell carry date context, create through one selected-date add action, show matching task rows directly below the month grid, and omit project-color dots already represented by the task adjustment sheet.
 - Evidence: `lightflux/components/SettingsScreen.tsx`, `components/editor/TaskEditorScreen.web.tsx`, `TaskEditorScreen.native.tsx`, `components/CalendarScreen.tsx`; verified at 402 px and 1200 px plus tests, typecheck, and Web export.
 
 ### 2026-08-20 - Narrow task actions use explicit bottom sheets
-- Context: Phone-width task rows exposed a desktop ellipsis menu and cascading group flyout; a swipe-only replacement would conflict with drag gestures and hide important actions.
-- Rule: Below the desktop breakpoint, use a visible task-adjustment icon and a keyboard-safe bottom sheet. Keep date, group, and priority as icon-led first-level controls, open their choices as in-sheet sublayers, make tall layers scrollable, and preserve anchored/cascading menus for desktop only.
-- Evidence: `lightflux/components/tasks/TaskRowControls.tsx`, `TaskActionMenu.tsx`, `components/ui/MenuSurface.tsx`; verified date rescheduling, priority updates, group sublayer, and full action visibility at 402 px.
+- Context: Phone-width task rows exposed a desktop ellipsis menu and cascading project flyout; a swipe-only replacement would conflict with drag gestures and hide important actions.
+- Rule: Below the desktop breakpoint, use a visible task-adjustment icon and a keyboard-safe bottom sheet. Keep date, project, and priority as icon-led first-level controls, open their choices as in-sheet sublayers, make tall layers scrollable, and preserve anchored/cascading menus for desktop only.
+- Evidence: `lightflux/components/tasks/TaskRowControls.tsx`, `TaskActionMenu.tsx`, `components/ui/MenuSurface.tsx`; verified date rescheduling, priority updates, project sublayer, and full action visibility at 402 px.
 
 ### 2026-08-20 - Cloud sync uses revision CAS and a persisted base
 - Context: Device clocks and aggregate `updatedAt` values cannot reliably order concurrent offline edits, and a 409 without the prior cloud baseline cannot distinguish deletion from unchanged data.
@@ -209,8 +212,8 @@ Use this format:
 
 ### 2026-08-20 - Native auth must prove session restoration
 - Context: An OTP sign-in response can succeed before a native credential is available to subsequent sync, upload, and Agent requests; Radon also sends a dynamic-port `exp://` Origin that Better Auth rejects unless development trust is explicit.
-- Rule: Store Expo native auth cookies in SecureStore, forward the recovered cookie through the shared authenticated fetch boundary, verify `getSession()` after OTP sign-in, and finish account-scoped cloud reconciliation before revealing task data. Local API configuration must set `NODE_ENV=development` and trust `exp://`; production must not trust that development scheme.
-- Evidence: `lightflux/services/authClient.native.ts`, `authApi.ts`, `SignedOutScreen.tsx`, `server/.env.development.example`, and `deploy/ENVIRONMENTS.md`; `authenticatedFetch.test.ts`, server email-auth tests, and a live dynamic-origin registration/sign-in/sign-out check.
+- Rule: Store Expo native auth cookies in SecureStore, forward the recovered cookie through the shared authenticated fetch boundary, verify `getSession()` after OTP sign-in, and finish account-scoped cloud reconciliation before revealing task data. Local mode must be an explicit current-version user choice: never interpret missing auth configuration or a legacy session marker as permission to bypass login. In development, derive a missing API origin from the Expo host; the server must set `NODE_ENV=development` and trust `exp://`, while production must not trust that scheme.
+- Evidence: `lightflux/services/authClient.native.ts`, `authConfig.ts`, `authApi.ts`, `sessionStorage.ts`, `SignedOutScreen.tsx`, `server/.env.development.example`, and `deploy/ENVIRONMENTS.md`; `authConfig.test.ts`, `sessionStorage.test.ts`, `authenticatedFetch.test.ts`, server email-auth tests, and live mobile-width login checks.
 
 ### 2026-08-23 - Mobile Web follows the visual viewport
 - Context: iOS browser chrome and the software keyboard reduced the visible viewport while a hard root minimum height and layout-viewport bottom sheet left navigation below the screen and a large gap above the keyboard.
@@ -218,7 +221,7 @@ Use this format:
 - Evidence: `lightflux/config/focusStyles.web.ts`, `app/_layout.tsx`, and `components/tasks/QuickAddTaskSheet.tsx`; verified at 320x568, 402x500, and a keyboard-reduced 402x350 visual viewport.
 
 ### 2026-08-23 - Mobile creation actions share one fixed anchor
-- Context: Today, Calendar, and Groups each positioned their mobile add action independently, so the same control jumped vertically between routes.
+- Context: Today, Calendar, and Projects each positioned their mobile add action independently, so the same control jumped vertically between routes.
 - Rule: Use the shared bottom-right mobile quick-add control above navigation. Keep its location fixed rather than user-draggable so it stays predictable and does not compete with task drag or system-edge gestures.
 - Evidence: `lightflux/components/tasks/MobileQuickAddButton.tsx`, `app/_layout.tsx`, and `components/CalendarScreen.tsx`; all three routes rendered the FAB at the same 393x852 coordinates.
 
@@ -231,3 +234,8 @@ Use this format:
 - Context: Account names were fixed at registration and avatars had no editing path, while the Settings card duplicated truncated session labels.
 - Rule: Persist display names and avatar URLs through Better Auth's authenticated user update endpoint, upload avatar bytes through the existing authenticated upload service, then refresh the shared shell user so every account surface updates immediately.
 - Evidence: `lightflux/services/authApi.ts`, `services/imageUpload.ts`, `components/account/ProfileCard.tsx`, and `components/appShellContext.tsx`; client/server tests and a live dev upload-update-session flow.
+
+### 2026-08-23 - Project model starts with a clean V12 boundary
+- Context: Groups were replaced by Projects before public beta, while development and production contained only disposable test accounts and state.
+- Rule: Persist and accept only V12 `projects` and `projectId` data. Keep local state and sync metadata in V12-specific namespaces, reject pre-V12 aggregates, and preserve the reserved Inbox Project during parsing and conflict merges.
+- Evidence: `lightflux/types/todo.ts`, `services/todoStorage.ts`, `services/appStateMerge.ts`, and `server/src/index.mjs`; `todoStorageMigration.test.ts`, `syncConflict.test.ts`, and `appStateMerge.test.ts`.

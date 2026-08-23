@@ -654,8 +654,8 @@ const OperationRow = ({
     (operation.type === 'task.create' ||
     operation.type === 'milestone.create'
       ? operation.title
-      : operation.type === 'group.create' ||
-          operation.type === 'group.update'
+      : operation.type === 'project.create' ||
+          operation.type === 'project.update'
         ? operation.name
         : '');
   const formatValue = (

@@ -148,6 +148,7 @@ certbot renew --dry-run
 
 ## Email delivery note
 
-With the unverified `onboarding@resend.dev` sender, Resend only delivers to the
-Resend account owner. To reach any recipient, verify `lightflux.site` in Resend
-(add the DNS records) and set `SMTP_FROM=noreply@lightflux.site`.
+`lightflux.site` is verified in Resend. Production uses
+`SMTP_FROM=LightFlux <noreply@lightflux.site>` so OTP mail can reach any
+recipient. Do not replace it with Resend's `onboarding@resend.dev` test sender,
+which only delivers to the Resend account owner.

@@ -80,7 +80,7 @@ cd lightflux && npm test
 cd lightflux && npm run typecheck
 cd lightflux && npm run desktop:web
 cd server && npm test
-./scripts/use-rust-env.sh cargo check --manifest-path lightflux/src-tauri/Cargo.toml
+cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 ```
 
 - Rebuild with `cd lightflux && npm run editor:build` after editor source or

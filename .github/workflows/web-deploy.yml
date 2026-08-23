@@ -19,6 +19,10 @@ jobs:
     name: Build and deploy Web
     runs-on: ubuntu-latest
     environment: production
+    env:
+      EXPO_PUBLIC_AUTH_API_URL: ${{ vars.EXPO_PUBLIC_AUTH_API_URL }}
+      EXPO_PUBLIC_UPLOAD_API_URL: ${{ vars.EXPO_PUBLIC_UPLOAD_API_URL }}
+      EXPO_PUBLIC_AI_API_URL: ${{ vars.EXPO_PUBLIC_AI_API_URL }}
     defaults:
       run:
         working-directory: lightflux
@@ -36,14 +40,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate production public origins
+        run: |
+          for name in \
+            EXPO_PUBLIC_AUTH_API_URL \
+            EXPO_PUBLIC_UPLOAD_API_URL \
+            EXPO_PUBLIC_AI_API_URL
+          do
+            value="$(printenv "${name}" || true)"
+            if [[ -z "${value}" ]]; then
+              echo "::error::${name} is missing from the production environment."
+              exit 1
+            fi
+            if [[ "${value}" != https://* ]]; then
+              echo "::error::${name} must use an HTTPS production origin."
+              exit 1
+            fi
+          done
+
       - name: Build web export
         # EXPO_PUBLIC_* values are inlined at build time, so the production
         # origins must be present in the environment before `expo export` runs.
-        env:
-          EXPO_PUBLIC_AUTH_API_URL: ${{ vars.EXPO_PUBLIC_AUTH_API_URL }}
-          EXPO_PUBLIC_UPLOAD_API_URL: ${{ vars.EXPO_PUBLIC_UPLOAD_API_URL }}
-          EXPO_PUBLIC_AI_API_URL: ${{ vars.EXPO_PUBLIC_AI_API_URL }}
-        run: npm run desktop:web
+        run: npm run desktop:web -- --clear
 
       - name: Configure SSH
         run: |

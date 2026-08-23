@@ -13,12 +13,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { translations } from '../content';
+import type { RemoteUser } from '../services/authApi';
 import { useTodoStore } from '../store/todoStore';
 import { Language } from '../types/todo';
 import {
   OPTIONAL_NAVIGATION_ITEM_IDS,
   OptionalNavigationItemId,
 } from '../types/todo';
+import ProfileCard from './account/ProfileCard';
 import DesktopSettingsSections from './settings/DesktopSettingsSections';
 import {
   SettingOption,
@@ -34,10 +36,11 @@ const SettingsScreen = ({
   onNavigationVisibilityChange,
   onClose,
   onOpenStatistics,
+  onProfileUpdated,
   onSignIn,
   onSignOut,
 }: {
-  currentUser: { email: string; name?: string } | null;
+  currentUser: RemoteUser | null;
   hiddenNavigationItems: OptionalNavigationItemId[];
   onNavigationVisibilityChange: (
     id: OptionalNavigationItemId,
@@ -45,6 +48,7 @@ const SettingsScreen = ({
   ) => void;
   onClose?: () => void;
   onOpenStatistics: () => void;
+  onProfileUpdated: (user: RemoteUser) => void;
   onSignIn: () => void;
   onSignOut: () => void;
 }) => {
@@ -59,7 +63,6 @@ const SettingsScreen = ({
   const [focusedRow, setFocusedRow] = useState<string | null>(null);
   const [hoveredRow, setHoveredRow] = useState<string | null>(null);
   const [signInHovered, setSignInHovered] = useState(false);
-  const [signOutHovered, setSignOutHovered] = useState(false);
   const language = useTodoStore((state) => state.language);
   const setLanguage = useTodoStore((state) => state.setLanguage);
   const labels = translations[language];
@@ -77,50 +80,8 @@ const SettingsScreen = ({
           paddingHorizontal: compact ? 0 : 16,
           paddingVertical: compact ? 6 : 14,
         },
-        accountAvatar: {
-          alignItems: 'center',
-          backgroundColor: '#6759E8',
-          borderRadius: compact ? 16 : 22,
-          height: compact ? 32 : 44,
-          justifyContent: 'center',
-          marginRight: compact ? 8 : 13,
-          width: compact ? 32 : 44,
-        },
         accountInfo: {
           flex: 1,
-        },
-        accountEmail: {
-          color: '#2E2F41',
-          fontSize: compact ? 13 : 15,
-          fontWeight: compact ? '600' : '800',
-        },
-        accountLabel: {
-          color: '#858797',
-          fontSize: compact ? 10 : 12,
-          marginTop: 2,
-        },
-        signOutButton: {
-          alignItems: 'center',
-          borderColor: '#F0CDD3',
-          borderRadius: 8,
-          borderWidth: 1,
-          flexDirection: 'row',
-          gap: 6,
-          minHeight: compact ? 32 : undefined,
-          paddingHorizontal: compact ? 9 : 16,
-          paddingVertical: compact ? 0 : 8,
-        },
-        signOutButtonHovered: {
-          backgroundColor: '#FFF5F6',
-          borderColor: '#D45C6A',
-        },
-        signOutButtonPressed: {
-          backgroundColor: '#FFEAED',
-        },
-        signOutText: {
-          color: '#C84F60',
-          fontSize: compact ? 11 : 13,
-          fontWeight: compact ? '600' : '700',
         },
         signInButton: {
           alignItems: 'center',
@@ -212,34 +173,14 @@ const SettingsScreen = ({
               ]}
             >
               {currentUser ? (
-                <View style={styles.accountCard}>
-                  <View style={styles.accountAvatar}>
-                    <Ionicons color="#FFFFFF" name="person" size={compact ? 16 : 22} />
-                  </View>
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountEmail} numberOfLines={1}>
-                      {currentUser.name || currentUser.email}
-                    </Text>
-                    <Text style={styles.accountLabel} numberOfLines={1}>
-                      {labels.settings.signedInAs} · {currentUser.email}
-                    </Text>
-                  </View>
-                  <Pressable
-                    accessibilityLabel={labels.settings.signOut}
-                    accessibilityRole="button"
-                    onHoverIn={() => setSignOutHovered(true)}
-                    onHoverOut={() => setSignOutHovered(false)}
-                    onPress={onSignOut}
-                    style={({ pressed }) => [
-                      styles.signOutButton,
-                      signOutHovered && styles.signOutButtonHovered,
-                      pressed && styles.signOutButtonPressed,
-                    ]}
-                  >
-                    <Ionicons color="#C84F60" name="log-out-outline" size={14} />
-                    <Text style={styles.signOutText}>{labels.settings.signOut}</Text>
-                  </Pressable>
-                </View>
+                <ProfileCard
+                  cancelLabel={labels.cancel}
+                  compact={compact}
+                  currentUser={currentUser}
+                  labels={labels.settings}
+                  onProfileUpdated={onProfileUpdated}
+                  onSignOut={onSignOut}
+                />
               ) : (
                 <View style={styles.accountCard}>
                   <View style={styles.localAvatar}>
@@ -249,11 +190,6 @@ const SettingsScreen = ({
                     <Text style={styles.localEmail}>
                       {labels.settings.localOnly}
                     </Text>
-                    {compact ? null : (
-                      <Text style={styles.accountLabel}>
-                        {labels.settings.localOnlyDescription}
-                      </Text>
-                    )}
                   </View>
                   <Pressable
                     accessibilityLabel={labels.settings.signIn}
@@ -294,9 +230,6 @@ const SettingsScreen = ({
             >
               <SettingRow
                 compact={compact}
-                description={
-                  compact ? undefined : desktopLabels.languageDescription
-                }
                 focused={focusedRow === 'language'}
                 stacked={stacked}
                 title={labels.settings.languageTitle}
@@ -367,11 +300,6 @@ const SettingsScreen = ({
                   >
                     {labels.settings.statisticsTitle}
                   </Text>
-                  {compact ? null : (
-                    <Text style={sharedStyles.settingDescription}>
-                      {labels.settings.statisticsDescription}
-                    </Text>
-                  )}
                 </View>
                 <Ionicons
                   color="#8B8C98"

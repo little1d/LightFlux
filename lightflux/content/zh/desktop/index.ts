@@ -4,7 +4,6 @@ export const desktop: Translation['desktop'] = {
   updateToVersion: (version) => `更新到 ${version}`,
   settings: {
     general: '通用',
-    languageDescription: '选择界面的显示语言',
     softwareUpdate: '软件更新',
     updateReminderOptions: {
       sidebarAndToast: '侧栏图标与一次提示',

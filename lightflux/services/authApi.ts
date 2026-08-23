@@ -178,6 +178,7 @@ export const setAccountPassword = async (
 export interface RemoteUser {
   id: string;
   email: string;
+  avatarUrl?: string;
   name?: string;
 }
 
@@ -193,8 +194,33 @@ export const getRemoteUser = async (): Promise<RemoteUser | null> => {
   return {
     id: user.id,
     email: user.email,
+    avatarUrl: user.image || undefined,
     name: user.name || undefined,
   };
+};
+
+export const updateRemoteProfile = async ({
+  avatarUrl,
+  name,
+}: {
+  avatarUrl?: string;
+  name?: string;
+}): Promise<RemoteUser> => {
+  if (!isRemoteAuthConfigured) {
+    throw new Error('Email authentication API is not configured.');
+  }
+  const result = await authClient.updateUser({
+    ...(avatarUrl !== undefined ? { image: avatarUrl } : {}),
+    ...(name !== undefined ? { name: name.trim() } : {}),
+  });
+  if (result.error) {
+    throw authError(result.error, 'Unable to update this profile.');
+  }
+  const user = await getRemoteUser();
+  if (!user) {
+    throw new Error('The updated session could not be restored.');
+  }
+  return user;
 };
 
 export const logoutRemoteSession = async (): Promise<void> => {

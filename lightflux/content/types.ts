@@ -42,9 +42,15 @@ export interface Translation {
   settings: {
     title: string;
     accountTitle: string;
-    signedInAs: string;
     localOnly: string;
-    localOnlyDescription: string;
+    editProfileName: string;
+    profileNamePlaceholder: string;
+    saveProfile: string;
+    changeAvatar: string;
+    profileUpdated: string;
+    profileUpdateError: string;
+    avatarPermissionDenied: string;
+    avatarUploadError: string;
     signIn: string;
     signOut: string;
     languageTitle: string;
@@ -52,7 +58,6 @@ export interface Translation {
     english: string;
     dataTitle: string;
     statisticsTitle: string;
-    statisticsDescription: string;
     visibleViewsTitle: string;
   };
   desktop: {
@@ -60,7 +65,6 @@ export interface Translation {
     updateToVersion: (version: string) => string;
     settings: {
       general: string;
-      languageDescription: string;
       softwareUpdate: string;
       updateReminderOptions: {
         sidebarAndToast: string;

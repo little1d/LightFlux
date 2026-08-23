@@ -165,4 +165,26 @@ test('registers a verified password account and signs in with it', async () => {
   assert.equal(sessionResponse.status, 200);
   assert.equal(session.user.email, 'password@example.com');
   assert.equal(session.user.emailVerified, true);
+
+  const updateResponse = await authRequest(
+    '/update-user',
+    {
+      image: 'https://cdn.example.com/avatar.png',
+      name: 'Updated Profile',
+    },
+    cookie,
+  );
+  assert.equal(updateResponse.status, 200);
+
+  const updatedSessionResponse = await authRequest(
+    '/get-session',
+    null,
+    cookie,
+  );
+  const updatedSession = await updatedSessionResponse.json();
+  assert.equal(updatedSession.user.name, 'Updated Profile');
+  assert.equal(
+    updatedSession.user.image,
+    'https://cdn.example.com/avatar.png',
+  );
 });

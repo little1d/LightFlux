@@ -6,12 +6,14 @@ const authMocks = vi.hoisted(() => ({
   })),
   getSession: vi.fn(),
   signInEmailOtp: vi.fn(),
+  updateUser: vi.fn(),
 }));
 
 vi.mock('../services/authClient', () => ({
   authClient: {
     getSession: authMocks.getSession,
     signIn: { emailOtp: authMocks.signInEmailOtp },
+    updateUser: authMocks.updateUser,
   },
   getAuthRequestHeaders: authMocks.getAuthRequestHeaders,
 }));
@@ -26,6 +28,7 @@ describe('authenticatedFetch', () => {
     vi.unstubAllGlobals();
     authMocks.getSession.mockReset();
     authMocks.signInEmailOtp.mockReset();
+    authMocks.updateUser.mockReset();
   });
 
   it('forwards native secure-session headers to API requests', async () => {
@@ -56,5 +59,39 @@ describe('authenticatedFetch', () => {
     await expect(
       verifyEmailOtp('person@example.com', '123456'),
     ).rejects.toThrow('session could not be restored');
+  });
+
+  it('updates the profile and returns the refreshed session user', async () => {
+    authMocks.updateUser.mockResolvedValue({
+      data: { status: true },
+      error: null,
+    });
+    authMocks.getSession.mockResolvedValue({
+      data: {
+        user: {
+          email: 'person@example.com',
+          id: 'auth-user',
+          image: 'https://cdn.example.com/avatar.png',
+          name: 'Updated Profile',
+        },
+      },
+    });
+    const { updateRemoteProfile } = await import('../services/authApi');
+
+    await expect(
+      updateRemoteProfile({
+        avatarUrl: 'https://cdn.example.com/avatar.png',
+        name: ' Updated Profile ',
+      }),
+    ).resolves.toEqual({
+      avatarUrl: 'https://cdn.example.com/avatar.png',
+      email: 'person@example.com',
+      id: 'auth-user',
+      name: 'Updated Profile',
+    });
+    expect(authMocks.updateUser).toHaveBeenCalledWith({
+      image: 'https://cdn.example.com/avatar.png',
+      name: 'Updated Profile',
+    });
   });
 });

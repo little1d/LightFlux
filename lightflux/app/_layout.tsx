@@ -22,6 +22,7 @@ import React, {
 } from 'react';
 import {
   Animated,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -81,7 +82,10 @@ import {
 } from '../store/todoStore';
 import { searchResultView } from '../store/todoDomain';
 import { translations } from '../content';
-import { getRemoteUser } from '../services/authApi';
+import {
+  getRemoteUser,
+  type RemoteUser,
+} from '../services/authApi';
 import {
   loadSessionState,
   saveSessionState,
@@ -194,17 +198,50 @@ const DesktopNavigationButton = ({
 
 const AccountTrigger = ({
   active,
+  avatarUrl,
   label,
   onPress,
   tooltipPosition,
   variant,
 }: {
   active: boolean;
+  avatarUrl?: string;
   label: string;
   onPress: () => void;
   tooltipPosition: 'right' | 'bottom';
   variant?: 'primary' | 'neutral';
 }) => {
+  const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  if (avatarUrl) {
+    return (
+      <View style={styles.accountTrigger}>
+        <Pressable
+          accessibilityLabel={label}
+          accessibilityRole="button"
+          onBlur={() => setFocused(false)}
+          onFocus={() => setFocused(true)}
+          onHoverIn={() => setHovered(true)}
+          onHoverOut={() => setHovered(false)}
+          onPress={onPress}
+          style={({ pressed }) => [
+            styles.accountAvatarButton,
+            active && styles.accountAvatarButtonActive,
+            (hovered || focused) && styles.accountAvatarButtonFocused,
+            pressed && styles.navigationButtonPressed,
+          ]}
+        >
+          <Image source={{ uri: avatarUrl }} style={styles.accountAvatarImage} />
+        </Pressable>
+        <Tooltip
+          label={label}
+          position={tooltipPosition}
+          visible={hovered || focused}
+        />
+      </View>
+    );
+  }
+
   return (
     <IconButton
       icon="person-circle-outline"
@@ -226,7 +263,7 @@ const AppShell = () => {
   const isLoginRoute = pathname === '/login';
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
-  const [currentUser, setCurrentUser] = useState<{ email: string; name?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<RemoteUser | null>(null);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
   const [agentOpen, setAgentOpen] = useState(false);
@@ -754,6 +791,7 @@ const AppShell = () => {
       notify,
       changeView,
       currentUser,
+      updateCurrentUser: setCurrentUser,
       hiddenNavigationItems,
       setNavigationVisible,
       openAuthentication,
@@ -818,7 +856,12 @@ const AppShell = () => {
                 active={
                   activeView === 'settings' || activeView === 'statistics'
                 }
-                label={currentUser?.email || labels.account.localAccount}
+                avatarUrl={currentUser?.avatarUrl}
+                label={
+                  currentUser?.name ||
+                  currentUser?.email ||
+                  labels.account.localAccount
+                }
                 onPress={() => setAccountMenuOpen((current) => !current)}
                 tooltipPosition="right"
               />
@@ -971,6 +1014,7 @@ const AppShell = () => {
           <View style={styles.mobileUtilityRow}>
             <AccountTrigger
               active={settingsPanelOpen}
+              avatarUrl={currentUser?.avatarUrl}
               label={labels.account.settings}
               onPress={() => setSettingsPanelOpen(true)}
               tooltipPosition="bottom"
@@ -1072,6 +1116,7 @@ const AppShell = () => {
                 setSettingsPanelOpen(false);
                 changeView('statistics');
               }}
+              onProfileUpdated={setCurrentUser}
               onSignIn={openAuthentication}
               onSignOut={() => {
                 setSettingsPanelOpen(false);
@@ -1187,6 +1232,34 @@ const styles = StyleSheet.create({
   },
   bootOverlay: {
     backgroundColor: '#F3F2F7',
+  },
+  accountTrigger: {
+    position: 'relative',
+  },
+  accountAvatarButton: {
+    backgroundColor: '#F3F2F6',
+    borderColor: 'transparent',
+    borderRadius: 10,
+    borderWidth: 2,
+    height: 40,
+    padding: 2,
+    width: 40,
+  },
+  accountAvatarButtonActive: {
+    backgroundColor: '#F0EEFF',
+    borderColor: '#AFA6F5',
+  },
+  accountAvatarButtonFocused: {
+    borderColor: '#AFA6F5',
+    shadowColor: '#6759E8',
+    shadowOffset: { height: 0, width: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  accountAvatarImage: {
+    borderRadius: 6,
+    height: '100%',
+    width: '100%',
   },
   desktopAccountPosition: {
     marginBottom: 28,

@@ -17,6 +17,7 @@
         }
       ],
       "expo-notifications",
+      "expo-image-picker",
       "expo-secure-store",
       "expo-router"
     ],

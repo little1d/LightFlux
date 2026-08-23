@@ -9,6 +9,7 @@ export default function SettingsRoute() {
       hiddenNavigationItems={shell.hiddenNavigationItems}
       onNavigationVisibilityChange={shell.setNavigationVisible}
       onOpenStatistics={() => shell.changeView('statistics')}
+      onProfileUpdated={shell.updateCurrentUser}
       onSignIn={shell.openAuthentication}
       onSignOut={shell.signOut}
     />

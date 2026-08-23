@@ -1,7 +1,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { translations } from '../../content';
+import type { RemoteUser } from '../../services/authApi';
 import { useTodoStore } from '../../store/todoStore';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface, { MenuSurfacePosition } from '../ui/MenuSurface';
@@ -14,7 +15,7 @@ const AccountMenu = ({
   position,
   onSignOut,
 }: {
-  currentUser: { email: string; name?: string } | null;
+  currentUser: RemoteUser | null;
   onClose: () => void;
   onOpenSettings: () => void;
   onSignIn: () => void;
@@ -35,7 +36,14 @@ const AccountMenu = ({
       <View style={styles.header}>
         <View style={styles.identityRow}>
           <View style={styles.avatar}>
-            <Ionicons color="#FFFFFF" name="person" size={18} />
+            {currentUser?.avatarUrl ? (
+              <Image
+                source={{ uri: currentUser.avatarUrl }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Ionicons color="#FFFFFF" name="person" size={18} />
+            )}
           </View>
           <View style={styles.identityCopy}>
             <Text style={styles.name} numberOfLines={1}>
@@ -99,6 +107,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
     width: 32,
+  },
+  avatarImage: {
+    borderRadius: 10,
+    height: '100%',
+    width: '100%',
   },
   identityCopy: {
     flex: 1,

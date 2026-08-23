@@ -226,3 +226,8 @@ Use this format:
 - Context: Web metadata and in-app headers still used Expo placeholders or separately drawn checkmarks after the LightFlux logo was finalized.
 - Rule: Reuse `lightflux/assets/brand-mark.png` for in-app brand identity and derive platform icons from the same cropped source. Keep functional completion icons separate from the brand mark.
 - Evidence: `lightflux/app.json`, `assets/brand-mark.png`, `public/apple-touch-icon.png`, `components/TodoScreen.tsx`, and `components/SignedOutScreen.tsx`; verified in the exported Web document and rendered Today/login views.
+
+### 2026-08-23 - Account profile lives in authenticated identity
+- Context: Account names were fixed at registration and avatars had no editing path, while the Settings card duplicated truncated session labels.
+- Rule: Persist display names and avatar URLs through Better Auth's authenticated user update endpoint, upload avatar bytes through the existing authenticated upload service, then refresh the shared shell user so every account surface updates immediately.
+- Evidence: `lightflux/services/authApi.ts`, `services/imageUpload.ts`, `components/account/ProfileCard.tsx`, and `components/appShellContext.tsx`; client/server tests and a live dev upload-update-session flow.

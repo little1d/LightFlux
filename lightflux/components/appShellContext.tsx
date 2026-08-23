@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 
+import type { RemoteUser } from '../services/authApi';
 import type { ToastVariant } from './ui/ToastProvider';
 import type { OpenTaskMenu } from './tasks/useTaskContextMenu';
 import type { OptionalNavigationItemId } from '../types/todo';
@@ -30,7 +31,8 @@ export interface AppShellValue {
   openCalendarAdd: (dateKey: string) => void;
   notify: (message: string, variant?: ToastVariant) => void;
   changeView: (view: AppView) => void;
-  currentUser: { email: string; name?: string } | null;
+  currentUser: RemoteUser | null;
+  updateCurrentUser: (user: RemoteUser) => void;
   hiddenNavigationItems: OptionalNavigationItemId[];
   setNavigationVisible: (
     id: OptionalNavigationItemId,

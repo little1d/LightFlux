@@ -39,6 +39,35 @@ if (typeof document !== 'undefined' && !document.getElementById(STYLE_ID)) {
       box-shadow: 0 2px 0 rgba(103, 89, 232, 0.16);
     }
 
+    @media (max-width: ${DESKTOP_LAYOUT_BREAKPOINT - 1}px) {
+      html,
+      body,
+      #root,
+      #root > div {
+        height: 100%;
+        min-height: 0;
+      }
+
+      html,
+      body {
+        overflow-x: auto;
+        overflow-y: hidden;
+      }
+
+      #root {
+        overflow: hidden;
+      }
+
+      @supports (height: 100dvh) {
+        html,
+        body,
+        #root,
+        #root > div {
+          height: 100dvh;
+        }
+      }
+    }
+
     @media (min-width: ${DESKTOP_LAYOUT_BREAKPOINT}px) {
       #task-rich-editor:focus-within {
         border-color: rgba(103, 89, 232, 0.62) !important;

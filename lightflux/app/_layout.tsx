@@ -5,7 +5,10 @@
 // and flex layouts (sidebar row, flex-1 fill) collapse.
 import '../config/focusStyles';
 import '../config/nativewind';
-import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
+import {
+  COMPACT_MOBILE_HEIGHT_BREAKPOINT,
+  DESKTOP_LAYOUT_BREAKPOINT,
+} from '../config/layout';
 
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Slot, usePathname, useRouter } from 'expo-router';
@@ -30,6 +33,7 @@ import {
 import {
   SafeAreaProvider,
   SafeAreaView,
+  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -235,6 +239,7 @@ const AppShell = () => {
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const { height, width } = useWindowDimensions();
+  const safeAreaInsets = useSafeAreaInsets();
   const settingsSlideAnim = useRef(new Animated.Value(-width)).current;
   const [navigationDrag, setNavigationDrag] =
     useState<NavigationDragState | null>(null);
@@ -326,6 +331,9 @@ const AppShell = () => {
   );
   const labels = translations[language];
   const usesDesktopLayout = width >= DESKTOP_LAYOUT_BREAKPOINT;
+  const compactMobileHeight =
+    !usesDesktopLayout && height < COMPACT_MOBILE_HEIGHT_BREAKPOINT;
+  const mobileNavigationHeight = compactMobileHeight ? 48 : 58;
   const selectedTaskId = taskMenu?.todoId ?? selectedTask?.id ?? null;
   const availableDesktopWidth = width - DESKTOP_NAV_WIDTH;
   const maximumListWidth = Math.max(
@@ -894,7 +902,12 @@ const AppShell = () => {
             edges={['bottom']}
             style={styles.mobileNavigationSafeArea}
           >
-            <View style={styles.mobileNavigationBar}>
+            <View
+              style={[
+                styles.mobileNavigationBar,
+                compactMobileHeight && styles.mobileNavigationBarCompact,
+              ]}
+            >
               {navigationItems.map((item) => {
                 const isActive = item.id === activeView;
                 return (
@@ -905,17 +918,21 @@ const AppShell = () => {
                     onPress={() => selectNavigationView(item.id)}
                     style={({ pressed }) => [
                       styles.mobileNavigationItem,
+                      compactMobileHeight &&
+                        styles.mobileNavigationItemCompact,
                       pressed && styles.mobileNavigationItemPressed,
                     ]}
                   >
                     <Ionicons
                       color={isActive ? '#6759E8' : '#A3A3AF'}
                       name={item.icon}
-                      size={21}
+                      size={compactMobileHeight ? 19 : 21}
                     />
                     <Text
                       style={[
                         styles.mobileNavigationLabel,
+                        compactMobileHeight &&
+                          styles.mobileNavigationLabelCompact,
                         isActive && styles.mobileNavigationLabelActive,
                       ]}
                     >
@@ -1021,7 +1038,15 @@ const AppShell = () => {
       !usesDesktopLayout &&
       !selectedTask &&
       (activeView === 'today' || activeView === 'groups') ? (
-        <View style={styles.mobileQuickAdd}>
+        <View
+          style={[
+            styles.mobileQuickAdd,
+            {
+              bottom:
+                mobileNavigationHeight + safeAreaInsets.bottom + 12,
+            },
+          ]}
+        >
           <Pressable
             accessibilityLabel={labels.addTask}
             accessibilityRole="button"
@@ -1216,11 +1241,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingHorizontal: 12,
   },
+  mobileNavigationBarCompact: {
+    height: 48,
+    paddingHorizontal: 8,
+  },
   mobileNavigationItem: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
     paddingVertical: 8,
+  },
+  mobileNavigationItemCompact: {
+    paddingVertical: 4,
   },
   mobileNavigationItemPressed: {
     opacity: 0.68,
@@ -1230,6 +1262,10 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     marginTop: 4,
+  },
+  mobileNavigationLabelCompact: {
+    fontSize: 9,
+    marginTop: 2,
   },
   mobileNavigationLabelActive: {
     color: '#6759E8',
@@ -1326,7 +1362,6 @@ const styles = StyleSheet.create({
     maxHeight: 760,
   },
   mobileQuickAdd: {
-    bottom: 86,
     position: 'absolute',
     right: 18,
     zIndex: 60,

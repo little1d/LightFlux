@@ -211,3 +211,8 @@ Use this format:
 - Context: An OTP sign-in response can succeed before a native credential is available to subsequent sync, upload, and Agent requests.
 - Rule: Store Expo native auth cookies in SecureStore, forward the recovered cookie through the shared authenticated fetch boundary, verify `getSession()` after OTP sign-in, and finish account-scoped cloud reconciliation before revealing task data.
 - Evidence: `lightflux/services/authClient.native.ts`, `authApi.ts`, `SignedOutScreen.tsx`, `App.tsx`; `authenticatedFetch.test.ts` and server email-auth tests.
+
+### 2026-08-23 - Mobile Web follows the visual viewport
+- Context: iOS browser chrome and the software keyboard reduced the visible viewport while a hard root minimum height and layout-viewport bottom sheet left navigation below the screen and a large gap above the keyboard.
+- Rule: On narrow Web, size the application root with the dynamic viewport, compact shell chrome for short heights, and anchor focused bottom sheets to `window.visualViewport` height plus offset instead of the layout viewport.
+- Evidence: `lightflux/config/focusStyles.web.ts`, `app/_layout.tsx`, and `components/tasks/QuickAddTaskSheet.tsx`; verified at 320x568, 402x500, and a keyboard-reduced 402x350 visual viewport.

@@ -11,6 +11,7 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
@@ -32,6 +33,45 @@ import { TASK_PRIORITY_THEME, TaskPriorityIcon } from './TaskPriorityIndicator';
 
 type Picker = 'date' | 'group' | 'priority' | null;
 
+interface WebViewportFrame {
+  height: number;
+  offsetTop: number;
+}
+
+const useWebViewportFrame = (active: boolean) => {
+  const [frame, setFrame] = useState<WebViewportFrame | null>(null);
+
+  useEffect(() => {
+    if (
+      !active ||
+      Platform.OS !== 'web' ||
+      typeof window === 'undefined' ||
+      !window.visualViewport
+    ) {
+      setFrame(null);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const updateFrame = () => {
+      setFrame({
+        height: viewport.height,
+        offsetTop: viewport.offsetTop,
+      });
+    };
+
+    updateFrame();
+    viewport.addEventListener('resize', updateFrame);
+    viewport.addEventListener('scroll', updateFrame);
+    return () => {
+      viewport.removeEventListener('resize', updateFrame);
+      viewport.removeEventListener('scroll', updateFrame);
+    };
+  }, [active]);
+
+  return frame;
+};
+
 const QuickAddTaskSheet = ({
   initialDate,
   onClose,
@@ -43,6 +83,7 @@ const QuickAddTaskSheet = ({
 }) => {
   const inputRef = useRef<TextInput>(null);
   const { width } = useWindowDimensions();
+  const webViewportFrame = useWebViewportFrame(visible);
   const wide = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const {
     addTodo,
@@ -106,6 +147,15 @@ const QuickAddTaskSheet = ({
     orderedGroups.find((group) => group.id === groupId)?.name ??
     ungroupedName ??
     labels.groups.ungrouped;
+  const webViewportStyle: ViewStyle | undefined = webViewportFrame
+    ? {
+        height: webViewportFrame.height,
+        left: 0,
+        position: 'absolute',
+        right: 0,
+        top: webViewportFrame.offsetTop,
+      }
+    : undefined;
 
   return (
     <Modal
@@ -115,7 +165,13 @@ const QuickAddTaskSheet = ({
       transparent
       visible
     >
-      <View style={[styles.overlay, wide && styles.overlayWide]}>
+      <View
+        style={[
+          styles.overlay,
+          webViewportStyle,
+          wide && styles.overlayWide,
+        ]}
+      >
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardAvoider}

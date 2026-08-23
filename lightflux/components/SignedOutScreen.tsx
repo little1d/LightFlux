@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  type TextInputProps,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,6 +39,49 @@ type AuthStep =
   | 'registration-code'
   | 'set-password';
 
+const PasswordField = ({
+  compactSpacing = false,
+  focused,
+  hideLabel,
+  inputProps,
+  onToggleVisibility,
+  showLabel,
+  visible,
+}: {
+  compactSpacing?: boolean;
+  focused: boolean;
+  hideLabel: string;
+  inputProps: Omit<TextInputProps, 'secureTextEntry' | 'style'>;
+  onToggleVisibility: () => void;
+  showLabel: string;
+  visible: boolean;
+}) => (
+  <View
+    style={[
+      styles.passwordField,
+      compactSpacing && styles.passwordFieldCompactSpacing,
+      focused && styles.inputFocused,
+    ]}
+  >
+    <TextInput
+      {...inputProps}
+      secureTextEntry={!visible}
+      style={styles.passwordFieldInput}
+    />
+    <View style={styles.passwordVisibilityButton}>
+      <IconButton
+        disabled={inputProps.editable === false}
+        icon={visible ? 'eye-off-outline' : 'eye-outline'}
+        label={visible ? hideLabel : showLabel}
+        onPress={onToggleVisibility}
+        showTooltip={Platform.OS === 'web'}
+        size="small"
+        variant="transparent"
+      />
+    </View>
+  </View>
+);
+
 const SignedOutScreen = ({
   onCancel,
   onContinue,
@@ -60,6 +104,8 @@ const SignedOutScreen = ({
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -238,6 +284,8 @@ const SignedOutScreen = ({
     setCode('');
     setError('');
     setNotice('');
+    setPasswordVisible(false);
+    setConfirmPasswordVisible(false);
   };
 
   const selectMethod = (nextMethod: AuthMethod) => {
@@ -392,101 +440,112 @@ const SignedOutScreen = ({
                       value={email}
                     />
                     {method === 'password' ? (
-                      <TextInput
-                        accessibilityLabel={labels.passwordPlaceholder}
-                        autoCapitalize="none"
-                        autoComplete={
-                          passwordMode === 'register'
-                            ? 'new-password'
-                            : 'current-password'
-                        }
-                        autoCorrect={false}
-                        editable={!busy}
-                        maxLength={128}
-                        onBlur={() => setFocusedField(null)}
-                        onChangeText={(value) => {
-                          setError('');
-                          setPassword(value);
+                      <PasswordField
+                        compactSpacing
+                        focused={focusedField === 'password'}
+                        hideLabel={labels.hidePassword}
+                        inputProps={{
+                          accessibilityLabel: labels.passwordPlaceholder,
+                          autoCapitalize: 'none',
+                          autoComplete:
+                            passwordMode === 'register'
+                              ? 'new-password'
+                              : 'current-password',
+                          autoCorrect: false,
+                          editable: !busy,
+                          maxLength: 128,
+                          onBlur: () => setFocusedField(null),
+                          onChangeText: (value) => {
+                            setError('');
+                            setPassword(value);
+                          },
+                          onFocus: () => setFocusedField('password'),
+                          onSubmitEditing: () => {
+                            if (!primaryDisabled) {
+                              void submitPassword();
+                            }
+                          },
+                          placeholder: labels.passwordPlaceholder,
+                          placeholderTextColor: '#A2A3B0',
+                          returnKeyType: 'done',
+                          textContentType:
+                            passwordMode === 'register'
+                              ? 'newPassword'
+                              : 'password',
+                          value: password,
                         }}
-                        onFocus={() => setFocusedField('password')}
-                        onSubmitEditing={() => {
-                          if (!primaryDisabled) {
-                            void submitPassword();
-                          }
-                        }}
-                        placeholder={labels.passwordPlaceholder}
-                        placeholderTextColor="#A2A3B0"
-                        returnKeyType="done"
-                        secureTextEntry
-                        style={[
-                          styles.input,
-                          styles.passwordInput,
-                          focusedField === 'password' && styles.inputFocused,
-                        ]}
-                        textContentType={
-                          passwordMode === 'register'
-                            ? 'newPassword'
-                            : 'password'
+                        onToggleVisibility={() =>
+                          setPasswordVisible((current) => !current)
                         }
-                        value={password}
+                        showLabel={labels.showPassword}
+                        visible={passwordVisible}
                       />
                     ) : null}
                   </>
                 ) : step === 'set-password' ? (
                   <>
-                    <TextInput
-                      accessibilityLabel={labels.passwordPlaceholder}
-                      autoCapitalize="none"
-                      autoComplete="new-password"
-                      autoCorrect={false}
-                      editable={!busy}
-                      maxLength={128}
-                      onBlur={() => setFocusedField(null)}
-                      onChangeText={(value) => {
-                        setError('');
-                        setPassword(value);
+                    <PasswordField
+                      focused={focusedField === 'password'}
+                      hideLabel={labels.hidePassword}
+                      inputProps={{
+                        accessibilityLabel: labels.passwordPlaceholder,
+                        autoCapitalize: 'none',
+                        autoComplete: 'new-password',
+                        autoCorrect: false,
+                        editable: !busy,
+                        maxLength: 128,
+                        onBlur: () => setFocusedField(null),
+                        onChangeText: (value) => {
+                          setError('');
+                          setPassword(value);
+                        },
+                        onFocus: () => setFocusedField('password'),
+                        placeholder: labels.passwordPlaceholder,
+                        placeholderTextColor: '#A2A3B0',
+                        returnKeyType: 'next',
+                        textContentType: 'newPassword',
+                        value: password,
                       }}
-                      onFocus={() => setFocusedField('password')}
-                      placeholder={labels.passwordPlaceholder}
-                      placeholderTextColor="#A2A3B0"
-                      returnKeyType="next"
-                      secureTextEntry
-                      style={[
-                        styles.input,
-                        focusedField === 'password' && styles.inputFocused,
-                      ]}
-                      textContentType="newPassword"
-                      value={password}
+                      onToggleVisibility={() =>
+                        setPasswordVisible((current) => !current)
+                      }
+                      showLabel={labels.showPassword}
+                      visible={passwordVisible}
                     />
-                    <TextInput
-                      accessibilityLabel={labels.passwordConfirmPlaceholder}
-                      autoCapitalize="none"
-                      autoComplete="new-password"
-                      autoCorrect={false}
-                      editable={!busy}
-                      maxLength={128}
-                      onBlur={() => setFocusedField(null)}
-                      onChangeText={(value) => {
-                        setError('');
-                        setConfirmPassword(value);
+                    <PasswordField
+                      compactSpacing
+                      focused={focusedField === 'confirm'}
+                      hideLabel={labels.hidePassword}
+                      inputProps={{
+                        accessibilityLabel:
+                          labels.passwordConfirmPlaceholder,
+                        autoCapitalize: 'none',
+                        autoComplete: 'new-password',
+                        autoCorrect: false,
+                        editable: !busy,
+                        maxLength: 128,
+                        onBlur: () => setFocusedField(null),
+                        onChangeText: (value) => {
+                          setError('');
+                          setConfirmPassword(value);
+                        },
+                        onFocus: () => setFocusedField('confirm'),
+                        onSubmitEditing: () => {
+                          if (!primaryDisabled) {
+                            void submitSetPassword();
+                          }
+                        },
+                        placeholder: labels.passwordConfirmPlaceholder,
+                        placeholderTextColor: '#A2A3B0',
+                        returnKeyType: 'done',
+                        textContentType: 'newPassword',
+                        value: confirmPassword,
                       }}
-                      onFocus={() => setFocusedField('confirm')}
-                      onSubmitEditing={() => {
-                        if (!primaryDisabled) {
-                          void submitSetPassword();
-                        }
-                      }}
-                      placeholder={labels.passwordConfirmPlaceholder}
-                      placeholderTextColor="#A2A3B0"
-                      returnKeyType="done"
-                      secureTextEntry
-                      style={[
-                        styles.input,
-                        styles.passwordInput,
-                        focusedField === 'confirm' && styles.inputFocused,
-                      ]}
-                      textContentType="newPassword"
-                      value={confirmPassword}
+                      onToggleVisibility={() =>
+                        setConfirmPasswordVisible((current) => !current)
+                      }
+                      showLabel={labels.showPassword}
+                      visible={confirmPasswordVisible}
                     />
                   </>
                 ) : (
@@ -594,6 +653,7 @@ const SignedOutScreen = ({
                       setPasswordMode((current) =>
                         current === 'sign-in' ? 'register' : 'sign-in',
                       );
+                      setPasswordVisible(false);
                       setError('');
                       setNotice('');
                     }}
@@ -753,8 +813,34 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     textAlign: 'center',
   },
-  passwordInput: {
+  passwordField: {
+    alignItems: 'center',
+    backgroundColor: '#F8F7FA',
+    borderColor: '#DCD9E5',
+    borderRadius: 8,
+    borderWidth: 2,
+    flexDirection: 'row',
+    height: 50,
+    marginTop: 12,
+    width: '100%',
+  },
+  passwordFieldCompactSpacing: {
     marginTop: 9,
+  },
+  passwordFieldInput: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    color: '#303145',
+    flex: 1,
+    fontSize: 15,
+    height: '100%',
+    minWidth: 0,
+    outlineColor: 'transparent',
+    paddingLeft: 15,
+    paddingRight: 4,
+  },
+  passwordVisibilityButton: {
+    marginRight: 5,
   },
   inputFocused: {
     borderColor: '#8F83EE',

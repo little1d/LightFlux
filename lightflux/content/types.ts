@@ -185,6 +185,8 @@ export interface Translation {
     otpMethod: string;
     emailPlaceholder: string;
     passwordPlaceholder: string;
+    showPassword: string;
+    hidePassword: string;
     signInWithPassword: string;
     signingInWithPassword: string;
     registerWithPassword: string;

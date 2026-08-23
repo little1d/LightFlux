@@ -39,6 +39,8 @@ export const common: CommonContent = {
     otpMethod: '验证码',
     emailPlaceholder: '邮箱地址',
     passwordPlaceholder: '密码（至少 8 位）',
+    showPassword: '显示密码',
+    hidePassword: '隐藏密码',
     signInWithPassword: '登录',
     signingInWithPassword: '正在登录…',
     registerWithPassword: '创建账户',

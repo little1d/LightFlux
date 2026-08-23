@@ -39,6 +39,8 @@ export const common: CommonContent = {
     otpMethod: 'Email code',
     emailPlaceholder: 'Email address',
     passwordPlaceholder: 'Password (8+ characters)',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     signInWithPassword: 'Sign in',
     signingInWithPassword: 'Signing in…',
     registerWithPassword: 'Create account',

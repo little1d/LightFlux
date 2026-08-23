@@ -239,3 +239,8 @@ Use this format:
 - Context: Groups were replaced by Projects before public beta, while development and production contained only disposable test accounts and state.
 - Rule: Persist and accept only V12 `projects` and `projectId` data. Keep local state and sync metadata in V12-specific namespaces, reject pre-V12 aggregates, and preserve the reserved Inbox Project during parsing and conflict merges.
 - Evidence: `lightflux/types/todo.ts`, `services/todoStorage.ts`, `services/appStateMerge.ts`, and `server/src/index.mjs`; `todoStorageMigration.test.ts`, `syncConflict.test.ts`, and `appStateMerge.test.ts`.
+
+### 2026-08-23 - Production Web origins are build inputs
+- Context: A successful Expo Web deployment shipped an empty Agent API origin because the GitHub production variables were absent; Metro also reused a locally cached public origin across exports.
+- Rule: Define all production `EXPO_PUBLIC_*_API_URL` values in the GitHub production environment, reject missing or non-HTTPS values before export, and clear Metro's cache for production Web builds.
+- Evidence: `.github/workflows/web-deploy.yml`; verified the deployed bundle embeds `https://lightflux.site`, the production login form loads, and the configured DeepSeek endpoint returns successfully.

@@ -19,6 +19,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { inputAccentProps } from '../../config/input';
 import { translations } from '../../content';
 import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
+import { useWebVisualViewport } from '../../hooks/useWebVisualViewport';
 import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
 import {
@@ -33,45 +34,6 @@ import { TASK_PRIORITY_THEME, TaskPriorityIcon } from './TaskPriorityIndicator';
 
 type Picker = 'date' | 'group' | 'priority' | null;
 
-interface WebViewportFrame {
-  height: number;
-  offsetTop: number;
-}
-
-const useWebViewportFrame = (active: boolean) => {
-  const [frame, setFrame] = useState<WebViewportFrame | null>(null);
-
-  useEffect(() => {
-    if (
-      !active ||
-      Platform.OS !== 'web' ||
-      typeof window === 'undefined' ||
-      !window.visualViewport
-    ) {
-      setFrame(null);
-      return;
-    }
-
-    const viewport = window.visualViewport;
-    const updateFrame = () => {
-      setFrame({
-        height: viewport.height,
-        offsetTop: viewport.offsetTop,
-      });
-    };
-
-    updateFrame();
-    viewport.addEventListener('resize', updateFrame);
-    viewport.addEventListener('scroll', updateFrame);
-    return () => {
-      viewport.removeEventListener('resize', updateFrame);
-      viewport.removeEventListener('scroll', updateFrame);
-    };
-  }, [active]);
-
-  return frame;
-};
-
 const QuickAddTaskSheet = ({
   initialDate,
   onClose,
@@ -83,7 +45,7 @@ const QuickAddTaskSheet = ({
 }) => {
   const inputRef = useRef<TextInput>(null);
   const { width } = useWindowDimensions();
-  const webViewportFrame = useWebViewportFrame(visible);
+  const webViewportFrame = useWebVisualViewport(visible);
   const wide = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const {
     addTodo,

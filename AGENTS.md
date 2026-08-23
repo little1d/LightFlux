@@ -152,10 +152,10 @@ Use this format:
 - Rule: Preserve one shared action-menu contract, but measure native trigger views with `measureInWindow`, pass a position, and clamp it against the viewport in `MenuSurface`. Reserve the bottom sheet layout only for intentionally unanchored native overlays; retain the Web `Portal` and fixed-position path.
 - Evidence: `lightflux/components/tasks/useTaskContextMenu.ts`, `components/groups/useGroupContextMenu.ts`, `components/milestones/useMilestoneContextMenu.ts`, `components/ui/MenuSurface.tsx`, `components/ui/menuPosition.ts`; `lightflux/tests/menuPosition.test.ts`.
 
-### 2026-08-19 - Native focus workflows use full-screen workspaces
-- Context: AI commands and global search reused narrow desktop overlays on iOS/Android, carrying desktop shortcut copy and leaving the active screen visible behind a touch workflow.
-- Rule: Keep AI/search business behavior shared, but render focused native text-entry workflows as full-screen safe-area workspaces with explicit close controls. Keep Web/Tauri keyboard shortcuts and compact overlays; expose mobile search through an accessible icon rather than a persistent navigation item.
-- Evidence: `lightflux/components/agent/AgentCommandPanel.tsx`, `lightflux/components/SearchOverlay.tsx`, `lightflux/App.tsx`; verified narrow Web entry flow and `npm run typecheck`.
+### 2026-08-19 - Native focus workflows use task-appropriate depth
+- Context: Search benefits from a full-screen result workspace, while a full-screen AI prompt consumed the source context and left little usable room once the phone keyboard appeared.
+- Rule: Keep AI/search business behavior shared. Native search remains a full-screen safe-area workspace, while AI uses an explicit-close, keyboard-avoiding bottom sheet around 38% of the available height so the originating task surface remains visible. Keep Web/Tauri keyboard shortcuts and expose mobile search through an accessible icon rather than persistent navigation.
+- Evidence: `lightflux/components/agent/AgentCommandPanel.tsx`, `lightflux/components/SearchOverlay.tsx`, and `lightflux/app/_layout.tsx`; verified at 393x852 and a keyboard-reduced 393x500 viewport.
 
 ### 2026-08-21 - Mobile utilities belong to the routed shell
 - Context: Restricting settings, search, and AI to Today and Groups made the six primary routes inconsistent, while repeating page titles consumed the space needed for a stable shared header.
@@ -216,3 +216,8 @@ Use this format:
 - Context: iOS browser chrome and the software keyboard reduced the visible viewport while a hard root minimum height and layout-viewport bottom sheet left navigation below the screen and a large gap above the keyboard.
 - Rule: On narrow Web, size the application root with the dynamic viewport, compact shell chrome for short heights, and anchor focused bottom sheets to `window.visualViewport` height plus offset instead of the layout viewport.
 - Evidence: `lightflux/config/focusStyles.web.ts`, `app/_layout.tsx`, and `components/tasks/QuickAddTaskSheet.tsx`; verified at 320x568, 402x500, and a keyboard-reduced 402x350 visual viewport.
+
+### 2026-08-23 - Mobile creation actions share one fixed anchor
+- Context: Today, Calendar, and Groups each positioned their mobile add action independently, so the same control jumped vertically between routes.
+- Rule: Use the shared bottom-right mobile quick-add control above navigation. Keep its location fixed rather than user-draggable so it stays predictable and does not compete with task drag or system-edge gestures.
+- Evidence: `lightflux/components/tasks/MobileQuickAddButton.tsx`, `app/_layout.tsx`, and `components/CalendarScreen.tsx`; all three routes rendered the FAB at the same 393x852 coordinates.

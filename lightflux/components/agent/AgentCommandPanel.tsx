@@ -2,6 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,6 +12,7 @@ import {
   Text,
   TextInput,
   View,
+  type ViewStyle,
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,6 +37,7 @@ import {
 } from '../../agent/types';
 import { inputAccentProps } from '../../config/input';
 import { translations } from '../../content';
+import { useWebVisualViewport } from '../../hooks/useWebVisualViewport';
 import {
   AgentTurnResponse,
   reportAgentProposalResult,
@@ -60,7 +63,28 @@ const AgentCommandPanel = ({
   const { height, width } = useWindowDimensions();
   const compact = width < 700;
   const nativeWorkspace = Platform.OS !== 'web';
-  const compactPanelHeight = Math.max(420, Math.round(height * 0.78));
+  const sheetWorkspace = nativeWorkspace || compact;
+  const [nativeKeyboardHeight, setNativeKeyboardHeight] = useState(0);
+  const webViewportFrame = useWebVisualViewport(visible && compact);
+  const nativeAvailableHeight =
+    Platform.OS === 'ios'
+      ? Math.max(0, height - nativeKeyboardHeight)
+      : height;
+  const availableHeight =
+    webViewportFrame?.height ?? nativeAvailableHeight;
+  const compactPanelHeight = Math.min(
+    380,
+    Math.max(240, Math.round(availableHeight * 0.38)),
+  );
+  const webViewportStyle: ViewStyle | undefined = webViewportFrame
+    ? {
+        height: webViewportFrame.height,
+        left: 0,
+        position: 'absolute',
+        right: 0,
+        top: webViewportFrame.offsetTop,
+      }
+    : undefined;
   const progress = useRef(new Animated.Value(0)).current;
   const requestController = useRef<AbortController | null>(null);
   const [conversationId, setConversationId] = useState<string>();
@@ -73,6 +97,30 @@ const AgentCommandPanel = ({
   const [undoAvailable, setUndoAvailable] = useState(
     canUndoLastAgentProposal(),
   );
+
+  useEffect(() => {
+    if (!visible || !nativeWorkspace) {
+      setNativeKeyboardHeight(0);
+      return;
+    }
+
+    const showEvent =
+      Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
+    const hideEvent =
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSubscription = Keyboard.addListener(
+      showEvent,
+      (event) => setNativeKeyboardHeight(event.endCoordinates.height),
+    );
+    const hideSubscription = Keyboard.addListener(
+      hideEvent,
+      () => setNativeKeyboardHeight(0),
+    );
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [nativeWorkspace, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -306,7 +354,7 @@ const AgentCommandPanel = ({
       <View
         style={[
           styles.overlay,
-          nativeWorkspace && styles.nativeOverlay,
+          sheetWorkspace && styles.sheetOverlay,
         ]}
       >
         {!nativeWorkspace ? (
@@ -319,28 +367,20 @@ const AgentCommandPanel = ({
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={
-            nativeWorkspace || compact
-              ? styles.workspaceKeyboardAvoider
+            sheetWorkspace
+              ? [styles.workspaceKeyboardAvoider, webViewportStyle]
               : undefined
           }
         >
           <SafeAreaView
-            edges={nativeWorkspace ? ['top'] : []}
-            style={
-              nativeWorkspace || compact
-                ? styles.workspaceSafeArea
-                : undefined
-            }
+            edges={[]}
+            style={sheetWorkspace ? styles.workspaceSafeArea : undefined}
           >
             <Animated.View
             style={[
               styles.panel,
-              nativeWorkspace
-                ? styles.panelNative
-                : compact
-                  ? styles.panelCompact
-                  : styles.panelWide,
-              compact && !nativeWorkspace
+              sheetWorkspace ? styles.panelCompact : styles.panelWide,
+              sheetWorkspace
                 ? { height: compactPanelHeight }
                 : null,
               {
@@ -349,13 +389,13 @@ const AgentCommandPanel = ({
                   {
                     translateY: progress.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [nativeWorkspace ? 8 : compact ? 16 : 8, 0],
+                      outputRange: [sheetWorkspace ? 16 : 8, 0],
                     }),
                   },
                   {
                     scale: progress.interpolate({
                       inputRange: [0, 1],
-                      outputRange: [nativeWorkspace ? 1 : 0.985, 1],
+                      outputRange: [sheetWorkspace ? 1 : 0.985, 1],
                     }),
                   },
                 ],
@@ -569,7 +609,7 @@ const AgentCommandPanel = ({
                   icon="arrow-up"
                   label={labels.send}
                   onPress={() => void send()}
-                  size="medium"
+                  size="large"
                   variant="solid"
                 />
               </View>
@@ -683,8 +723,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  nativeOverlay: {
-    backgroundColor: 'transparent',
+  sheetOverlay: {
     justifyContent: 'flex-end',
   },
   workspaceSafeArea: {
@@ -723,17 +762,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 18,
     maxHeight: '100%',
     minHeight: undefined,
-    width: '100%',
-  },
-  panelNative: {
-    borderColor: 'transparent',
-    borderRadius: 0,
-    borderWidth: 0,
-    flex: 1,
-    height: '100%',
-    maxHeight: '100%',
-    minHeight: undefined,
-    shadowOpacity: 0,
     width: '100%',
   },
   header: {
@@ -1015,10 +1043,10 @@ const styles = StyleSheet.create({
     color: '#303145',
     flex: 1,
     fontSize: 13,
+    height: 40,
     maxHeight: 110,
-    minHeight: 42,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   sendButtonPosition: {
     marginLeft: 8,

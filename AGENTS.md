@@ -221,3 +221,8 @@ Use this format:
 - Context: Today, Calendar, and Groups each positioned their mobile add action independently, so the same control jumped vertically between routes.
 - Rule: Use the shared bottom-right mobile quick-add control above navigation. Keep its location fixed rather than user-draggable so it stays predictable and does not compete with task drag or system-edge gestures.
 - Evidence: `lightflux/components/tasks/MobileQuickAddButton.tsx`, `app/_layout.tsx`, and `components/CalendarScreen.tsx`; all three routes rendered the FAB at the same 393x852 coordinates.
+
+### 2026-08-23 - Brand surfaces use the canonical mark
+- Context: Web metadata and in-app headers still used Expo placeholders or separately drawn checkmarks after the LightFlux logo was finalized.
+- Rule: Reuse `lightflux/assets/brand-mark.png` for in-app brand identity and derive platform icons from the same cropped source. Keep functional completion icons separate from the brand mark.
+- Evidence: `lightflux/app.json`, `assets/brand-mark.png`, `public/apple-touch-icon.png`, `components/TodoScreen.tsx`, and `components/SignedOutScreen.tsx`; verified in the exported Web document and rendered Today/login views.

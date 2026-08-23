@@ -9,6 +9,7 @@ import React, {
 } from 'react';
 import {
   FlatList,
+  Image,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -431,14 +432,11 @@ const TodoScreen = ({
       {showBrandHeader ? (
         <View className="flex-row items-center justify-between pb-[22px] pt-[18px]">
           <View className="shrink flex-row items-center">
-            <View
-              className="mr-[11px] h-11 w-11 items-center justify-center rounded-[14px] bg-primary"
-              style={styles.brandMarkShadow}
-            >
-              <Text className="text-2xl font-extrabold leading-7 text-white">
-                ✓
-              </Text>
-            </View>
+            <Image
+              accessibilityLabel={labels.appName}
+              source={require('../assets/brand-mark.png')}
+              style={[styles.brandMark, styles.brandMarkShadow]}
+            />
             <View>
               <Text className="text-[21px] font-extrabold tracking-[-0.4px] text-ink">
                 {labels.appName}
@@ -631,6 +629,11 @@ const styles = StyleSheet.create({
     shadowOffset: { height: 6, width: 0 },
     shadowOpacity: 0.24,
     shadowRadius: 10,
+  },
+  brandMark: {
+    height: 44,
+    marginRight: 11,
+    width: 44,
   },
   composerShadow: {
     shadowColor: '#45435F',

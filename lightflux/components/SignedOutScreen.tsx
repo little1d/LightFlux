@@ -1,8 +1,8 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -368,9 +368,11 @@ const SignedOutScreen = ({
                 />
               </View>
             ) : null}
-            <View style={styles.brandMark}>
-              <Ionicons color="#FFFFFF" name="checkmark" size={34} strokeWidth={4} />
-            </View>
+            <Image
+              accessibilityLabel={allLabels.appName}
+              source={require('../assets/brand-mark.png')}
+              style={styles.brandMark}
+            />
             <Text style={styles.title}>{labels.title}</Text>
             <Text style={styles.description}>
               {step === 'set-password'
@@ -742,11 +744,7 @@ const styles = StyleSheet.create({
     top: 12,
   },
   brandMark: {
-    alignItems: 'center',
-    backgroundColor: '#6759E8',
-    borderRadius: 16,
     height: 72,
-    justifyContent: 'center',
     marginBottom: 20,
     width: 72,
   },

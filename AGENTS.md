@@ -159,7 +159,7 @@ Use this format:
 
 ### 2026-08-21 - Mobile utilities belong to the routed shell
 - Context: Restricting settings, search, and AI to Today and Groups made the six primary routes inconsistent, while repeating page titles consumed the space needed for a stable shared header.
-- Rule: On narrow layouts, render settings, search, and AI from the routed shell on every primary navigation route; page surfaces reserve that space and omit redundant top-level titles. Never render application shell chrome, navigation, FAB, search, or Agent underneath `/login`.
+- Rule: On narrow layouts, render settings, search, and AI from the routed shell on every primary navigation route; page surfaces reserve that space and omit redundant top-level titles. Suppress those utilities and the FAB while the Settings panel owns the foreground. Never render application shell chrome, navigation, FAB, search, or Agent underneath `/login`.
 - Evidence: `lightflux/app/_layout.tsx`, `lightflux/components/GroupsScreen.tsx`, `CompletedScreen.tsx`, `CalendarScreen.tsx`, `MilestonesScreen.tsx`, and `TrashScreen.tsx`; verified every primary route at 402x874 and 858x781.
 
 ### 2026-08-21 - Authentication routes preserve the Router Slot
@@ -194,7 +194,7 @@ Use this format:
 
 ### 2026-08-20 - Phone layouts remove explanatory duplication
 - Context: At 402 px, Settings repeated control descriptions, task details nested a bordered editor card inside a sheet, and Calendar repeated the selected date above a second task/composer card.
-- Rule: Below phone-width breakpoints, omit copy that restates a control and treat bounded workspaces as one surface. On Calendar, let the selected cell carry date context, create through one selected-date add action, and show matching task rows directly below the month grid.
+- Rule: Below phone-width breakpoints, omit copy that restates a control and treat bounded workspaces as one surface. Keep Settings typography and controls compact, and omit promotional account copy. On Calendar, let the selected cell carry date context, create through one selected-date add action, show matching task rows directly below the month grid, and omit group-color dots already represented by the task adjustment sheet.
 - Evidence: `lightflux/components/SettingsScreen.tsx`, `components/editor/TaskEditorScreen.web.tsx`, `TaskEditorScreen.native.tsx`, `components/CalendarScreen.tsx`; verified at 402 px and 1200 px plus tests, typecheck, and Web export.
 
 ### 2026-08-20 - Narrow task actions use explicit bottom sheets

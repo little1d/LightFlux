@@ -166,6 +166,7 @@ const CalendarTask = ({
   onOpenMenu,
   onToggle,
   selected,
+  showGroupColor,
   childCount,
   markActive,
   markComplete,
@@ -181,6 +182,7 @@ const CalendarTask = ({
   onOpenMenu: OpenTaskMenu;
   onToggle: (id: string) => void;
   selected: boolean;
+  showGroupColor: boolean;
   childCount: number;
   markActive: string;
   markComplete: string;
@@ -238,9 +240,11 @@ const CalendarTask = ({
       </Pressable>
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
-      <View
-        style={[styles.taskGroupDot, { backgroundColor: color }]}
-      />
+      {showGroupColor ? (
+        <View
+          style={[styles.taskGroupDot, { backgroundColor: color }]}
+        />
+      ) : null}
       <TaskMoreButton
         label={moreActionsLabel}
         onPress={openFromButton}
@@ -476,6 +480,7 @@ const CalendarScreen = ({
                     onOpenMenu={onOpenTaskMenu}
                     onToggle={toggleTodo}
                     selected={selectedTaskId === todo.id}
+                    showGroupColor={!mobileFab}
                     todo={todo}
                   />
                 ))}

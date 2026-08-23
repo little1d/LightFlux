@@ -786,6 +786,7 @@ const AppShell = () => {
   const showMobileUtilities =
     !usesDesktopLayout &&
     !selectedTask &&
+    !settingsPanelOpen &&
     navigationItems.some((item) => item.id === activeView);
   const showAppShell =
     sessionState !== null &&
@@ -1035,6 +1036,7 @@ const AppShell = () => {
       {showAppShell &&
       !usesDesktopLayout &&
       !selectedTask &&
+      !settingsPanelOpen &&
       (activeView === 'today' || activeView === 'groups') ? (
         <MobileQuickAddButton
           label={labels.addTask}
@@ -1064,6 +1066,7 @@ const AppShell = () => {
             <SettingsScreen
               currentUser={currentUser}
               hiddenNavigationItems={hiddenNavigationItems}
+              onClose={() => setSettingsPanelOpen(false)}
               onNavigationVisibilityChange={setNavigationVisible}
               onOpenStatistics={() => {
                 setSettingsPanelOpen(false);

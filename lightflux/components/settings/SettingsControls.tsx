@@ -51,7 +51,14 @@ export const SettingRow = ({
         compact && styles.settingCopyCompact,
       ]}
     >
-      <Text style={styles.settingTitle}>{title}</Text>
+      <Text
+        style={[
+          styles.settingTitle,
+          compact && styles.settingTitleCompact,
+        ]}
+      >
+        {title}
+      </Text>
       {description ? (
         <Text style={styles.settingDescription}>{description}</Text>
       ) : null}
@@ -119,7 +126,13 @@ export const SettingSelect = <T extends string>({
           pressed && styles.controlPressed,
         ]}
       >
-        <Text numberOfLines={1} style={styles.selectText}>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.selectText,
+            compact && styles.selectTextCompact,
+          ]}
+        >
           {selected}
         </Text>
         <Ionicons

@@ -26,11 +26,13 @@ import {
   SettingSelect,
 } from './settings/SettingsControls';
 import sharedStyles from './settings/styles';
+import IconButton from './ui/IconButton';
 
 const SettingsScreen = ({
   currentUser,
   hiddenNavigationItems,
   onNavigationVisibilityChange,
+  onClose,
   onOpenStatistics,
   onSignIn,
   onSignOut,
@@ -41,6 +43,7 @@ const SettingsScreen = ({
     id: OptionalNavigationItemId,
     visible: boolean,
   ) => void;
+  onClose?: () => void;
   onOpenStatistics: () => void;
   onSignIn: () => void;
   onSignOut: () => void;
@@ -71,29 +74,29 @@ const SettingsScreen = ({
         accountCard: {
           alignItems: 'center',
           flexDirection: 'row',
-          paddingHorizontal: compact ? 2 : 16,
-          paddingVertical: compact ? 10 : 14,
+          paddingHorizontal: compact ? 0 : 16,
+          paddingVertical: compact ? 6 : 14,
         },
         accountAvatar: {
           alignItems: 'center',
           backgroundColor: '#6759E8',
-          borderRadius: compact ? 18 : 22,
-          height: compact ? 36 : 44,
+          borderRadius: compact ? 16 : 22,
+          height: compact ? 32 : 44,
           justifyContent: 'center',
-          marginRight: compact ? 10 : 13,
-          width: compact ? 36 : 44,
+          marginRight: compact ? 8 : 13,
+          width: compact ? 32 : 44,
         },
         accountInfo: {
           flex: 1,
         },
         accountEmail: {
           color: '#2E2F41',
-          fontSize: compact ? 14 : 15,
-          fontWeight: '800',
+          fontSize: compact ? 13 : 15,
+          fontWeight: compact ? '600' : '800',
         },
         accountLabel: {
           color: '#858797',
-          fontSize: compact ? 11 : 12,
+          fontSize: compact ? 10 : 12,
           marginTop: 2,
         },
         signOutButton: {
@@ -103,8 +106,9 @@ const SettingsScreen = ({
           borderWidth: 1,
           flexDirection: 'row',
           gap: 6,
-          paddingHorizontal: compact ? 12 : 16,
-          paddingVertical: compact ? 6 : 8,
+          minHeight: compact ? 32 : undefined,
+          paddingHorizontal: compact ? 9 : 16,
+          paddingVertical: compact ? 0 : 8,
         },
         signOutButtonHovered: {
           backgroundColor: '#FFF5F6',
@@ -115,8 +119,8 @@ const SettingsScreen = ({
         },
         signOutText: {
           color: '#C84F60',
-          fontSize: compact ? 12 : 13,
-          fontWeight: '700',
+          fontSize: compact ? 11 : 13,
+          fontWeight: compact ? '600' : '700',
         },
         signInButton: {
           alignItems: 'center',
@@ -124,8 +128,9 @@ const SettingsScreen = ({
           borderRadius: 8,
           flexDirection: 'row',
           gap: 5,
-          paddingHorizontal: compact ? 10 : 14,
-          paddingVertical: compact ? 7 : 9,
+          minHeight: compact ? 32 : undefined,
+          paddingHorizontal: compact ? 9 : 14,
+          paddingVertical: compact ? 0 : 9,
         },
         signInButtonHovered: {
           backgroundColor: '#594CCD',
@@ -136,22 +141,22 @@ const SettingsScreen = ({
         },
         signInText: {
           color: '#FFFFFF',
-          fontSize: compact ? 12 : 13,
-          fontWeight: '700',
+          fontSize: compact ? 11 : 13,
+          fontWeight: compact ? '600' : '700',
         },
         localAvatar: {
           alignItems: 'center',
           backgroundColor: '#EDE9FF',
-          borderRadius: compact ? 18 : 22,
-          height: compact ? 36 : 44,
+          borderRadius: compact ? 16 : 22,
+          height: compact ? 32 : 44,
           justifyContent: 'center',
-          marginRight: compact ? 10 : 13,
-          width: compact ? 36 : 44,
+          marginRight: compact ? 8 : 13,
+          width: compact ? 32 : 44,
         },
         localEmail: {
           color: '#2E2F41',
-          fontSize: compact ? 14 : 15,
-          fontWeight: '800',
+          fontSize: compact ? 13 : 15,
+          fontWeight: compact ? '600' : '800',
         },
       }),
     [compact],
@@ -169,10 +174,26 @@ const SettingsScreen = ({
           showsVerticalScrollIndicator={false}
           style={sharedStyles.scroll}
         >
-          <View style={[sharedStyles.header, compact && sharedStyles.headerCompact]}>
+          <View
+            style={[
+              sharedStyles.header,
+              compact && sharedStyles.headerCompact,
+              compact && onClose && sharedStyles.headerWithAction,
+            ]}
+          >
             <Text style={[sharedStyles.title, compact && sharedStyles.titleCompact]}>
               {labels.settings.title}
             </Text>
+            {compact && onClose ? (
+              <IconButton
+                icon="close"
+                label={labels.cancel}
+                onPress={onClose}
+                showTooltip={false}
+                size="small"
+                variant="transparent"
+              />
+            ) : null}
           </View>
 
           <View style={[sharedStyles.section, compact && sharedStyles.sectionCompact]}>
@@ -193,7 +214,7 @@ const SettingsScreen = ({
               {currentUser ? (
                 <View style={styles.accountCard}>
                   <View style={styles.accountAvatar}>
-                    <Ionicons color="#FFFFFF" name="person" size={compact ? 18 : 22} />
+                    <Ionicons color="#FFFFFF" name="person" size={compact ? 16 : 22} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.accountEmail} numberOfLines={1}>
@@ -222,15 +243,17 @@ const SettingsScreen = ({
               ) : (
                 <View style={styles.accountCard}>
                   <View style={styles.localAvatar}>
-                    <Ionicons color="#6759E8" name="phone-portrait-outline" size={compact ? 18 : 22} />
+                    <Ionicons color="#6759E8" name="phone-portrait-outline" size={compact ? 16 : 22} />
                   </View>
                   <View style={styles.accountInfo}>
                     <Text style={styles.localEmail}>
                       {labels.settings.localOnly}
                     </Text>
-                    <Text style={styles.accountLabel}>
-                      {labels.settings.localOnlyDescription}
-                    </Text>
+                    {compact ? null : (
+                      <Text style={styles.accountLabel}>
+                        {labels.settings.localOnlyDescription}
+                      </Text>
+                    )}
                   </View>
                   <Pressable
                     accessibilityLabel={labels.settings.signIn}
@@ -336,7 +359,12 @@ const SettingsScreen = ({
                   />
                 </View>
                 <View style={sharedStyles.linkCopy}>
-                  <Text style={sharedStyles.settingTitle}>
+                  <Text
+                    style={[
+                      sharedStyles.settingTitle,
+                      compact && sharedStyles.settingTitleCompact,
+                    ]}
+                  >
                     {labels.settings.statisticsTitle}
                   </Text>
                   {compact ? null : (
@@ -387,12 +415,14 @@ const SettingsScreen = ({
                       }
                       style={[
                         sharedStyles.toggle,
+                        compact && sharedStyles.toggleCompact,
                         visible && sharedStyles.toggleActive,
                       ]}
                     >
                       <View
                         style={[
                           sharedStyles.toggleThumb,
+                          compact && sharedStyles.toggleThumbCompact,
                           visible && sharedStyles.toggleThumbActive,
                         ]}
                       />

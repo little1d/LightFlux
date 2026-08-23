@@ -26,8 +26,13 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   headerCompact: {
-    paddingBottom: 13,
-    paddingTop: 10,
+    paddingBottom: 10,
+    paddingTop: 8,
+  },
+  headerWithAction: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   title: {
     color: '#28293A',
@@ -35,7 +40,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   titleCompact: {
-    fontSize: 22,
+    fontSize: 19,
+    fontWeight: '700',
   },
   section: {
     marginBottom: 20,
@@ -51,7 +57,8 @@ const styles = StyleSheet.create({
     marginLeft: 3,
   },
   sectionTitleCompact: {
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: '700',
     marginBottom: 5,
     marginLeft: 1,
   },
@@ -77,9 +84,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   settingRowCompact: {
-    minHeight: 46,
+    minHeight: 42,
     paddingHorizontal: 2,
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   settingRowSimple: {
     minHeight: 58,
@@ -114,6 +121,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '800',
   },
+  settingTitleCompact: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   settingDescription: {
     color: '#81828F',
     fontSize: 11,
@@ -139,9 +150,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
   selectCompact: {
-    borderRadius: 10,
-    minHeight: 38,
-    paddingHorizontal: 11,
+    borderRadius: 8,
+    minHeight: 34,
+    paddingHorizontal: 10,
   },
   selectHovered: {
     backgroundColor: '#FFFFFF',
@@ -162,6 +173,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginRight: 10,
   },
+  selectTextCompact: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   controlPressed: {
     opacity: 0.76,
     transform: [{ scale: 0.98 }],
@@ -180,6 +195,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#6759E8',
     borderColor: '#6759E8',
   },
+  toggleCompact: {
+    borderRadius: 12,
+    height: 24,
+    width: 44,
+  },
   toggleThumb: {
     backgroundColor: '#FFFFFF',
     borderRadius: 11,
@@ -193,6 +213,11 @@ const styles = StyleSheet.create({
   toggleThumbActive: {
     alignSelf: 'flex-end',
   },
+  toggleThumbCompact: {
+    borderRadius: 9,
+    height: 18,
+    width: 18,
+  },
   linkRow: {
     alignItems: 'center',
     borderLeftColor: 'transparent',
@@ -203,7 +228,7 @@ const styles = StyleSheet.create({
   },
   linkRowCompact: {
     borderLeftWidth: 0,
-    minHeight: 50,
+    minHeight: 42,
     paddingHorizontal: 2,
   },
   linkRowHovered: {
@@ -224,9 +249,9 @@ const styles = StyleSheet.create({
   linkIconCompact: {
     backgroundColor: 'transparent',
     borderRadius: 0,
-    height: 28,
+    height: 24,
     marginRight: 8,
-    width: 28,
+    width: 24,
   },
   linkCopy: {
     flex: 1,

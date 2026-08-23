@@ -228,6 +228,7 @@ const MilestonesScreen = () => {
           </View>
 
           <ScrollView
+            contentContainerStyle={styles.filterContent}
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.filters}
@@ -454,11 +455,16 @@ const styles = StyleSheet.create({
     height: 40,
     marginBottom: 15,
   },
+  filterContent: {
+    alignItems: 'center',
+  },
   filter: {
+    alignItems: 'center',
     borderRadius: 10,
+    height: 40,
+    justifyContent: 'center',
     marginRight: 5,
     paddingHorizontal: 11,
-    paddingVertical: 7,
   },
   filterSelected: {
     backgroundColor: '#ECE9FF',
@@ -467,6 +473,7 @@ const styles = StyleSheet.create({
     color: '#858694',
     fontSize: 11,
     fontWeight: '600',
+    lineHeight: 16,
   },
   filterTextSelected: {
     color: '#6759E8',

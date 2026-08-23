@@ -62,17 +62,36 @@ const MilestoneCard = ({
       ref={targetRef}
       style={[
         styles.card,
-        selected && styles.selected,
+        {
+          backgroundColor: `${milestone.color}12`,
+          borderColor: `${milestone.color}3D`,
+        },
         hovered && styles.hovered,
+        hovered && {
+          backgroundColor: `${milestone.color}1A`,
+          borderColor: `${milestone.color}66`,
+        },
+        selected && styles.selected,
+        selected && {
+          backgroundColor: `${milestone.color}24`,
+          borderColor: milestone.color,
+        },
       ]}
     >
+      <View
+        pointerEvents="none"
+        style={[styles.themeAccent, { backgroundColor: milestone.color }]}
+      />
       <Pressable
         accessibilityLabel={`${milestone.title}, ${status}`}
         accessibilityRole="button"
         delayLongPress={350}
         onLongPress={openFromLongPress}
         onPress={() => onSelect(milestone.id)}
-        style={styles.content}
+        style={({ pressed }) => [
+          styles.content,
+          pressed && styles.contentPressed,
+        ]}
       >
         <View style={styles.titleRow}>
           <View
@@ -102,12 +121,7 @@ const MilestoneCard = ({
           </View>
         </View>
 
-        <Text
-          style={[
-            styles.status,
-            occurrence?.daysFrom === 0 && { color: milestone.color },
-          ]}
-        >
+        <Text style={[styles.status, { color: milestone.color }]}>
           {status}
         </Text>
         {sequence ? <Text style={styles.sequence}>{sequence}</Text> : null}
@@ -161,21 +175,39 @@ const MilestoneCard = ({
 
 const styles = StyleSheet.create({
   card: {
+    borderRadius: 8,
+    borderWidth: 1,
+    elevation: 1,
     minHeight: 224,
     overflow: 'hidden',
     position: 'relative',
+    shadowColor: '#393647',
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
   },
   selected: {
-    backgroundColor: '#EEECFF',
-    borderRadius: 10,
+    shadowOpacity: 0.13,
+    shadowRadius: 13,
   },
   hovered: {
-    backgroundColor: '#F1F0F5',
-    borderRadius: 10,
+    shadowOpacity: 0.1,
+    transform: [{ translateY: -1 }],
+  },
+  themeAccent: {
+    bottom: 10,
+    borderRadius: 2,
+    left: 0,
+    position: 'absolute',
+    top: 10,
+    width: 3,
   },
   content: {
     flex: 1,
     padding: 15,
+  },
+  contentPressed: {
+    opacity: 0.76,
   },
   titleRow: {
     alignItems: 'center',
@@ -236,10 +268,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 11,
     top: 11,
-  },
-  pressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.92 }],
   },
   archivedBadge: {
     backgroundColor: '#EEEDEF',

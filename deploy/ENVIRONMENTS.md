@@ -55,6 +55,11 @@
 命名规则：**本机开发用无后缀 `.env`（默认指向 dev 资源）**；生产真实值只存在于服务器
 和 GitHub Actions secrets。`.gitignore` 已用 `.env.*` + `!*.example` 白名单确保只有模板进仓库。
 
+Radon / Expo 原生开发请求会携带动态端口的 `exp://127.0.0.1:*` Origin。本机
+`server/.env` 必须设置 `NODE_ENV=development`，并在
+`AUTH_TRUSTED_ORIGINS` 中保留 `exp://`。Better Auth 会按自定义协议匹配它；
+生产环境不得加入该开发 Origin。
+
 ### 为什么不是"两个 `.env` 同时加载"？
 
 - 应用运行时永远只该有一个真相来源，两个文件同时生效会产生"哪个覆盖哪个"的歧义。

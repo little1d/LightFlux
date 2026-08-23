@@ -208,9 +208,9 @@ Use this format:
 - Evidence: `server/migrations/003_app_state_revision.sql`, `server/src/postgres/repository.mjs`, `lightflux/services/todoStorage.ts`, `services/appStateMerge.ts`; `syncConflict.test.ts` and live PostgreSQL/API checks.
 
 ### 2026-08-20 - Native auth must prove session restoration
-- Context: An OTP sign-in response can succeed before a native credential is available to subsequent sync, upload, and Agent requests.
-- Rule: Store Expo native auth cookies in SecureStore, forward the recovered cookie through the shared authenticated fetch boundary, verify `getSession()` after OTP sign-in, and finish account-scoped cloud reconciliation before revealing task data.
-- Evidence: `lightflux/services/authClient.native.ts`, `authApi.ts`, `SignedOutScreen.tsx`, `App.tsx`; `authenticatedFetch.test.ts` and server email-auth tests.
+- Context: An OTP sign-in response can succeed before a native credential is available to subsequent sync, upload, and Agent requests; Radon also sends a dynamic-port `exp://` Origin that Better Auth rejects unless development trust is explicit.
+- Rule: Store Expo native auth cookies in SecureStore, forward the recovered cookie through the shared authenticated fetch boundary, verify `getSession()` after OTP sign-in, and finish account-scoped cloud reconciliation before revealing task data. Local API configuration must set `NODE_ENV=development` and trust `exp://`; production must not trust that development scheme.
+- Evidence: `lightflux/services/authClient.native.ts`, `authApi.ts`, `SignedOutScreen.tsx`, `server/.env.development.example`, and `deploy/ENVIRONMENTS.md`; `authenticatedFetch.test.ts`, server email-auth tests, and a live dynamic-origin registration/sign-in/sign-out check.
 
 ### 2026-08-23 - Mobile Web follows the visual viewport
 - Context: iOS browser chrome and the software keyboard reduced the visible viewport while a hard root minimum height and layout-viewport bottom sheet left navigation below the screen and a large gap above the keyboard.

@@ -1,9 +1,9 @@
 # Goal Run: Group To Project Migration
 
-- Status: `in_progress`
+- Status: `complete`
 - Source: User request, 2026-08-23
 - Started: 2026-08-23 15:35
-- Updated: 2026-08-23 16:19
+- Updated: 2026-08-23 16:36
 
 ## Objective
 
@@ -40,13 +40,13 @@ and accounts in development and production, and remove backward compatibility.
 | FEAT-003 | feature | Agent client and server | Agent context and operations use Project terminology and IDs. | All | high | done |
 | TEST-004 | verification | Client/server tests and runtime | Strict persistence, sync, task moves, AI operations, marketing, desktop, and narrow layouts pass. | All | high | done |
 | RESET-005 | destructive reset | Development and production PostgreSQL/upload storage | Both environments retain schema/migration history but contain no users, sessions, app state, verification data, or uploads. | Server | high | done |
-| SHIP-006 | delivery | Whole worktree | All current changes are reviewed, committed, and pushed to `origin/main`. | Repository | high | in_progress |
+| SHIP-006 | delivery | Whole worktree | All current changes are reviewed, committed, and pushed to `origin/main`. | Repository | high | done |
 
 ## Questions And Assumptions
 
 | ID | Kind | Detail | Resolution |
 | --- | --- | --- | --- |
-| ASSUMPTION-001 | product | Legacy ungrouped tasks need a Project. | Create the reserved Inbox Project and preserve any custom default-group name. |
+| ASSUMPTION-001 | product | Every current task needs a Project. | Fresh V12 state creates a reserved Inbox; legacy Group state is discarded. |
 | ASSUMPTION-002 | compatibility | Existing `/groups` links may be stored externally. | User explicitly chose to remove route compatibility; `/projects` is canonical. |
 | ASSUMPTION-003 | rollout | Cloud snapshots may still be V11 during upgrade. | Superseded: user explicitly approved clearing development and production before public beta. |
 
@@ -54,7 +54,7 @@ and accounts in development and production, and remove backward compatibility.
 
 | Time | Decision | Reason | Evidence |
 | --- | --- | --- | --- |
-| 2026-08-23 15:35 | Use schema V12 and preserve existing Group IDs. | The change is a domain migration, not a label-only replacement. | User request and `lightflux-cli/docs/architecture.md`. |
+| 2026-08-23 15:35 | Use schema V12 with a required Project ID. | The Project model needs a real Inbox instead of nullable grouping. | User request and `lightflux-cli/docs/architecture.md`. |
 | 2026-08-23 15:35 | Model Inbox as a real reserved Project. | Workspace tasks should belong to a Project; null grouping does not satisfy the 0.1.1 model. | Prior Workspace design and current ungrouped task behavior. |
 | 2026-08-23 | Remove `/groups` route compatibility. | The user prefers a clean Project-only URL surface. | Follow-up user decision. |
 | 2026-08-23 16:19 | Remove all V7-V11 data compatibility and reset both environments. | No public users exist yet; the user explicitly approved destructive reset before beta. | Current user request. |
@@ -153,11 +153,14 @@ and accounts in development and production, and remove backward compatibility.
 
 ## Completion
 
-- Completed items: MIG-001, FEAT-002, FEAT-003, TEST-004.
+- Completed items: MIG-001, FEAT-002, FEAT-003, TEST-004, RESET-005,
+  SHIP-006.
 - Acceptance evidence: strict V12 tests, client/server suites,
   typecheck, Web export, and browser workflows.
-- Checks not run: Physical iOS/Android device flow and Rust `cargo check`; no
-  native or Rust implementation changed.
+- Delivery: commit `90d4424` pushed to `origin/main`; this final record update
+  follows in a documentation-only commit.
+- Checks not run: Physical iOS/Android device flow. `cargo check` compiled the
+  crate, then the sandbox rejected access to the external Cargo cache.
 - Residual risk: pre-V12 clients cannot sync after the public-beta cutover by
   design.
 - Final status: complete

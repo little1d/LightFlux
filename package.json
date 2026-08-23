@@ -1,0 +1,28 @@
+{
+  "name": "lightflux",
+  "version": "0.0.0",
+  "description": "Connect AI coding agents to LightFlux workspaces, projects, and tasks.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "lightflux": "./src/cli.mjs"
+  },
+  "files": [
+    "assets",
+    "src",
+    "skills",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check src/api.mjs && node --check src/cli.mjs && node --check src/config.mjs && node --check src/skills.mjs && npm test",
+    "prepublishOnly": "npm run check",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

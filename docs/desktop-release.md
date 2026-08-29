@@ -6,8 +6,9 @@ publishes desktop applications:
 - macOS Apple Silicon (`aarch64`)
 - macOS Intel (`x86_64`)
 - Windows (`x86_64`, NSIS installer)
+- Linux (`x86_64`, AppImage and deb)
 
-iOS, Android, and Linux packages are not included.
+iOS and Android packages are not included in this desktop workflow.
 
 ## Release A Version
 
@@ -49,11 +50,12 @@ Configure the repository with:
 - Actions variable `LIGHTFLUX_UPDATER_ENABLED`: `true`
 - Actions variable `LIGHTFLUX_UPDATER_PUBLIC_KEY`: contents of
   `.tauri-keys/lightflux.key.pub`
-- Actions secret `RELEASES_TOKEN`: a token with write access to the public
-  `little1d/lightflux-releases` repository
 - Actions secret `TAURI_SIGNING_PRIVATE_KEY`: contents of
   `.tauri-keys/lightflux.key`
 - Actions secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the key password
+
+The workflow publishes with the built-in `GITHUB_TOKEN`; a cross-repository
+release token is not required.
 
 The `.tauri-keys` directory is gitignored. Never commit the private key or its
 password. Back them up in the same secret
@@ -64,13 +66,11 @@ When enabled, `tauri-action` creates signed updater artifacts and publishes
 `latest.json` to the GitHub Release. LightFlux checks:
 
 ```text
-https://github.com/little1d/lightflux-releases/releases/latest/download/latest.json
+https://github.com/little1d/LightFlux/releases/latest/download/latest.json
 ```
 
-The source repository remains private. Installers, signatures, and
-`latest.json` are published to the dedicated public
-`little1d/lightflux-releases` repository so installed apps can download them
-without a GitHub account.
+Installers, signatures, source, release notes, and `latest.json` are published
+from the single public `little1d/LightFlux` repository.
 
 Platform builds run serially against a draft Release so each updater target is
 merged into the same `latest.json`. A final job verifies the Windows x64,
@@ -83,19 +83,7 @@ dismissible; only clients older than that value show a required update.
 
 ## Local Build
 
-The Tauri CLI is installed with the frontend dependencies. The shared Rust
-toolchain is stored under `~/Desktop/Dev_env/rust` and exposed globally through
-`/opt/homebrew/bin`. Initialize it once with:
-
-```bash
-mkdir -p "$HOME/Desktop/Dev_env/rust"
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/lightflux-rustup-init.sh
-RUSTUP_HOME="$HOME/Desktop/Dev_env/rust/rustup" \
-  CARGO_HOME="$HOME/Desktop/Dev_env/rust/cargo" \
-  sh /tmp/lightflux-rustup-init.sh -y --no-modify-path --profile minimal
-```
-
-After adding wrappers or the Cargo bin directory to `PATH`, build from the
+Install Node.js 22 and the stable Rust toolchain, then build from the
 repository root:
 
 ```bash

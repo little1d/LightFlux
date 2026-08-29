@@ -74,7 +74,7 @@ chmod 600 /opt/lightflux/server/.env
 From a workstation with `rsync` + `ssh` access:
 
 ```bash
-SSH_HOST=182.254.243.33 bash deploy/scripts/deploy.sh
+SSH_HOST=<server-ip> bash deploy/scripts/deploy.sh
 ```
 
 This syncs `server/` (excluding `.env`, `node_modules`, `data`) and
@@ -89,7 +89,7 @@ The Web app is exported locally so the `EXPO_PUBLIC_*` values from
 the same origin) before building, then:
 
 ```bash
-SSH_HOST=182.254.243.33 bash deploy/scripts/deploy-web.sh
+SSH_HOST=<server-ip> bash deploy/scripts/deploy-web.sh
 ```
 
 This runs `npm run desktop:web`, syncs `lightflux/desktop-dist/` to
@@ -115,7 +115,7 @@ secrets:
 | Secret          | Purpose                                        |
 | --------------- | ---------------------------------------------- |
 | `DEPLOY_SSH_KEY`| Private SSH key authorized on the server       |
-| `DEPLOY_HOST`   | Server host or IP (e.g. `182.254.243.33`)      |
+| `DEPLOY_HOST`   | Server host or IP                              |
 | `DEPLOY_USER`   | SSH user (e.g. `root`)                          |
 
 The Web build inlines the API origin at build time, so the workflow reads the

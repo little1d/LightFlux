@@ -15,7 +15,7 @@ import MarketingLayout, {
 } from './MarketingLayout';
 
 const RELEASE_URL =
-  'https://github.com/little1d/lightflux-releases/releases/latest';
+  'https://github.com/little1d/LightFlux/releases/latest';
 
 interface PlatformItem {
   action: string;
@@ -315,7 +315,7 @@ const MarketingDownload = () => {
             <Text style={styles.releaseTitle}>LightFlux Desktop v1.0.0</Text>
             <Text style={styles.releaseDescription}>
               当前公开 Release 包含 macOS Apple Silicon、macOS Intel 和
-              Windows x64。安装包与更新清单托管在独立公开仓库。
+              Windows x64。安装包与更新清单托管在 LightFlux 主仓库。
             </Text>
           </View>
           <View style={styles.releaseFacts}>

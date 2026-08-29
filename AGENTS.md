@@ -22,6 +22,7 @@ subdirectory overrides it for that subtree.
 - `lightflux/src-tauri/`: Tauri desktop shell and Rust integrations.
 - `lightflux/editor-web/`: Tiptap editor bundle embedded by native clients.
 - `server/`: Node.js authentication, sync, upload, and AI proxy service.
+- `cli/`: public CLI package and bundled Agent Skill.
 - `.trae/deepwiki/`: generated architecture and subsystem documentation.
 - `.trae/runs/`: auditable records for autonomous goal executions.
 
@@ -41,6 +42,9 @@ subdirectory overrides it for that subtree.
   the database.
 - Shared business rules belong in domain/store/service code. Put platform
   differences at `.web`, `.native`, Expo, or Tauri boundaries.
+- Application source, CLI source, and desktop release assets live in the
+  `little1d/LightFlux` repository. Desktop updater URLs and release automation
+  must not target retired auxiliary repositories.
 - Global search uses `Command/Ctrl + F` and suppresses the browser default.
   Do not reintroduce a persistent search navigation item.
 - Today and Projects are active-task surfaces: completed and trashed tasks must
@@ -244,3 +248,8 @@ Use this format:
 - Context: A successful Expo Web deployment shipped an empty Agent API origin because the GitHub production variables were absent; Metro also reused a locally cached public origin across exports.
 - Rule: Define all production `EXPO_PUBLIC_*_API_URL` values in the GitHub production environment, reject missing or non-HTTPS values before export, and clear Metro's cache for production Web builds.
 - Evidence: `.github/workflows/web-deploy.yml`; verified the deployed bundle embeds `https://lightflux.site`, the production login form loads, and the configured DeepSeek endpoint returns successfully.
+
+### 2026-08-29 - Source, CLI, and releases share one repository
+- Context: The CLI and signed desktop updater assets previously lived in separate repositories, requiring a cross-repository token and leaving source and release links fragmented.
+- Rule: Keep the CLI under `cli/`, publish desktop assets from `little1d/LightFlux` with the built-in `GITHUB_TOKEN`, and point updater/download URLs to that repository.
+- Evidence: `.github/workflows/cli-ci.yml`, `.github/workflows/desktop-release.yml`, `lightflux/src-tauri/tauri.conf.json`, and `cli/`.

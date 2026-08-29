@@ -1,165 +1,166 @@
-<div align="center">
+<p align="center">
+  <img src="lightflux/assets/brand-mark.png" width="104" height="104" alt="LightFlux">
+</p>
 
-# 流光 · LightFlux
+<h1 align="center">LightFlux · 流光</h1>
 
-**本地优先（local-first）的跨平台任务管理应用**
+<p align="center">
+  本地优先、跨平台、面向人与 Agent 协作的任务管理工具。
+</p>
 
-Web · iOS · Android · macOS · Windows · Linux 一套代码，多端运行。
+<p align="center">
+  <a href="https://github.com/little1d/LightFlux/actions/workflows/server-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/little1d/LightFlux/server-ci.yml?branch=main&style=flat-square&label=Server" alt="Server CI"></a>
+  <a href="https://github.com/little1d/LightFlux/actions/workflows/cli-ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/little1d/LightFlux/cli-ci.yml?branch=main&style=flat-square&label=CLI" alt="CLI CI"></a>
+  <img src="https://img.shields.io/badge/Expo-57-000020?style=flat-square&logo=expo" alt="Expo 57">
+  <img src="https://img.shields.io/badge/Tauri-2-24C8DB?style=flat-square&logo=tauri" alt="Tauri 2">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-111827?style=flat-square" alt="MIT License"></a>
+</p>
 
-[![Web](https://img.shields.io/badge/Web-lightflux.site-7c3aed)](https://lightflux.site)
-[![Expo](https://img.shields.io/badge/Expo-57-000020?logo=expo)](https://expo.dev)
-[![React Native](https://img.shields.io/badge/React%20Native-0.86-61dafb?logo=react)](https://reactnative.dev)
-[![Tauri](https://img.shields.io/badge/Tauri-2-ffc131?logo=tauri)](https://tauri.app)
+LightFlux 把日常计划、项目、日历、倒数纪念日、历史统计和受控 AI
+操作放进一个紧凑的工作界面。任务修改会先落到本地，网络与账户是同步和
+协作能力的增强，而不是使用应用的前提。
 
-🌐 官网：**<https://lightflux.site>**
+这个仓库包含完整产品：Web 与移动客户端、桌面外壳、服务端、部署配置、
+CLI、Agent Skill 和桌面安装包发布流程。
 
-✅ Web 应用：**<https://lightflux.site/today>**
+## 核心能力
 
-</div>
-
----
-
-## 简介
-
-LightFlux（流光）是一款注重信息密度与交互质感的任务管理工具。所有 UI 操作即时更新本地状态，持久化与云同步在服务边界之后异步进行——未登录也能完整使用，登录后再把本地数据同步到云端。
-
-- **本地优先**：离线可用，交互零延迟；网络与账户只是能力增强，而非前置门槛。
-- **一套代码多端运行**：基于 Expo / React Native 构建 Web 与移动端，桌面端由 Tauri 打包。
-- **富文本任务**：基于 Tiptap 的正文编辑，支持 Markdown 输入规则、图片与代码块。
-- **AI 助手**：理解 → 消歧 → 预览 → 确认 → 执行 → 审计 → 撤销的受控数据变更语义，模型不直接改动本地数据。
-
-## 功能特性
-
-- 今日任务的新增、完成、删除与筛选
-- 已完成任务按完成日期归档，可恢复为待办
-- 月历视图、日期选取与指定日期添加任务
-- 可折叠项目、项目创建与项目内快速添加
-- 子任务拖拽排序，顺序持久化
-- 全局搜索（`Ctrl/⌘ + F`）任务标题、正文与项目名
-- Web 右键 / 移动端长按任务菜单，可创建子任务
-- 可恢复垃圾桶、永久删除与清空垃圾桶
-- 宽屏可拖拽详情栏，窄屏使用保留列表上下文的底部详情面板
-- Tiptap 富文本正文，任务详情自动保存
-- 设置页提供语言切换、统计入口与可选导航页面可见性配置
-- 版本化本地数据结构，当前严格使用 V12 Project 模型
-- 邮箱密码 / 验证码（OTP）登录与跨端云状态同步
-
-## 技术栈
-
-| 层次 | 技术 |
-| --- | --- |
-| 客户端 | Expo 57、React Native 0.86、React 19、NativeWind / Tailwind CSS |
-| 富文本 | Tiptap 3（`editor-web/` 打包为单文件 WebView 编辑器） |
-| 状态管理 | Zustand（存储通过独立 service 隔离） |
-| 桌面端 | Tauri 2（Rust 外壳，`com.little1d.lightflux`） |
-| 服务端 | Node.js、Better Auth（邮箱 OTP）、PostgreSQL、Nodemailer |
-| 部署 | Docker Compose + Nginx 反代 + Let's Encrypt；PostgreSQL 托管于 Supabase，邮件经 Resend SMTP |
+- **本地优先**：本地模式无需账户，任务操作即时生效并持久化。
+- **统一任务模型**：Today、Projects、Calendar、Completed、Milestones
+  和 Trash 共用版本化数据与明确的状态边界。
+- **富文本详情**：Tiptap 编辑器支持文本、列表、图片和代码块，并自动保存。
+- **跨端体验**：Expo / React Native 覆盖 Web、iOS 和 Android，Tauri
+  提供 macOS、Windows 与 Linux 桌面应用。
+- **云端连续性**：Better Auth、PostgreSQL 与 revision CAS 支持登录、
+  多设备同步和冲突恢复。
+- **受控 AI**：数据变更遵循理解、消歧、预览、确认、执行、审计与撤销流程。
+- **Agent 接入**：`cli/` 提供脚本化上下文和可安装的 Claude Code /
+  Codex Skill。
 
 ## 仓库结构
 
-```
+```text
 LightFlux/
-├── lightflux/            # Expo / React Native 应用（Web、iOS、Android）
-│   ├── editor-web/       # 原生客户端内嵌的 Tiptap 编辑器打包源
-│   └── src-tauri/        # Tauri 桌面外壳与 Rust 集成
-├── server/               # Node.js 认证、同步、上传与 AI 代理服务
-├── deploy/               # 生产部署资产（compose、nginx、脚本）
-├── docs/                 # 后端设计、桌面发布等文档
-├── .github/workflows/    # CI/CD（服务端测试/部署、桌面端多平台发布）
-└── AGENTS.md             # 仓库工作约定与架构不变量
+├── lightflux/             Expo / React Native 客户端
+│   ├── editor-web/        原生端内嵌 Tiptap 编辑器
+│   └── src-tauri/         Tauri 桌面外壳
+├── server/                认证、同步、上传与 AI 代理服务
+├── cli/                   LightFlux CLI 与 Agent Skill
+├── deploy/                Docker、Nginx 与部署脚本
+├── docs/                  架构和发布文档
+└── .github/workflows/     客户端、服务端、CLI 与发布自动化
 ```
 
 ## 快速开始
 
+需要 Node.js 22。桌面开发还需要 Rust stable，原生 iOS 构建需要 Xcode。
+
 ### 客户端
 
 ```bash
-cd lightflux
-npm install
-npm run editor:build   # 生成 WebView 使用的单文件 Tiptap 编辑器
-npm start              # 启动 Expo 开发服务器
+git clone https://github.com/little1d/LightFlux.git
+cd LightFlux/lightflux
+npm ci
+npm run editor:build
+npm run web
 ```
 
-平台专用启动：`npm run web`、`npm run ios`、`npm run android`、`npm run desktop:web`（静态导出）。
+常用命令：
 
-> 修改 `editor-web/` 或原生 Tiptap 扩展后，需重新执行 `npm run editor:build`。
+```bash
+npm start                 # Expo 开发服务器
+npm run ios               # iOS Simulator
+npm run android           # Android
+npm run desktop:web       # 桌面端使用的静态 Web 资源
+npx tauri dev             # Tauri 桌面开发
+npx tauri build           # 桌面安装包
+```
+
+未启动服务端时，可以在登录页进入本地模式。
 
 ### 服务端
 
-需要 PostgreSQL 15+。
+服务端需要 PostgreSQL 15+：
 
 ```bash
 cd server
-cp .env.example .env    # 填入 PostgreSQL 与 SMTP 配置
-npm install
+cp .env.example .env
+npm ci
 npm run db:migrate
 npm run dev
 ```
 
-或用 Compose 一并启动 PostgreSQL 与 API：`docker compose up --build`。详见 [server/README.md](server/README.md)。
+也可以使用 `docker compose up --build` 启动本地 PostgreSQL 与 API。配置、
+迁移和邮件登录说明见 [server/README.md](server/README.md)。
 
-### 连接客户端与服务端
+### CLI
 
-在 `lightflux/.env` 中配置 API 地址（本地开发）：
+```bash
+cd cli
+npm ci
+node src/cli.mjs --help
+npm run check
+```
+
+CLI 当前提供本地上下文配置与 Agent Skill 安装。Workspace 和任务命令会在
+公开 API 完成后启用，详见 [cli/README.md](cli/README.md)。
+
+## 环境配置
+
+客户端通过构建时变量连接服务端：
 
 ```bash
 EXPO_PUBLIC_AUTH_API_URL=http://localhost:8787
-EXPO_PUBLIC_AI_API_URL=http://localhost:8787
 EXPO_PUBLIC_UPLOAD_API_URL=http://localhost:8787
+EXPO_PUBLIC_AI_API_URL=http://localhost:8787
 ```
 
-> `EXPO_PUBLIC_*` 会在 Web 构建时被内联进产物，请在构建前确认指向正确的环境。
+将 `lightflux/.env.example` 和 `server/.env.example` 复制为本地 `.env`
+后再填写实际值。`.env`、签名私钥、数据库凭据和部署密钥均不得提交。
+开发与生产环境必须使用独立数据库、密钥和 API 地址。
 
-## 数据持久化
+## 架构约束
 
-任务数据使用 `schemaVersion: 12` 的 JSON 结构。Web 写入独立的 V12 IndexedDB key（不可用时回退到 `localStorage`），iOS/Android 写入独立的 V12 应用文档。每个任务包含稳定 ID、父任务 ID、项目 ID、完成/删除时间、富文本 JSON 与持久化排序字段 `sortOrder`。公测前的 Group 数据已清空，客户端不会读取低于 V12 的状态。应用状态携带全局更新时间以协调本地与云端版本。
+- 当前持久化格式为严格 V12，只接受 `projects/projectId` 数据。
+- 每个任务都属于一个 Project；保留的 Inbox Project 不可删除。
+- 历史统计来自 `TaskEvent`，不从当前任务快照反推。
+- 云写入使用服务端 revision compare-and-swap，冲突由客户端三方合并。
+- AI 模型不能直接修改本地数据，所有变更必须经过预览和确认。
 
-登录后以完整版本化聚合同步到 PostgreSQL 的 `JSONB` 字段；云写入使用服务端 revision CAS，发生 409 冲突时客户端基于持久化云端基线执行三方合并并自动重试。历史统计来源于 `TaskEvent`，不从当前快照推断。
+更多设计说明：
 
-## 账户与登录
+- [PostgreSQL 与同步架构](docs/backend-postgresql.md)
+- [桌面发布与自动更新](docs/desktop-release.md)
+- [CLI 与 Workspace API 边界](cli/docs/architecture.md)
+- [部署说明](deploy/README.md)
 
-基于 Better Auth，支持**邮箱密码**与**六位邮箱验证码（OTP）**两种登录方式，跨端体验一致：
-
-- Web / Tauri 使用 HttpOnly Cookie 维持会话；
-- iOS / Android 通过 Better Auth Expo 客户端将会话保存在 SecureStore。
-
-用户明确选择本地模式后，应用完全使用设备本地数据，不会尝试云同步。
-
-## 部署
-
-生产环境下 `lightflux.site` 由单个 Nginx 实例同时服务静态 Web 应用与 API：
-
-- Web 应用本地导出（`npm run desktop:web`）后同步到服务器 `/opt/lightflux/web`；
-- Nginx 将 `/` 作为 SPA history fallback，`/api/` 与 `/health` 反代到 API 容器；
-- API 以 Docker 容器运行，PostgreSQL 托管于 Supabase，邮件经 Resend SMTP。
+## 验证
 
 ```bash
-# 部署 API
-SSH_HOST=<server-ip> bash deploy/scripts/deploy.sh
-
-# 构建并部署 Web 应用
-SSH_HOST=<server-ip> bash deploy/scripts/deploy-web.sh
+cd lightflux && npm test
+cd lightflux && npm run typecheck
+cd lightflux && npm run desktop:web
+cd server && npm test
+cd cli && npm run check && npm pack --dry-run
+cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 ```
 
-完整流程、Nginx 配置与首次初始化步骤见 [deploy/README.md](deploy/README.md)。
+## 发布
 
-## 桌面端发布
+桌面版本统一发布在
+[LightFlux Releases](https://github.com/little1d/LightFlux/releases)。
+推送 `desktop-v*` 标签会构建 macOS、Windows 和 Linux 安装包，并生成
+Tauri 自动更新所需的签名与 `latest.json`。
 
-桌面端由 Tauri 打包，支持 macOS（Intel/Silicon）、Windows 与 Linux（AppImage / deb）。推送 `desktop-v*` 标签或手动触发 GitHub Actions 即可构建并发布至 [`little1d/lightflux-releases`](https://github.com/little1d/lightflux-releases)。详见 [docs/desktop-release.md](docs/desktop-release.md)。
+iOS 与 Android 尚未上架公开商店。桌面安装包目前可能触发 Gatekeeper
+或 SmartScreen 提示，正式分发前仍需配置平台代码签名。
 
-## 文档
+## 参与贡献
 
-- [server/README.md](server/README.md) — 服务端配置与本地运行
-- [deploy/README.md](deploy/README.md) — 生产部署
-- [docs/backend-postgresql.md](docs/backend-postgresql.md) — 后端 PostgreSQL 设计
-- [docs/desktop-release.md](docs/desktop-release.md) — 桌面端发布流程
-- [AGENTS.md](AGENTS.md) — 仓库工作约定与架构不变量
+欢迎通过 Issue 描述问题或提案，并通过 Pull Request 提交聚焦、可验证的
+改动。提交前请运行与改动范围对应的检查，并避免提交本地数据、环境变量或
+构建产物。
 
-## 验证基线
+## License
 
-```bash
-cd lightflux && npm test          # 单元测试
-cd lightflux && npm run typecheck  # 类型检查
-cd lightflux && npm run desktop:web # Web 静态导出
-cd server && npm test              # 服务端测试
-```
+[MIT](LICENSE)

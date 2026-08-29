@@ -2,14 +2,13 @@
 
 ## Repository Boundary
 
-`lightflux-cli` is public and contains no application UI, PostgreSQL access,
-or private server implementation. It communicates exclusively through the
-versioned LightFlux API.
+`cli/` is a package boundary inside the public LightFlux monorepo. It contains
+no application UI, PostgreSQL access, or server implementation and
+communicates exclusively through the versioned LightFlux API.
 
-The dedicated `lightflux-releases` repository remains limited to desktop
-installers, signatures, release notes, and `latest.json`. Publishing CLI or
-Skill releases there would interfere with the desktop updater's
-`releases/latest` contract.
+Application source, CLI source, and desktop installers all live in
+`little1d/LightFlux`. Desktop tags keep the `desktop-v*` prefix so the updater
+contract remains distinct from future npm package tags.
 
 ## Product Model
 
@@ -89,7 +88,8 @@ directories.
 
 ## Release Model
 
-- Repository: `little1d/lightflux-cli`
+- Repository: `little1d/LightFlux`
+- Package directory: `cli/`
 - npm package: `lightflux`
 - executable: `lightflux`
 - package version: independent from the LightFlux application version

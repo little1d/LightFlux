@@ -16,7 +16,7 @@
 #   SSH_OPTS      extra ssh options            (optional)
 #
 # Example:
-#   SSH_HOST=182.254.243.33 bash deploy/scripts/deploy.sh
+#   SSH_HOST=<server-ip> bash deploy/scripts/deploy.sh
 set -euo pipefail
 
 SSH_HOST="${SSH_HOST:?SSH_HOST is required}"

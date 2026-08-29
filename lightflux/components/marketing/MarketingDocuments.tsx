@@ -197,7 +197,7 @@ export const MarketingChangelog = () => {
         </Text>
         <View style={styles.changelogAction}>
           <MarketingLink
-            href="https://github.com/little1d/lightflux-releases/releases/latest"
+            href="https://github.com/little1d/LightFlux/releases/latest"
             icon="open-outline"
             label="查看桌面 Release"
             variant="secondary"

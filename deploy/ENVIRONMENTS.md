@@ -128,7 +128,7 @@ Secrets 在 GitHub 里按环境命名（如 `PROD_SSH_KEY` / `STAGING_SSH_KEY`�
 
 ## 9. 落地清单（建议顺序）
 
-- [x] 在 Supabase 建 dev 项目（kbelhdivsvstuikrreki, ap-southeast-1），取得连接串。
+- [x] 在 Supabase 建独立 dev 项目并取得连接串。
 - [x] 新增 `server/.env.development.example` 模板（本仓库已提供）。
 - [x] 本机 `server/.env` 切到 dev 库 + `OTP_DELIVERY=log`。
 - [x] 用 `npm run db:migrate` 在 dev 库建全表（11 张表、4 条 migration），`npm test` 验证（23 通过）。

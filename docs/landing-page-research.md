@@ -196,7 +196,7 @@ editorial content, or independent release cadence later justify it.
 The latest public desktop release is:
 
 - `desktop-v1.0.0`
-- <https://github.com/little1d/lightflux-releases/releases/tag/desktop-v1.0.0>
+- <https://github.com/little1d/LightFlux/releases/tag/desktop-v1.0.0>
 
 Published downloadable installers currently include:
 
@@ -214,9 +214,10 @@ Important gaps:
   promotion would expose Gatekeeper or SmartScreen warnings.
 - iOS and Android applications are not yet published to public stores.
 
-The download page must derive the latest version and asset URLs from the public
-release repository instead of hard-coding versioned filenames. Unsupported
-platforms should be marked honestly as unavailable or coming later.
+The download page must derive the latest version and asset URLs from the main
+repository's public GitHub Release instead of hard-coding versioned filenames.
+Unsupported platforms should be marked honestly as unavailable or coming
+later.
 
 ## Proposed Home Page
 

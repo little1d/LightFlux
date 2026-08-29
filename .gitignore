@@ -1,5 +1,6 @@
 .dev_env/
 .tauri-keys/
+.trae/
 
 # Local personal registration documents (not for the remote)
 Website_Information_Form.doc

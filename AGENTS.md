@@ -8,8 +8,8 @@ subdirectory overrides it for that subtree.
 ## Working Contract
 
 - Read this file, the relevant source, and `git status` before changing code.
-- Treat source code and package scripts as authoritative. `.trae/deepwiki/` is
-  an orientation aid and may lag behind the implementation.
+- Treat source code and package scripts as authoritative. Local generated
+  documentation is an orientation aid and may lag behind the implementation.
 - Preserve user changes in a dirty worktree. Never revert unrelated edits.
 - Continue through implementation and verification when requirements are
   clear. Ask only when a decision is product-significant, destructive,
@@ -23,8 +23,6 @@ subdirectory overrides it for that subtree.
 - `lightflux/editor-web/`: Tiptap editor bundle embedded by native clients.
 - `server/`: Node.js authentication, sync, upload, and AI proxy service.
 - `cli/`: public CLI package and bundled Agent Skill.
-- `.trae/deepwiki/`: generated architecture and subsystem documentation.
-- `.trae/runs/`: auditable records for autonomous goal executions.
 
 ## Product And Architecture Invariants
 
@@ -94,29 +92,12 @@ cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 - Never claim a check passed unless it was run. Record blocked, environmental,
   and pre-existing failures separately from regressions caused by the change.
 
-## Autonomous Execution
+## Local Agent Files
 
-- Broad goal documents use `.trae/skills/lightflux-autopilot/SKILL.md`.
-- Feature, review, bugfix, verification, and memory stages use their matching
-  sibling skills under `.trae/skills/`.
-- Create a goal record from
-  `.trae/skills/lightflux-autopilot/assets/goal-run-template.md`.
+- `.trae/` is developer-local workspace state. Keep it ignored and never
+  commit it to the public repository.
 - Stop retrying the same failed check or root-cause hypothesis after three
-  evidence-based attempts. Record the blocker instead of looping.
-
-## Memory Protocol
-
-Use two layers:
-
-1. `.trae/runs/<goal>.md` stores task status, source references, decisions,
-   attempts, commands, results, and deferred work for one execution.
-2. This file stores only durable constraints and proven lessons that are likely
-   to affect future work.
-
-After a verified change, update an existing rule instead of duplicating it. Add
-a lesson below only when it is reusable, evidence-backed, and not merely a task
-status update. Never store secrets, personal task data, raw prompts, transient
-logs, or speculation.
+  evidence-based attempts.
 
 ## Learned Lessons
 

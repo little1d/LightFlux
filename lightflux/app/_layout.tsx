@@ -134,13 +134,11 @@ const viewFromPathname = (pathname: string): AppView => {
 };
 
 const DesktopNavigationButton = ({
-  badgeCount = 0,
   icon,
   isActive,
   label,
   onPress,
 }: {
-  badgeCount?: number;
   icon: ComponentProps<typeof Ionicons>['name'];
   isActive: boolean;
   label: string;
@@ -173,11 +171,6 @@ const DesktopNavigationButton = ({
           name={icon}
           size={22}
         />
-        {badgeCount > 0 ? (
-          <View style={styles.navigationBadge}>
-            <Text style={styles.navigationBadgeText}>{badgeCount}</Text>
-          </View>
-        ) : null}
       </Pressable>
       <Tooltip
         label={label}
@@ -349,10 +342,6 @@ const AppShell = () => {
     }
     return true;
   });
-  const trashItemCount = useTodoStore(
-    (state) =>
-      state.trashedTodos.length + state.trashedMilestones.length,
-  );
   const labels = translations[language];
   const usesDesktopLayout = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const compactMobileHeight =
@@ -701,6 +690,7 @@ const AppShell = () => {
       quickCreateRequestId,
       openTaskMenu,
       openActiveTask,
+      closeActiveTask: closeSelectedTask,
       openTrashedTask,
       openCalendarAdd,
       notify,
@@ -710,6 +700,7 @@ const AppShell = () => {
     }),
     [
       changeView,
+      closeSelectedTask,
       hiddenNavigationItems,
       notify,
       openActiveTask,
@@ -784,9 +775,6 @@ const AppShell = () => {
                   onMove={moveNavigationItem}
                 >
                   <DesktopNavigationButton
-                    badgeCount={
-                      item.id === 'trash' ? trashItemCount : 0
-                    }
                     icon={item.icon}
                     isActive={isActive}
                     label={labels.navigation[item.id]}
@@ -1217,22 +1205,6 @@ const styles = StyleSheet.create({
   navigationButtonPressed: {
     opacity: 0.72,
     transform: [{ scale: 0.93 }],
-  },
-  navigationBadge: {
-    backgroundColor: '#D85B6B',
-    borderRadius: 9,
-    minWidth: 17,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    position: 'absolute',
-    right: -1,
-    top: -1,
-  },
-  navigationBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '800',
-    textAlign: 'center',
   },
   mobileUtilityOverlay: {
     bottom: 0,

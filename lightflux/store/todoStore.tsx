@@ -87,7 +87,7 @@ interface TodoStore {
   hydrate: () => Promise<void>;
   clearPersistenceError: () => void;
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
-  addTodo: (todo: NewTodo) => void;
+  addTodo: (todo: NewTodo) => string | undefined;
   toggleTodo: (id: string) => void;
   updateTodo: (id: string, changes: TodoUpdate) => void;
   trashTodo: (id: string) => void;
@@ -198,13 +198,14 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   addTodo: (todo) => {
     const title = todo.title.trim();
     if (!title) {
-      return;
+      return undefined;
     }
+    const newId = makeId();
 
     set((state) => {
       const timestamp = Date.now();
       const newTodo: Todo = {
-        id: makeId(),
+        id: newId,
         title,
         completed: false,
         completedAt: null,
@@ -262,6 +263,8 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         ],
       };
     });
+
+    return newId;
   },
 
   toggleTodo: (id) =>

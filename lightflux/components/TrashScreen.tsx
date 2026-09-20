@@ -16,7 +16,6 @@ import { translations } from '../content';
 import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { useTodoStore } from '../store/todoStore';
 import { fromDateKey } from '../utils/date';
-import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import { useConfirmation } from './ui/ConfirmationProvider';
 
 const TrashScreen = ({
@@ -111,10 +110,14 @@ const TrashScreen = ({
                 {hasTrash ? (
                   <Pressable
                     accessibilityRole="button"
-                    className="mr-2 h-9 items-center justify-center rounded-[13px] bg-[#FCECEF] px-3"
+                    className="h-9 items-center justify-center rounded-[11px] border border-[#EACBD0] px-3"
                     onPress={requestEmptyTrash}
+                    style={({ pressed }) => ({
+                      backgroundColor: pressed ? '#FDF3F5' : 'transparent',
+                      opacity: pressed ? 0.8 : 1,
+                    })}
                   >
-                    <Text className="text-xs font-extrabold text-[#C84F60]">
+                    <Text className="text-xs font-bold text-[#C84F60]">
                       {labels.trash.emptyTrash}
                     </Text>
                   </Pressable>
@@ -141,33 +144,24 @@ const TrashScreen = ({
                   </Text>
                   {trashedTodos.map((todo) => (
                     <View
-                      className={`mb-1 flex-row items-center border-b px-3 py-1.5 ${
-                        todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[48px]'
+                      className={`mb-1 flex-row items-center rounded-[12px] px-3 py-2 ${
+                        todo.parentId ? 'ml-6 min-h-[40px]' : 'min-h-[46px]'
                       } ${
                         selectedTaskId === todo.id
-                          ? 'border-[#D5D1EF] bg-[#EFEDFA]'
-                          : 'border-[#E9E8EE] bg-transparent'
+                          ? 'bg-[#F2F1FC]'
+                          : 'border border-[#ECEAF1] bg-transparent'
                       }`}
                       key={todo.id}
                     >
-                      <TaskSelectionMarker
-                        visible={selectedTaskId === todo.id}
-                      />
                       {todo.parentId ? (
-                        <View className="mr-2 h-5 w-5 items-center justify-center">
-                          <Text className="text-[13px] text-[#9492A1]">
-                            ↳
-                          </Text>
-                        </View>
-                      ) : (
-                        <View className="mr-2 h-6 w-6 items-center justify-center rounded-[8px] bg-[#F2F0F7]">
-                          <Text className="text-[12px] text-[#858393]">⌫</Text>
-                        </View>
-                      )}
+                        <Text className="mr-2 text-[13px] text-[#B6B7C2]">
+                          ↳
+                        </Text>
+                      ) : null}
                       <Pressable
                         accessibilityLabel={`${labels.trash.preview}: ${todo.title}`}
                         accessibilityRole="button"
-                        className="flex-1 py-1"
+                        className="flex-1 py-0.5"
                         onPress={() => onPreviewTask(todo.id)}
                       >
                         <Text
@@ -196,11 +190,11 @@ const TrashScreen = ({
                       <Pressable
                         accessibilityLabel={`${labels.trash.deleteForever}: ${todo.title}`}
                         accessibilityRole="button"
-                        className="ml-1.5 h-7 items-center justify-center rounded-[9px] bg-[#FCECEF] px-2.5"
+                        className="ml-1.5 h-7 w-7 items-center justify-center rounded-[9px] bg-[#FCECEF]"
                         onPress={() => requestPermanentDelete(todo.id)}
                       >
-                        <Text className="text-[10px] font-extrabold text-[#C84F60]">
-                          {labels.trash.deleteForever}
+                        <Text className="text-[12px] font-extrabold text-[#C84F60]">
+                          ×
                         </Text>
                       </Pressable>
                     </View>
@@ -216,7 +210,7 @@ const TrashScreen = ({
                   </Text>
                   {trashedMilestones.map((milestone) => (
                     <View
-                      className="mb-1 min-h-[52px] flex-row items-center border-b border-[#E9E8EE] px-3 py-1.5"
+                      className="mb-1 min-h-[52px] flex-row items-center rounded-[12px] border border-[#ECEAF1] px-3 py-2"
                       key={milestone.id}
                     >
                       <View
@@ -260,13 +254,13 @@ const TrashScreen = ({
                       <Pressable
                         accessibilityLabel={`${labels.trash.deleteForever}: ${milestone.title}`}
                         accessibilityRole="button"
-                        className="ml-1.5 h-7 items-center justify-center rounded-[9px] bg-[#FCECEF] px-2.5"
+                        className="ml-1.5 h-7 w-7 items-center justify-center rounded-[9px] bg-[#FCECEF]"
                         onPress={() =>
                           requestPermanentMilestoneDelete(milestone.id)
                         }
                       >
-                        <Text className="text-[10px] font-extrabold text-[#C84F60]">
-                          {labels.trash.deleteForever}
+                        <Text className="text-[12px] font-extrabold text-[#C84F60]">
+                          ×
                         </Text>
                       </Pressable>
                     </View>

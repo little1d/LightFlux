@@ -34,7 +34,6 @@ import {
   TaskMoreButton,
   TaskNestingIndicator,
 } from './tasks/TaskRowControls';
-import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -209,7 +208,6 @@ const CalendarTask = ({
         hovered && !selected && styles.taskRowHovered,
       ]}
     >
-      <TaskSelectionMarker visible={selected} />
       {todo.parentId ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed={todo.completed}
@@ -735,7 +733,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F4F8',
   },
   taskRowSelected: {
-    backgroundColor: '#EEECFF',
+    backgroundColor: '#F2F1FC',
   },
   taskRowPressed: {
     opacity: 0.62,

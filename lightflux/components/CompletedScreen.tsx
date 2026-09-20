@@ -25,7 +25,6 @@ import {
   TaskMoreButton,
   TaskNestingIndicator,
 } from './tasks/TaskRowControls';
-import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -68,12 +67,11 @@ const CompletedTaskRow = ({
     <View
       className={`${nested ? 'ml-6 min-h-[38px]' : 'min-h-[44px]'} flex-row items-center border-b px-2 ${
         selected
-          ? 'border-[#D6D2EF] bg-[#EEECFF]'
+          ? 'border-transparent bg-[#F2F1FC]'
           : 'border-[#ECEBF1] bg-transparent'
       }`}
       ref={targetRef}
     >
-      <TaskSelectionMarker visible={selected} />
       {nested ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed

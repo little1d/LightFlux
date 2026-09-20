@@ -51,6 +51,7 @@ const familyTailId = (todos: Todo[], rootId: string): string => {
 export const useProjectsController = (
   selectedTaskId: string | null,
   notify: (message: string, variant?: ToastVariant) => void,
+  closeActiveTask: () => void,
 ) => {
   const requestConfirmation = useConfirmation();
   const {
@@ -157,6 +158,9 @@ export const useProjectsController = (
       const sectionId = todo.projectId;
       const section = sections.find((item) => item.id === sectionId);
       animateNextLayout();
+      // 进入“创建下一项”时，前一个任务立即取消高亮/关闭详情，
+      // 焦点让给新的行内输入框。
+      closeActiveTask();
       setExpanded((current) => ({ ...current, [sectionId]: true }));
       setActiveComposer(null);
       setInlineDraft('');
@@ -170,7 +174,7 @@ export const useProjectsController = (
         scheduledDate: todo.scheduledDate,
       });
     },
-    [sections],
+    [closeActiveTask, sections],
   );
   const moveTask = useCallback(
     (id: string, targetIndex: number) => {
@@ -293,12 +297,12 @@ export const useProjectsController = (
     setInlineDraft('');
     setInlineComposer(null);
   };
-  const submitInlineTask = () => {
+  const submitInlineTask = (): string | undefined => {
     const title = inlineDraft.trim();
     if (!title || !inlineComposer) {
-      return;
+      return undefined;
     }
-    addTodo({
+    const newId = addTodo({
       title,
       scheduledDate: inlineComposer.scheduledDate,
       projectId: inlineComposer.projectId,
@@ -307,6 +311,7 @@ export const useProjectsController = (
     });
     cancelInlineComposer();
     Keyboard.dismiss();
+    return newId;
   };
   const submitProject = () => {
     const name = projectDraft.trim();

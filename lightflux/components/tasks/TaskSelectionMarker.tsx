@@ -1,34 +1,7 @@
-import React from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import type { ViewStyle } from 'react-native';
 
+// “当前在右侧打开的任务”指示：只保留一抹很淡的圆角背景。
+// 左侧竖条已按设计移除，描边与阴影也一并去掉，避免整块填得太满。
 export const TASK_SELECTED_ROW_STYLE: ViewStyle = {
-  backgroundColor: '#EEECFF',
-  borderColor: '#D7D2FF',
-  borderWidth: 1,
-  elevation: 2,
-  shadowColor: '#6759E8',
-  shadowOffset: { height: 2, width: 0 },
-  shadowOpacity: 0.1,
-  shadowRadius: 6,
+  backgroundColor: '#F2F1FC',
 };
-
-const TaskSelectionMarker = ({ visible }: { visible: boolean }) =>
-  visible ? (
-    <View style={styles.marker} />
-  ) : null;
-
-const styles = StyleSheet.create({
-  marker: {
-    backgroundColor: '#6759E8',
-    borderRadius: 2,
-    height: 20,
-    left: 0,
-    marginTop: -10,
-    pointerEvents: 'none',
-    position: 'absolute',
-    top: '50%',
-    width: 3,
-  },
-});
-
-export default TaskSelectionMarker;

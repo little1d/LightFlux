@@ -26,6 +26,7 @@ export interface AppShellValue {
   quickCreateRequestId: number;
   openTaskMenu: OpenTaskMenu;
   openActiveTask: (id: string) => void;
+  closeActiveTask: () => void;
   openTrashedTask: (id: string) => void;
   openCalendarAdd: (dateKey: string) => void;
   notify: (message: string, variant?: ToastVariant) => void;

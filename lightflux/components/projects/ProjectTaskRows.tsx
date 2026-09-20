@@ -11,9 +11,7 @@ import {
   TaskMoreButton,
   TaskNestingIndicator,
 } from '../tasks/TaskRowControls';
-import TaskSelectionMarker, {
-  TASK_SELECTED_ROW_STYLE,
-} from '../tasks/TaskSelectionMarker';
+import { TASK_SELECTED_ROW_STYLE } from '../tasks/TaskSelectionMarker';
 import {
   OpenTaskMenu,
   useTaskContextMenu,
@@ -111,8 +109,8 @@ export const ProjectTask = ({
       className={`${nested ? 'ml-6 min-h-[34px] px-2' : 'min-h-[40px] px-2'} flex-row items-center border-b ${
         selected
           ? nested
-            ? 'rounded-[8px] border-transparent bg-[#F6F4FF]'
-            : 'rounded-[12px] border-transparent bg-[#EEECFF]'
+            ? 'rounded-[8px] border-transparent bg-[#F2F1FC]'
+            : 'rounded-[12px] border-transparent bg-[#F2F1FC]'
           : 'border-[#ECECF1]'
       }`}
       nativeID={`project-task-${todo.id}`}
@@ -127,7 +125,6 @@ export const ProjectTask = ({
         selected && TASK_SELECTED_ROW_STYLE,
       ]}
     >
-      <TaskSelectionMarker visible={selected} />
       {nested ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed={todo.completed}

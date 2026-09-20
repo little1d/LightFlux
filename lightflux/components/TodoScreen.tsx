@@ -50,9 +50,7 @@ import {
   TaskMoreButton,
   TaskNestingIndicator,
 } from './tasks/TaskRowControls';
-import TaskSelectionMarker, {
-  TASK_SELECTED_ROW_STYLE,
-} from './tasks/TaskSelectionMarker';
+import { TASK_SELECTED_ROW_STYLE } from './tasks/TaskSelectionMarker';
 import { TaskDragState } from './tasks/taskDrag';
 import {
   OpenTaskMenu,
@@ -179,7 +177,7 @@ const TodoRow = ({
       accessibilityState={{ selected }}
       className={`${nested ? 'ml-6 min-h-[34px]' : 'min-h-[40px]'} flex-row items-center rounded-[10px] border-b px-2 ${
         selected
-          ? 'border-[#D6D2EF] bg-[#EEECFF]'
+          ? 'border-transparent bg-[#F2F1FC]'
           : todo.completed
             ? 'border-[#ECEBF1] bg-[#FAFAFC]'
             : 'border-[#ECEBF1] bg-transparent'
@@ -196,7 +194,6 @@ const TodoRow = ({
         selected && TASK_SELECTED_ROW_STYLE,
       ]}
     >
-      <TaskSelectionMarker visible={selected} />
       {nested ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed={todo.completed}

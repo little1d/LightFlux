@@ -29,7 +29,6 @@ import {
   TaskCheckbox,
   TaskNestingIndicator,
 } from './tasks/TaskRowControls';
-import TaskSelectionMarker from './tasks/TaskSelectionMarker';
 import IconButton from './ui/IconButton';
 
 const HighlightedText = ({
@@ -102,7 +101,6 @@ const SearchResultRow = ({
         selected && styles.resultRowSelected,
       ]}
     >
-      <TaskSelectionMarker visible={selected} />
       {todo.parentId ? <TaskNestingIndicator /> : null}
       <TaskCheckbox
         completed={todo.completed}

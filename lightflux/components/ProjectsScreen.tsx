@@ -23,16 +23,22 @@ import { useToast } from './ui/ToastProvider';
 import { INBOX_PROJECT_ID } from '../types/todo';
 
 const ProjectsScreen = ({
+  onCloseTask,
   onEditTask,
   onOpenTaskMenu,
   selectedTaskId,
 }: {
+  onCloseTask: () => void;
   onEditTask: (id: string) => void;
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
   const notify = useToast();
-  const controller = useProjectsController(selectedTaskId, notify);
+  const controller = useProjectsController(
+    selectedTaskId,
+    notify,
+    onCloseTask,
+  );
   const { width } = useWindowDimensions();
   const compact = width < DESKTOP_LAYOUT_BREAKPOINT;
 
@@ -116,7 +122,13 @@ const ProjectsScreen = ({
                 controller.reorderProject(section.id, targetIndex)
               }
               onRenameTask={controller.renameTask}
-              onSubmitInlineTask={controller.submitInlineTask}
+              onSubmitInlineTask={() => {
+                const newId = controller.submitInlineTask();
+                // 新任务生成后，焦点立即落到新任务（在右侧打开它）。
+                if (newId) {
+                  onEditTask(newId);
+                }
+              }}
               onSubmitTask={() => controller.submitTask(section.id)}
               onTaskDraftChange={controller.setTaskDraft}
               onToggle={() => controller.toggleProject(section.id)}

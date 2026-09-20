@@ -1,1 +1,1 @@
-export { default } from './DraggableTaskRow.native';
+export { default } from './DraggableTaskRow.web';

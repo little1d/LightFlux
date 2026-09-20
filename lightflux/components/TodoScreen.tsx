@@ -167,7 +167,7 @@ const TodoRow = ({
   onRename,
   onToggle,
 }: TodoRowProps) => {
-  const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
+  const { targetRef, openFromButton } = useTaskContextMenu(
     todo.id,
     onOpenMenu,
   );
@@ -210,17 +210,6 @@ const TodoRow = ({
         openDetailsOnEdit={false}
         todo={todo}
       />
-
-      <Pressable
-        accessibilityLabel={labels.taskMenu.moreActions}
-        accessibilityRole="button"
-        className="mr-1 h-8 w-6 items-center justify-center"
-        delayLongPress={350}
-        onLongPress={openFromLongPress}
-        onPress={() => onEdit(todo.id)}
-      >
-        <Ionicons color="#B7B8C4" name="chevron-forward" size={15} />
-      </Pressable>
 
       <TaskPriorityIndicator priority={todo.priority} />
       <TaskIndicators childCount={childCount} todo={todo} />
@@ -522,8 +511,6 @@ const TodoScreen = ({
   return (
     <View className="flex-1 overflow-hidden bg-canvas">
       <ExpoStatusBar style="dark" />
-      <View style={styles.backgroundOrbTop} />
-      <View style={styles.backgroundOrbBottom} />
       <SafeAreaView className="flex-1" style={styles.safeAreaInset}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -602,26 +589,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 30,
     paddingHorizontal: 20,
-  },
-  backgroundOrbTop: {
-    backgroundColor: '#E2DEFF',
-    borderRadius: 180,
-    height: 280,
-    opacity: 0.72,
-    position: 'absolute',
-    right: -125,
-    top: -105,
-    width: 280,
-  },
-  backgroundOrbBottom: {
-    backgroundColor: '#DFF4EE',
-    borderRadius: 130,
-    bottom: -85,
-    height: 220,
-    left: -95,
-    opacity: 0.72,
-    position: 'absolute',
-    width: 220,
   },
   brandMarkShadow: {
     shadowColor: '#6759E8',

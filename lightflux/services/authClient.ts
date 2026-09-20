@@ -1,4 +1,4 @@
 export {
   authClient,
   getAuthRequestHeaders,
-} from './authClient.native';
+} from './authClient.web';

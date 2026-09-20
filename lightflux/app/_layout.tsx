@@ -42,10 +42,6 @@ import SettingsScreen from '../components/SettingsScreen';
 import DesktopUpdateMenu from '../components/desktop/DesktopUpdateMenu';
 import TaskEditorScreen from '../components/editor/TaskEditorScreen';
 import ResizableDivider from '../components/layout/ResizableDivider';
-import {
-  isPublicMarketingPath,
-} from '../components/marketing/marketingRoutes';
-import { isMarketingRuntime } from '../components/marketing/marketingRuntime';
 import DraggableNavigationItem from '../components/navigation/DraggableNavigationItem';
 import { NavigationDragState } from '../components/navigation/navigationDrag';
 import TaskActionMenu from '../components/tasks/TaskActionMenu';
@@ -244,8 +240,6 @@ const AppShell = () => {
   const router = useRouter();
   const pathname = usePathname();
   const activeView = viewFromPathname(pathname);
-  const isMarketingRoute =
-    isMarketingRuntime() && isPublicMarketingPath(pathname);
   const [selectedTask, setSelectedTask] = useState<SelectedTask | null>(null);
   const [listPaneWidth, setListPaneWidth] = useState<number | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -618,8 +612,7 @@ const AppShell = () => {
 
   useEffect(() => {
     if (
-      Platform.OS !== 'web' ||
-      isMarketingRoute
+      Platform.OS !== 'web'
     ) {
       return undefined;
     }
@@ -656,7 +649,6 @@ const AppShell = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [
     changeView,
-    isMarketingRoute,
     openSearch,
     searchOpen,
   ]);
@@ -672,13 +664,12 @@ const AppShell = () => {
   }, [selectedTask, selectedTaskVisible]);
 
   useEffect(() => {
-    if (persistenceErrorAt && !isMarketingRoute) {
+    if (persistenceErrorAt) {
       notify(labels.notifications.saveFailed, 'error');
       clearPersistenceError();
     }
   }, [
     clearPersistenceError,
-    isMarketingRoute,
     labels.notifications.saveFailed,
     notify,
     persistenceErrorAt,
@@ -719,16 +710,14 @@ const AppShell = () => {
     updateStatus !== 'idle' &&
     updateStatus !== 'unavailable';
   const mobileEditorOpen = Boolean(selectedTask && !usesDesktopLayout);
-  const mainContentHidden =
-    !isMarketingRoute && (mobileEditorOpen || searchOpen);
+  const mainContentHidden = mobileEditorOpen || searchOpen;
   const showMobileUtilities =
     !usesDesktopLayout &&
     !selectedTask &&
     !settingsPanelOpen &&
     navigationItems.some((item) => item.id === activeView);
-  const showAppShell = useTodoStore((state) => state.isHydrated) && !isMarketingRoute;
+  const showAppShell = useTodoStore((state) => state.isHydrated);
   const persistenceReady = useTodoStore((state) => state.persistenceReady);
-  const showRoutedContent = showAppShell || isMarketingRoute;
 
   return (
     <>
@@ -741,8 +730,7 @@ const AppShell = () => {
       style={[
         styles.appShell,
         { width },
-        isMarketingRoute && styles.marketingShell,
-        !showRoutedContent && styles.appShellHidden,
+        !showAppShell && styles.appShellHidden,
       ]}
     >
       {showAppShell && usesDesktopLayout ? (
@@ -810,9 +798,7 @@ const AppShell = () => {
       <View
         key="route-pane"
         style={
-          isMarketingRoute
-            ? styles.fullPane
-            : usesDesktopLayout && selectedTask
+          usesDesktopLayout && selectedTask
             ? { width: resolvedListPaneWidth }
             : styles.fullPane
         }
@@ -1074,9 +1060,6 @@ const styles = StyleSheet.create({
   },
   appShellHidden: {
     display: 'none',
-  },
-  marketingShell: {
-    backgroundColor: '#FCFCFE',
   },
   bootOverlay: {
     backgroundColor: '#F3F2F7',

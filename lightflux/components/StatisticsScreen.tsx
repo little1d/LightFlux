@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
+import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { translations } from '../content';
 import { useTodoStore } from '../store/todoStore';
 import { fromDateKey } from '../utils/date';
@@ -60,6 +61,7 @@ const StatisticsScreen = ({
   const dateKey = useCurrentDateKey();
   const { width } = useWindowDimensions();
   const compact = width < 520;
+  const usesDesktopLayout = width >= DESKTOP_LAYOUT_BREAKPOINT;
   const labels = translations[language].statistics;
   const metricWidth = (width >= 1040 ? '25%' : '50%') as
     | '25%'
@@ -109,17 +111,19 @@ const StatisticsScreen = ({
           style={styles.scroll}
         >
           <View style={[styles.header, compact && styles.headerCompact]}>
-            <Pressable
-              accessibilityLabel={labels.back}
-              accessibilityRole="button"
-              onPress={onBack}
-              style={({ pressed }) => [
-                styles.backButton,
-                pressed && styles.backButtonPressed,
-              ]}
-            >
-              <Ionicons color="#686979" name="chevron-back" size={20} />
-            </Pressable>
+            {usesDesktopLayout ? null : (
+              <Pressable
+                accessibilityLabel={labels.back}
+                accessibilityRole="button"
+                onPress={onBack}
+                style={({ pressed }) => [
+                  styles.backButton,
+                  pressed && styles.backButtonPressed,
+                ]}
+              >
+                <Ionicons color="#686979" name="chevron-back" size={20} />
+              </Pressable>
+            )}
             <View style={styles.headerText}>
               {labels.eyebrow ? (
                 <Text style={[styles.eyebrow, compact && styles.eyebrowCompact]}>{labels.eyebrow}</Text>

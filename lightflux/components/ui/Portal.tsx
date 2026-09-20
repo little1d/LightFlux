@@ -1,1 +1,1 @@
-export { default } from './Portal.native';
+export { default } from './Portal.web';

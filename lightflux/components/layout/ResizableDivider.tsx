@@ -1,1 +1,1 @@
-export { default } from './ResizableDivider.native';
+export { default } from './ResizableDivider.web';

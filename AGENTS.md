@@ -20,7 +20,6 @@ subdirectory overrides it for that subtree.
 
 - `lightflux/`: Expo Web interface shared with the Tauri desktop application.
 - `lightflux/src-tauri/`: Tauri desktop shell and Rust integrations.
-- `lightflux/editor-web/`: Tiptap editor bundle embedded by native clients.
 - `shared/`: environment-independent task and Milestone mutation rules.
 - `server/`: archived cloud service, retained for data recovery.
 - `cli/`: public CLI package.
@@ -98,8 +97,6 @@ cd cli && npm run check
 cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 ```
 
-- Rebuild with `cd lightflux && npm run editor:build` after editor source or
-  native editor extensions change.
 - For UI work, exercise the changed workflow at relevant breakpoints with
   browser automation when the environment is available.
 - Never claim a check passed unless it was run. Separate blocked,

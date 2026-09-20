@@ -1,1 +1,1 @@
-export { default } from './DraggableNavigationItem.native';
+export { default } from './DraggableNavigationItem.web';

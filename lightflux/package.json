@@ -6,14 +6,11 @@
   "scripts": {
     "start": "expo start",
     "desktop:web": "node scripts/export-desktop.mjs",
-    "editor:build": "vite --config ./editor-web/vite.config.ts build && npm run editor:postbuild",
-    "editor:postbuild": "node ./node_modules/@10play/tentap-editor/scripts/buildEditor.js ./editor-web/build/index.html ./editor-web/build/editorHtml.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "web": "expo start --web"
   },
   "dependencies": {
-    "@10play/tentap-editor": "^1.0.1",
     "@better-auth/expo": "^1.7.1",
     "@expo/metro-runtime": "~57.0.8",
     "@expo/vector-icons": "^15.0.2",
@@ -61,10 +58,8 @@
     "@tauri-apps/cli": "^2.11.4",
     "@types/react": "~19.2.4",
     "@types/react-dom": "~19.2.3",
-    "@vitejs/plugin-react": "^6.0.5",
     "typescript": "~6.0.3",
     "vite": "^8.2.1",
-    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.1.10"
   },
   "overrides": {

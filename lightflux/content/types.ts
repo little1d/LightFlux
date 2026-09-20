@@ -29,6 +29,7 @@ export interface Translation {
     count: (count: number) => string;
     today: string;
     yesterday: string;
+    trashAll: string;
     emptyTitle: string;
     emptyDescription: string;
   };
@@ -255,6 +256,7 @@ export interface Translation {
     taskMovedToProject: (projectName: string) => string;
     taskRescheduled: string;
     priorityUpdated: string;
+    completedTrashed: (count: number) => string;
   };
   inputPlaceholder: string;
   addTask: string;

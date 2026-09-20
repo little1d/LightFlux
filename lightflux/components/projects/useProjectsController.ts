@@ -60,6 +60,7 @@ export const useProjectsController = (
     projects,
     language,
     renameProject,
+    reorderProject,
     reorderTask,
     todos,
     toggleTodo,
@@ -72,6 +73,7 @@ export const useProjectsController = (
       projects: state.projects,
       language: state.language,
       renameProject: state.renameProject,
+      reorderProject: state.reorderProject,
       reorderTask: state.reorderTask,
       todos: state.todos,
       toggleTodo: state.toggleTodo,
@@ -79,9 +81,8 @@ export const useProjectsController = (
     })),
   );
   const labels = translations[language];
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    [INBOX_PROJECT_ID]: true,
-  });
+  // 进入项目页时所有分组默认收起，避免从其他页面切回时默认分组自动展开。
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [activeComposer, setActiveComposer] = useState<string | null>(null);
   const [taskDraft, setTaskDraft] = useState('');
   const [inlineDraft, setInlineDraft] = useState('');
@@ -402,6 +403,7 @@ export const useProjectsController = (
       );
     },
     renameTask: (id: string, title: string) => updateTodo(id, { title }),
+    reorderProject,
     sections,
     setProjectDraft,
     setInlineDraft,

@@ -31,6 +31,7 @@ import {
   ProjectSection,
   InlineComposerState,
 } from './types';
+import { useProjectCardDrag } from './useProjectCardDrag';
 
 const CollapsibleProjectBody = ({
   children,
@@ -101,6 +102,7 @@ const CollapsibleProjectBody = ({
 };
 
 const ProjectHeader = ({
+  dragBind,
   isExpanded,
   labels,
   onAddTask,
@@ -110,6 +112,7 @@ const ProjectHeader = ({
   section,
   selected,
 }: {
+  dragBind: { onPointerDown?: (event: unknown) => void };
   isExpanded: boolean;
   labels: Translation;
   onAddTask: () => void;
@@ -142,6 +145,7 @@ const ProjectHeader = ({
       className="px-4 py-3"
       ref={targetRef}
       style={selected && styles.projectHeaderSelected}
+      {...dragBind}
     >
       {selected ? <View style={styles.projectSelectionMarker} /> : null}
       <View className="flex-row items-center">
@@ -232,12 +236,15 @@ const ProjectSectionCard = ({
   onOpenInlineComposer,
   onOpenTaskComposer,
   onOpenTaskMenu,
+  onReorderProject,
   onRenameTask,
   onSubmitInlineTask,
   onSubmitTask,
   onTaskDraftChange,
   onToggle,
   onToggleTask,
+  projectCount,
+  projectIndex,
   section,
   selected,
   selectedTaskId,
@@ -262,12 +269,15 @@ const ProjectSectionCard = ({
   onOpenInlineComposer: (todo: Todo) => void;
   onOpenTaskComposer: () => void;
   onOpenTaskMenu: OpenTaskMenu;
+  onReorderProject: (targetIndex: number) => void;
   onRenameTask: (id: string, title: string) => void;
   onSubmitInlineTask: () => void;
   onSubmitTask: () => void;
   onTaskDraftChange: (value: string) => void;
   onToggle: () => void;
   onToggleTask: (id: string) => void;
+  projectCount: number;
+  projectIndex: number;
   section: ProjectSection;
   selected: boolean;
   selectedTaskId: string | null;
@@ -275,14 +285,25 @@ const ProjectSectionCard = ({
   taskDraft: string;
 }) => {
   const [taskDrag, setTaskDrag] = useState<TaskDragState | null>(null);
+  const { bind, dragging, offset } = useProjectCardDrag({
+    index: projectIndex,
+    onReorder: onReorderProject,
+    total: projectCount,
+  });
 
   return (
     <View
       className="mb-3 overflow-hidden rounded-[20px] border border-[#E8E7EE] bg-white"
-      style={[styles.cardShadow, selected && styles.projectCardSelected]}
+      style={[
+        styles.cardShadow,
+        selected && styles.projectCardSelected,
+        dragging && styles.projectCardDragging,
+        { transform: dragging ? [{ translateY: offset }] : undefined },
+      ]}
       testID="lf-card-in"
     >
       <ProjectHeader
+        dragBind={bind}
         isExpanded={expanded}
         labels={labels}
         onAddTask={onOpenTaskComposer}
@@ -393,6 +414,14 @@ const styles = StyleSheet.create({
     borderColor: '#CFC9FA',
     shadowColor: '#6759E8',
     shadowOpacity: 0.12,
+  },
+  projectCardDragging: {
+    borderColor: '#C9C3F6',
+    opacity: 0.96,
+    shadowColor: '#5A4ED0',
+    shadowOffset: { height: 16, width: 0 },
+    shadowOpacity: 0.22,
+    shadowRadius: 30,
   },
   projectHeaderSelected: {
     backgroundColor: '#F3F1FF',

@@ -49,6 +49,7 @@ import {
   moveTodoBranchToProject,
   reorderList,
   restoreTodoBranch,
+  selectExpiredTrashIds,
   todoState,
 } from './todoDomain';
 import {
@@ -107,6 +108,8 @@ interface TodoStore {
   ) => void;
   renameProject: (id: string, name: string) => void;
   deleteProject: (id: string) => void;
+  reorderProject: (id: string, targetIndex: number) => void;
+  purgeExpiredTrash: () => void;
   addMilestone: (milestone: NewMilestone) => string | null;
   updateMilestone: (id: string, changes: MilestoneUpdate) => void;
   archiveMilestone: (id: string) => void;
@@ -588,6 +591,61 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       };
     }),
 
+  // 拖拽项目卡片后重排分组顺序，并把新顺序写回 sortOrder。
+  reorderProject: (id, targetIndex) =>
+    set((state) => {
+      const ordered = [...state.projects].sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
+      );
+      const source = ordered.find((project) => project.id === id);
+      if (!source) {
+        return state;
+      }
+      const reordered = reorderList(ordered, source, targetIndex);
+      if (reordered === ordered) {
+        return state;
+      }
+      return {
+        projects: reordered.map((project, index) => ({
+          ...project,
+          sortOrder: index,
+        })),
+      };
+    }),
+
+  // 永久删除已在垃圾桶停留满 30 天的任务与里程碑。被删任务的统计事件一并清理；
+  // 仍引用被删里程碑的任务把 milestoneId 置空。
+  purgeExpiredTrash: () =>
+    set((state) => {
+      const now = Date.now();
+      const expiredTodoIds = selectExpiredTrashIds(state.allTodos, now);
+      const expiredMilestoneIds = selectExpiredTrashIds(
+        state.allMilestones,
+        now,
+      );
+      if (expiredTodoIds.size === 0 && expiredMilestoneIds.size === 0) {
+        return state;
+      }
+      const nextTodos = state.allTodos
+        .filter((todo) => !expiredTodoIds.has(todo.id))
+        .map((todo) =>
+          todo.milestoneId && expiredMilestoneIds.has(todo.milestoneId)
+            ? { ...todo, milestoneId: null, updatedAt: now }
+            : todo,
+        );
+      return {
+        ...todoState(nextTodos),
+        ...milestoneState(
+          state.allMilestones.filter(
+            (milestone) => !expiredMilestoneIds.has(milestone.id),
+          ),
+        ),
+        taskEvents: state.taskEvents.filter(
+          (event) => !expiredTodoIds.has(event.taskId),
+        ),
+      };
+    }),
+
   addMilestone: (milestone) => {
     const title = milestone.title.trim();
     const startYear = milestone.startYear ?? null;
@@ -823,17 +881,20 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
   );
   const isHydrated = useTodoStore((state) => state.isHydrated);
   const persistenceReady = useTodoStore((state) => state.persistenceReady);
+  const purgeExpiredTrash = useTodoStore((state) => state.purgeExpiredTrash);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   useEffect(() => {
-    if (!isHydrated) {
+    if (!isHydrated || !persistenceReady) {
       return undefined;
     }
 
     const reconcile = () => {
+      // 顺带清理垃圾桶中已超过保留期的任务与里程碑（幂等）。
+      purgeExpiredTrash();
       reconcileMilestoneNotifications(
         useTodoStore.getState().allMilestones,
         useTodoStore.getState().language,
@@ -871,7 +932,13 @@ export const TodoProvider = ({ children }: { children: React.ReactNode }) => {
         );
       }
     };
-  }, [allMilestones, isHydrated, language]);
+  }, [
+    allMilestones,
+    isHydrated,
+    language,
+    persistenceReady,
+    purgeExpiredTrash,
+  ]);
 
   useEffect(() => {
     if (!isHydrated || !persistenceReady) {

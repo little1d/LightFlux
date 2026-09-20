@@ -4,6 +4,7 @@ export const completed: Translation['completed'] = {
   count: (count) => `${count} ${count === 1 ? 'task' : 'tasks'}`,
   today: 'Today',
   yesterday: 'Yesterday',
+  trashAll: 'Move all to Trash',
   emptyTitle: 'No completed tasks yet',
   emptyDescription: 'Completed tasks will be organized here by date.',
 };

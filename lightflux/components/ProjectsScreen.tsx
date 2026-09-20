@@ -94,7 +94,7 @@ const ProjectsScreen = ({
             </Pressable>
           </View>
 
-          {controller.sections.map((section) => (
+          {controller.sections.map((section, sectionIndex) => (
             <ProjectSectionCard
               activeComposer={controller.activeComposer}
               childCountByParent={controller.childCountByParent}
@@ -112,12 +112,17 @@ const ProjectsScreen = ({
               onOpenInlineComposer={controller.openInlineComposer}
               onOpenTaskComposer={() => controller.openComposer(section.id)}
               onOpenTaskMenu={onOpenTaskMenu}
+              onReorderProject={(targetIndex) =>
+                controller.reorderProject(section.id, targetIndex)
+              }
               onRenameTask={controller.renameTask}
               onSubmitInlineTask={controller.submitInlineTask}
               onSubmitTask={() => controller.submitTask(section.id)}
               onTaskDraftChange={controller.setTaskDraft}
               onToggle={() => controller.toggleProject(section.id)}
               onToggleTask={controller.toggleTodo}
+              projectCount={controller.sections.length}
+              projectIndex={sectionIndex}
               section={section}
               selected={controller.projectMenu?.sectionId === section.id}
               selectedTaskId={selectedTaskId}

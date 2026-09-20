@@ -1,5 +1,25 @@
 import { Todo } from '../types/todo';
 
+// 垃圾桶中的任务/里程碑默认保留 30 天，超期后由应用启动与定时任务永久删除。
+export const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+// 选出在 now 时刻已在垃圾桶停留超过 maxAge 的实体 id。任务与里程碑共用。
+export const selectExpiredTrashIds = <
+  T extends { id: string; trashedAt: number | null },
+>(
+  items: T[],
+  now: number,
+  maxAge: number = TRASH_RETENTION_MS,
+): Set<string> =>
+  new Set(
+    items
+      .filter(
+        (item) =>
+          item.trashedAt !== null && now - item.trashedAt >= maxAge,
+      )
+      .map((item) => item.id),
+  );
+
 export const searchResultView = (
   todo: Pick<Todo, 'completed'>,
 ): 'completed' | 'projects' => (todo.completed ? 'completed' : 'projects');

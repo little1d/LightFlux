@@ -18,6 +18,7 @@ import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
 import { Todo } from '../types/todo';
 import { fromDateKey, toDateKey } from '../utils/date';
+import { useToast } from './ui/ToastProvider';
 import TaskIndicators from './tasks/TaskIndicators';
 import {
   TaskCheckbox,
@@ -116,14 +117,16 @@ const CompletedScreen = ({
   onOpenTaskMenu: OpenTaskMenu;
   selectedTaskId: string | null;
 }) => {
-  const { language, todos, toggleTodo } = useTodoStore(
+  const { language, todos, toggleTodo, trashTodos } = useTodoStore(
     useShallow((state) => ({
       language: state.language,
       todos: state.todos,
       toggleTodo: state.toggleTodo,
+      trashTodos: state.trashTodos,
     })),
   );
   const labels = translations[language];
+  const notify = useToast();
   const completedTodos = useMemo(
     () =>
       todos
@@ -184,6 +187,15 @@ const CompletedScreen = ({
     );
   };
 
+  const handleTrashAll = () => {
+    const ids = completedTodos.map((todo) => todo.id);
+    if (ids.length === 0) {
+      return;
+    }
+    trashTodos(ids);
+    notify(labels.notifications.completedTrashed(ids.length), 'success');
+  };
+
   return (
     <View style={styles.screen}>
       <ExpoStatusBar style="dark" />
@@ -208,13 +220,32 @@ const CompletedScreen = ({
             </View>
           }
           ListHeaderComponent={
-            compact ? null : (
-              <View className="pb-5 pt-4">
+            <View
+              className={`flex-row items-center justify-between pb-5 ${
+                compact ? 'pt-1' : 'pt-4'
+              }`}
+            >
+              {compact ? null : (
                 <Text className="text-[24px] font-extrabold text-ink">
                   {labels.completed.title}
                 </Text>
-              </View>
-            )
+              )}
+              {completedTodos.length > 0 ? (
+                <Pressable
+                  accessibilityRole="button"
+                  className="h-9 items-center justify-center rounded-[13px] bg-[#F3F0FE] px-3"
+                  onPress={handleTrashAll}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    transform: [{ scale: pressed ? 0.95 : 1 }],
+                  })}
+                >
+                  <Text className="text-xs font-extrabold text-primary">
+                    {labels.completed.trashAll} · {completedTodos.length}
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
           }
           renderItem={({ item }) => (
             <CompletedTaskRow

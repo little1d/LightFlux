@@ -368,8 +368,8 @@ const TaskEditorScreen = ({
             <View className="flex-1">
               {readOnly ? (
                 <Text
-                  className={`border-b border-[#DDDBE7] px-1 font-extrabold text-[#252638] ${
-                    compact ? 'pb-2 text-[23px]' : 'pb-3 text-[28px]'
+                  className={`border-b border-[#ECEAF0] px-1 font-bold text-[#252638] ${
+                    compact ? 'pb-2 text-[23px]' : 'pb-2 text-[20px]'
                   }`}
                 >
                   {todo.title}
@@ -378,10 +378,10 @@ const TaskEditorScreen = ({
                 <TextInput
                   {...inputAccentProps}
                   accessibilityLabel={labels.editor.titlePlaceholder}
-                  className={`border-b border-[#DDDBE7] px-1 py-1 font-extrabold text-[#252638] ${
+                  className={`border-b border-[#ECEAF0] px-1 py-1 font-bold text-[#252638] ${
                     compact
                       ? 'min-h-[44px] text-[23px]'
-                      : 'min-h-[52px] text-[28px]'
+                      : 'min-h-[42px] text-[20px]'
                   }`}
                   maxLength={160}
                   nativeID="task-title-input"

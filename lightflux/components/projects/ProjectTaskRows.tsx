@@ -50,6 +50,12 @@ export const InlineTaskComposer = ({
       autoFocus
       className="ml-3 h-8 flex-1 border-0 bg-transparent px-1 py-0 text-[13px] font-semibold text-[#303145]"
       maxLength={160}
+      onBlur={() => {
+        // 点到其他地方且没有输入内容时，自动收起这一行，避免空输入框残留。
+        if (!draft.trim()) {
+          onCancel();
+        }
+      }}
       onChangeText={onChange}
       onKeyPress={(event) => {
         if (event.nativeEvent.key === 'Escape') {

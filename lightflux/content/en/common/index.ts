@@ -90,6 +90,8 @@ export const common: CommonContent = {
     taskMovedToProject: (projectName) => `Moved to “${projectName}”.`,
     taskRescheduled: 'Date updated.',
     priorityUpdated: 'Priority updated.',
+    completedTrashed: (count) =>
+      `Moved ${count} completed ${count === 1 ? 'task' : 'tasks'} to Trash.`,
   },
   cancel: 'Cancel',
   delete: 'Delete',

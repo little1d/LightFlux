@@ -89,6 +89,7 @@ export const common: CommonContent = {
     taskMovedToProject: (projectName) => `已移动到「${projectName}」`,
     taskRescheduled: '日期已更新',
     priorityUpdated: '优先级已更新',
+    completedTrashed: (count) => `已将 ${count} 项已完成任务移至垃圾桶`,
   },
   cancel: '取消',
   delete: '删除',

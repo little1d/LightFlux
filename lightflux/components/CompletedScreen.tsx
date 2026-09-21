@@ -206,8 +206,8 @@ const CompletedScreen = ({
           keyExtractor={(todo) => todo.id}
           ListEmptyComponent={
             <View className="min-h-[380px] items-center justify-center px-8">
-              <View className="mb-4 h-14 w-14 items-center justify-center rounded-[20px] bg-[#ECEBF1]">
-                <Text className="text-[24px] font-semibold text-[#8D8E9A]">✓</Text>
+              <View className="mb-4 h-14 w-14 items-center justify-center rounded-[20px] bg-[#F0EEFF]">
+                <Text className="text-[24px] font-semibold text-[#8176C7]">✓</Text>
               </View>
               <Text className="text-[17px] font-semibold text-[#393A4D]">
                 {labels.completed.emptyTitle}

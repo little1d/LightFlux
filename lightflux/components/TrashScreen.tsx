@@ -128,8 +128,8 @@ const TrashScreen = ({
 
           {!hasTrash ? (
             <View className="min-h-[360px] items-center justify-center px-8">
-              <View className="mb-4 h-16 w-16 items-center justify-center rounded-[24px] bg-[#EEEAF8]">
-                <Text className="text-[28px] text-[#8479C4]">⌫</Text>
+              <View className="mb-4 h-16 w-16 items-center justify-center rounded-[24px] bg-[#F0EEFF]">
+                <Text className="text-[28px] text-[#8176C7]">⌫</Text>
               </View>
               <Text className="text-[17px] font-semibold text-[#393A4D]">
                 {labels.trash.emptyTitle}

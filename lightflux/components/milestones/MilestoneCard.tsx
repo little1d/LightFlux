@@ -78,10 +78,6 @@ const MilestoneCard = ({
         },
       ]}
     >
-      <View
-        pointerEvents="none"
-        style={[styles.themeAccent, { backgroundColor: milestone.color }]}
-      />
       <Pressable
         accessibilityLabel={`${milestone.title}, ${status}`}
         accessibilityRole="button"
@@ -175,7 +171,7 @@ const MilestoneCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     elevation: 1,
     minHeight: 224,
@@ -193,14 +189,6 @@ const styles = StyleSheet.create({
   hovered: {
     shadowOpacity: 0.1,
     transform: [{ translateY: -1 }],
-  },
-  themeAccent: {
-    bottom: 10,
-    borderRadius: 2,
-    left: 0,
-    position: 'absolute',
-    top: 10,
-    width: 3,
   },
   content: {
     flex: 1,

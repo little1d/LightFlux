@@ -147,7 +147,6 @@ const ProjectHeader = ({
       style={selected && styles.projectHeaderSelected}
       {...dragBind}
     >
-      {selected ? <View style={styles.projectSelectionMarker} /> : null}
       <View className="flex-row items-center">
         <Pressable
           accessibilityLabel={
@@ -426,15 +425,6 @@ const styles = StyleSheet.create({
   projectHeaderSelected: {
     backgroundColor: '#F3F1FF',
     position: 'relative',
-  },
-  projectSelectionMarker: {
-    backgroundColor: '#7768EE',
-    borderRadius: 2,
-    bottom: 10,
-    left: 0,
-    position: 'absolute',
-    top: 10,
-    width: 3,
   },
 });
 

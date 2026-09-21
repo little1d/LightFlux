@@ -523,8 +523,8 @@ const TodoScreen = ({
             keyboardShouldPersistTaps="handled"
             keyExtractor={(todo) => todo.id}
             ListEmptyComponent={
-              <>
-              <View className="min-h-[235px] w-full flex-1 items-center justify-center px-[30px] py-9">
+              <View className="w-full">
+              <View className="min-h-[235px] w-full items-center justify-center px-[30px] py-9">
                 <View className="mb-4 h-[60px] w-[60px] -rotate-[5deg] items-center justify-center rounded-[30px] bg-[#E9E6FF]">
                   <Text className="text-[28px] font-semibold text-[#7265E8]">
                     ✓
@@ -540,7 +540,7 @@ const TodoScreen = ({
               <View className="w-full pb-2">
                 <DailyPoemCard dateKey={dateKey} />
               </View>
-              </>
+              </View>
             }
             ListHeaderComponent={listHeader}
             renderItem={({ item }) => {

@@ -47,21 +47,13 @@ const DailyPoemCard = ({ dateKey }: DailyPoemCardProps) => {
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
     >
       <View style={styles.eyebrowRow}>
-        <View style={styles.eyebrowLeft}>
-          <View style={styles.eyebrowDot} />
-          <Text style={styles.eyebrowText}>今日诗词</Text>
-        </View>
         <Text style={styles.sourceText}>
           {poem.dynasty} · {poem.author}《{poem.title}》
         </Text>
       </View>
 
       <View style={styles.versesBlock}>
-        {poem.verses.map((line, index) => (
-          <Text key={index} style={styles.verseText}>
-            {line}
-          </Text>
-        ))}
+        <Text style={styles.verseText}>{poem.verses.join('')}</Text>
       </View>
 
       {expanded ? (
@@ -106,24 +98,6 @@ const styles = StyleSheet.create({
   eyebrowRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  eyebrowLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  eyebrowDot: {
-    backgroundColor: '#6759E8',
-    borderRadius: 3,
-    height: 5,
-    marginRight: 6,
-    width: 5,
-  },
-  eyebrowText: {
-    color: '#6759E8',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.6,
   },
   sourceText: {
     color: '#9A9BA8',
@@ -131,14 +105,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   versesBlock: {
-    paddingTop: 12,
+    paddingTop: 10,
   },
   verseText: {
     color: '#35312A',
     fontFamily: SERIF_STACK,
     fontSize: 17,
-    letterSpacing: 1.5,
-    lineHeight: 31,
+    letterSpacing: 1.2,
+    lineHeight: 30,
   },
   detailBlock: {
     borderTopColor: '#EFEAE0',

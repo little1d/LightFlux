@@ -39,8 +39,6 @@ import {
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
 import MobileQuickAddButton from './tasks/MobileQuickAddButton';
-import ActionButton from './ui/ActionButton';
-import IconButton from './ui/IconButton';
 
 interface CalendarDayProps {
   currentMonth: number;
@@ -54,6 +52,36 @@ interface CalendarDayProps {
   tasks: Todo[];
   today: boolean;
 }
+
+interface CircleNavButtonProps {
+  icon: React.ComponentProps<typeof Ionicons>['name'];
+  label: string;
+  onPress: () => void;
+}
+
+const CircleNavButton = ({ icon, label, onPress }: CircleNavButtonProps) => {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.navRound,
+        hovered && styles.navRoundHover,
+        pressed && styles.navRoundPressed,
+      ]}
+    >
+      <Ionicons
+        color={hovered ? '#6759E8' : '#858692'}
+        name={icon}
+        size={16}
+      />
+    </Pressable>
+  );
+};
 
 const CalendarDay = ({
   currentMonth,
@@ -69,6 +97,7 @@ const CalendarDay = ({
 }: CalendarDayProps) => {
   const [hovered, setHovered] = useState(false);
   const inCurrentMonth = date.getMonth() === currentMonth;
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
 
   return (
     <Pressable
@@ -94,6 +123,7 @@ const CalendarDay = ({
             style={[
               styles.dayNumberText,
               !inCurrentMonth && styles.dayNumberMuted,
+              isWeekend && inCurrentMonth && styles.dayNumberWeekend,
               today && styles.todayNumberText,
             ]}
           >
@@ -350,6 +380,15 @@ const CalendarScreen = ({
     language === 'zh' ? 'zh-CN' : 'en-US',
     { month: 'long', day: 'numeric', weekday: 'long' },
   );
+  const selectedDateObject = fromDateKey(selectedDate);
+  const agendaDateTitle =
+    language === 'zh'
+      ? `${selectedDateObject.getMonth() + 1}月${selectedDateObject.getDate()}日 ${selectedDateObject.toLocaleDateString('zh-CN', { weekday: 'short' })}`
+      : selectedDateObject.toLocaleDateString('en-US', {
+          day: 'numeric',
+          month: 'short',
+          weekday: 'short',
+        });
 
   return (
     <View style={styles.screen}>
@@ -371,62 +410,71 @@ const CalendarScreen = ({
           showsVerticalScrollIndicator={false}
           style={styles.scroll}
         >
-          {!mobileFab ? (
-            <View style={styles.header}>
-              <Text style={styles.title}>{labels.calendar.title}</Text>
-            </View>
-          ) : null}
-
           <View style={styles.workspace}>
             <View
               nativeID="calendar-month-panel"
               style={[styles.calendarCard, styles.calendarShadow, styles.calendarBorder]}
             >
               <View style={styles.calendarHeader}>
-                <Text style={styles.monthTitle}>
-                  {labels.calendar.monthTitle(
-                    visibleMonth.getFullYear(),
-                    visibleMonth.getMonth() + 1,
-                  )}
-                </Text>
+                <View style={styles.monthTitleGroup}>
+                  <Text style={styles.monthTitleBig}>
+                    {visibleMonth.toLocaleDateString(
+                      language === 'zh' ? 'zh-CN' : 'en-US',
+                      { month: language === 'zh' ? 'numeric' : 'long' },
+                    )}
+                  </Text>
+                  <Text style={styles.monthYear}>
+                    {visibleMonth.getFullYear()}
+                  </Text>
+                </View>
                 <View style={styles.headerControls}>
                   {!isAtToday ? (
-                    <View style={styles.headerSpacer}>
-                      <ActionButton
-                        label={labels.calendar.today}
-                        onPress={goToday}
-                        size="small"
-                        variant="ghost"
-                      />
-                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={goToday}
+                      style={({ pressed }) => [
+                        styles.todayPill,
+                        pressed && styles.todayPillPressed,
+                      ]}
+                    >
+                      <Text style={styles.todayPillText}>
+                        {labels.calendar.today}
+                      </Text>
+                    </Pressable>
                   ) : null}
-                  <IconButton
+                  <CircleNavButton
                     icon="chevron-back"
                     label={labels.calendar.previousMonth}
                     onPress={() => changeMonth(-1)}
-                    size="small"
                   />
                   <View style={styles.controlGap} />
-                  <IconButton
+                  <CircleNavButton
                     icon="chevron-forward"
                     label={labels.calendar.nextMonth}
                     onPress={() => changeMonth(1)}
-                    size="small"
                   />
                 </View>
               </View>
 
               <View style={styles.weekdayHeader}>
-                {labels.calendar.weekdays.map((weekday) => (
-                  <View
-                    key={weekday}
-                    style={[styles.weekColumn, styles.weekdayCell]}
-                  >
-                    <Text style={styles.weekdayText}>
-                      {weekday}
-                    </Text>
-                  </View>
-                ))}
+                {labels.calendar.weekdays.map((weekday, index) => {
+                  const isWeekend = index === 0 || index === 6;
+                  return (
+                    <View
+                      key={weekday}
+                      style={[styles.weekColumn, styles.weekdayCell]}
+                    >
+                      <Text
+                        style={[
+                          styles.weekdayText,
+                          isWeekend && styles.weekdayTextWeekend,
+                        ]}
+                      >
+                        {weekday}
+                      </Text>
+                    </View>
+                  );
+                })}
               </View>
 
               <View style={styles.daysGrid}>
@@ -460,6 +508,14 @@ const CalendarScreen = ({
                 nativeID="calendar-agenda-panel"
                 style={styles.agendaList}
               >
+                <View style={styles.agendaHeader}>
+                  <Text style={styles.agendaHeaderTitle}>
+                    {agendaDateTitle}
+                  </Text>
+                  <Text style={styles.agendaHeaderCount}>
+                    {labels.calendar.tasksForDate(selectedTodos.length)}
+                  </Text>
+                </View>
                 {selectedTodos.map((todo) => (
                   <CalendarTask
                     childCount={childCountByParent.get(todo.id) ?? 0}
@@ -535,15 +591,6 @@ const styles = StyleSheet.create({
     paddingBottom: 96,
     paddingHorizontal: 16,
   },
-  header: {
-    paddingBottom: 12,
-  },
-  title: {
-    color: '#232238',
-    fontSize: 26,
-    fontWeight: '600',
-    letterSpacing: -0.5,
-  },
   workspace: {
     width: '100%',
   },
@@ -573,41 +620,98 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
   },
-  monthTitle: {
-    color: '#303145',
-    fontSize: 18,
+  monthTitleGroup: {
+    alignItems: 'baseline',
+    flexDirection: 'row',
+  },
+  monthTitleBig: {
+    color: '#2B2C3E',
+    fontSize: 23,
     fontWeight: '600',
+    letterSpacing: -0.3,
+  },
+  monthYear: {
+    color: '#A8A9B5',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 8,
   },
   headerControls: {
     alignItems: 'center',
     flexDirection: 'row',
   },
-  headerSpacer: {
-    marginRight: 8,
+  todayPill: {
+    backgroundColor: '#F1EEFE',
+    borderRadius: 9,
+    marginRight: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  todayPillPressed: {
+    backgroundColor: '#E7E3FC',
+  },
+  todayPillText: {
+    color: '#6759E8',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  navRound: {
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderRadius: 16,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  },
+  navRoundHover: {
+    backgroundColor: '#F3F1FE',
+  },
+  navRoundPressed: {
+    backgroundColor: '#E9E5FC',
   },
   controlGap: {
-    width: 6,
+    width: 4,
   },
   weekdayHeader: {
-    backgroundColor: '#FAFAFC',
-    borderBottomColor: '#ECEBF1',
+    borderBottomColor: '#F0EFF4',
     borderBottomWidth: 1,
     flexDirection: 'row',
   },
   weekdayCell: {
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 9,
   },
   weekdayText: {
     color: '#9597A5',
     fontSize: 10,
     fontWeight: '600',
   },
+  weekdayTextWeekend: {
+    color: '#B2B3BE',
+  },
   daysGrid: {
     flexDirection: 'column',
   },
   agendaList: {
     marginTop: 10,
+  },
+  agendaHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  agendaHeaderTitle: {
+    color: '#3A3B4D',
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  agendaHeaderCount: {
+    color: '#A0A1AC',
+    fontSize: 11,
+    fontWeight: '500',
   },
   weekRow: {
     flexDirection: 'row',
@@ -661,6 +765,9 @@ const styles = StyleSheet.create({
   dayNumberMuted: {
     color: '#C1C2CA',
   },
+  dayNumberWeekend: {
+    color: '#9798A4',
+  },
   todayNumberText: {
     color: '#FFFFFF',
   },
@@ -671,12 +778,10 @@ const styles = StyleSheet.create({
   },
   dayTaskPill: {
     alignItems: 'center',
-    backgroundColor: '#F5F4F8',
-    borderRadius: 6,
     flexDirection: 'row',
-    marginTop: 4,
-    minHeight: 18,
-    paddingHorizontal: 5,
+    marginTop: 3,
+    minHeight: 17,
+    paddingHorizontal: 1,
   },
   dayTaskDot: {
     borderRadius: 3,
@@ -692,10 +797,10 @@ const styles = StyleSheet.create({
     width: 12,
   },
   dayTaskTitle: {
-    color: '#555667',
+    color: '#535466',
     flex: 1,
     fontSize: 9,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   moreTasks: {
     color: '#999BA8',

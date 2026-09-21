@@ -20,6 +20,10 @@ html, body, #root {
   text-rendering: optimizeLegibility;
   font-family: ${FONT_STACK};
 }
+@keyframes lf-poem-reveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 `;
 
 // Runs synchronously when imported at the top of the layout, before the app

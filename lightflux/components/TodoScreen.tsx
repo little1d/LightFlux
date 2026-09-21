@@ -57,6 +57,7 @@ import {
   useTaskContextMenu,
 } from './tasks/useTaskContextMenu';
 import { ToastVariant } from './ui/ToastProvider';
+import DailyPoemCard from './today/DailyPoemCard';
 
 interface TodayMilestoneRowProps {
   labels: Translation['milestones'];
@@ -522,7 +523,8 @@ const TodoScreen = ({
             keyboardShouldPersistTaps="handled"
             keyExtractor={(todo) => todo.id}
             ListEmptyComponent={
-              <View className="min-h-[235px] flex-1 items-center justify-center px-[30px] py-9">
+              <>
+              <View className="min-h-[235px] w-full flex-1 items-center justify-center px-[30px] py-9">
                 <View className="mb-4 h-[60px] w-[60px] -rotate-[5deg] items-center justify-center rounded-[30px] bg-[#E9E6FF]">
                   <Text className="text-[28px] font-semibold text-[#7265E8]">
                     ✓
@@ -535,6 +537,10 @@ const TodoScreen = ({
                   {labels.emptyDescription.active}
                 </Text>
               </View>
+              <View className="w-full pb-2">
+                <DailyPoemCard dateKey={dateKey} />
+              </View>
+              </>
             }
             ListHeaderComponent={listHeader}
             renderItem={({ item }) => {

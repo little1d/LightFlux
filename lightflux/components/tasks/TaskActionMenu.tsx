@@ -741,12 +741,12 @@ const styles = StyleSheet.create({
   mobileActionLabel: {
     color: '#777887',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   mobileActionValue: {
     color: '#393A4D',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     marginTop: 2,
     maxWidth: '100%',
   },
@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
     color: '#303145',
     flex: 1,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     marginRight: 8,
   },
   sheetTitleWithBack: {
@@ -820,7 +820,7 @@ const styles = StyleSheet.create({
   calendarTitle: {
     color: '#3D3E51',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   weekRow: {
     flexDirection: 'row',
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     color: '#9A9BA8',
     flex: 1,
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   days: {
@@ -860,11 +860,11 @@ const styles = StyleSheet.create({
   },
   dayTextToday: {
     color: '#6759E8',
-    fontWeight: '800',
+    fontWeight: '600',
   },
   dayTextSelected: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '600',
   },
   priorityList: {
     paddingBottom: 4,

@@ -21,7 +21,7 @@ interface TaskIndicatorsProps {
 
 const Indicator = ({ children }: { children: React.ReactNode }) => (
   <View className="ml-2 items-center justify-center">
-    <Text className="text-[9px] font-bold text-[#9696A3]">
+    <Text className="text-[9px] font-medium text-[#9696A3]">
       {children}
     </Text>
   </View>

@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#303145',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   shortcut: {
     color: '#999AA6',
@@ -863,7 +863,7 @@ const styles = StyleSheet.create({
   historyProposalStatus: {
     color: '#7770B8',
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 4,
   },
   clarificationCard: {
@@ -876,7 +876,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: '#777887',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
@@ -940,7 +940,7 @@ const styles = StyleSheet.create({
   riskText: {
     color: '#686979',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   operationList: {
     marginTop: 10,
@@ -983,7 +983,7 @@ const styles = StyleSheet.create({
   operationImpact: {
     color: '#B44758',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 4,
   },
   assumptions: {
@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
   assumptionLabel: {
     color: '#A16A24',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   assumptionText: {
     color: '#76583A',

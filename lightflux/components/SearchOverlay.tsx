@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#3C3D4F',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   resultCount: {
     color: '#9A9BA7',
@@ -515,7 +515,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#393A4D',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   emptyDescription: {
     color: '#8A8C9A',
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
     color: '#303145',
     flex: 1,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 20,
   },
   resultTitleCompleted: {

@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#303143',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   message: {
     color: '#666778',

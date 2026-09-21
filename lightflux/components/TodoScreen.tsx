@@ -106,7 +106,7 @@ const TodayMilestoneRow = ({
         </View>
         <View className="ml-2.5 flex-1">
           <Text
-            className="text-[13px] font-bold text-[#343548]"
+            className="text-[13px] font-semibold text-[#343548]"
             numberOfLines={1}
           >
             {milestone.title}
@@ -124,7 +124,7 @@ const TodayMilestoneRow = ({
           style={{ backgroundColor: `${milestone.color}18` }}
         >
           <Text
-            className="text-[10px] font-extrabold"
+            className="text-[10px] font-semibold"
             style={{ color: milestone.color }}
           >
             {labels.today}
@@ -427,7 +427,7 @@ const TodoScreen = ({
               style={[styles.brandMark, styles.brandMarkShadow]}
             />
             <View>
-              <Text className="text-[21px] font-extrabold tracking-[-0.4px] text-ink">
+              <Text className="text-[21px] font-semibold tracking-[-0.4px] text-ink">
                 {labels.appName}
               </Text>
               <Text className="mt-0.5 text-xs text-[#777B8D]">
@@ -449,7 +449,7 @@ const TodoScreen = ({
             onPress={onOpenMilestones}
             style={({ pressed }) => pressed && styles.buttonPressed}
           >
-            <Text className="text-[12px] font-extrabold text-[#515264]">
+            <Text className="text-[12px] font-semibold text-[#515264]">
               {labels.milestones.todaySection}
             </Text>
             <Ionicons color="#898A99" name="chevron-forward" size={15} />
@@ -499,7 +499,7 @@ const TodoScreen = ({
           ]}
         >
           <Text className="mr-1 text-[17px] font-medium text-white">＋</Text>
-          <Text className="text-[13px] font-extrabold text-white">
+          <Text className="text-[13px] font-semibold text-white">
             {labels.addTask}
           </Text>
         </Pressable>
@@ -524,11 +524,11 @@ const TodoScreen = ({
             ListEmptyComponent={
               <View className="min-h-[235px] flex-1 items-center justify-center px-[30px] py-9">
                 <View className="mb-4 h-[60px] w-[60px] -rotate-[5deg] items-center justify-center rounded-[30px] bg-[#E9E6FF]">
-                  <Text className="text-[28px] font-extrabold text-[#7265E8]">
+                  <Text className="text-[28px] font-semibold text-[#7265E8]">
                     ✓
                   </Text>
                 </View>
-                <Text className="mb-[7px] text-center text-[17px] font-extrabold text-[#3B3B50]">
+                <Text className="mb-[7px] text-center text-[17px] font-semibold text-[#3B3B50]">
                   {labels.emptyTitle.active}
                 </Text>
                 <Text className="max-w-[310px] text-center text-[13px] leading-5 text-[#898B9A]">

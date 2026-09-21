@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   checkmark: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '600',
     lineHeight: 15,
   },
   nestingIndicator: {

@@ -368,7 +368,7 @@ const TaskEditorScreen = ({
             <View className="flex-1">
               {readOnly ? (
                 <Text
-                  className={`border-b border-[#ECEAF0] px-1 font-bold text-[#252638] ${
+                  className={`border-b border-[#ECEAF0] px-1 font-semibold text-[#252638] ${
                     compact ? 'pb-2 text-[23px]' : 'pb-2 text-[20px]'
                   }`}
                 >
@@ -378,7 +378,7 @@ const TaskEditorScreen = ({
                 <TextInput
                   {...inputAccentProps}
                   accessibilityLabel={labels.editor.titlePlaceholder}
-                  className={`border-b border-[#ECEAF0] px-1 py-1 font-bold text-[#252638] ${
+                  className={`border-b border-[#ECEAF0] px-1 py-1 font-semibold text-[#252638] ${
                     compact
                       ? 'min-h-[44px] text-[23px]'
                       : 'min-h-[42px] text-[20px]'

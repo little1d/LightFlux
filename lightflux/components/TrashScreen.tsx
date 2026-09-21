@@ -99,7 +99,7 @@ const TrashScreen = ({
             <View className="flex-row items-center justify-between pb-5 pt-4">
               {!compact ? (
                 <View>
-                  <Text className="text-[24px] font-extrabold text-ink">
+                  <Text className="text-[24px] font-semibold text-ink">
                     {labels.trash.title}
                   </Text>
                 </View>
@@ -117,7 +117,7 @@ const TrashScreen = ({
                       opacity: pressed ? 0.8 : 1,
                     })}
                   >
-                    <Text className="text-xs font-bold text-[#C84F60]">
+                    <Text className="text-xs font-semibold text-[#C84F60]">
                       {labels.trash.emptyTrash}
                     </Text>
                   </Pressable>
@@ -131,7 +131,7 @@ const TrashScreen = ({
               <View className="mb-4 h-16 w-16 items-center justify-center rounded-[24px] bg-[#EEEAF8]">
                 <Text className="text-[28px] text-[#8479C4]">⌫</Text>
               </View>
-              <Text className="text-[17px] font-extrabold text-[#393A4D]">
+              <Text className="text-[17px] font-semibold text-[#393A4D]">
                 {labels.trash.emptyTitle}
               </Text>
             </View>
@@ -139,7 +139,7 @@ const TrashScreen = ({
             <>
               {trashedTodos.length > 0 ? (
                 <View className="mb-5">
-                  <Text className="mb-2 px-1 text-[11px] font-extrabold text-[#767786]">
+                  <Text className="mb-2 px-1 text-[11px] font-semibold text-[#767786]">
                     {labels.trash.tasksSection} · {trashedTodos.length}
                   </Text>
                   {trashedTodos.map((todo) => (
@@ -183,7 +183,7 @@ const TrashScreen = ({
                         className="h-7 items-center justify-center rounded-[9px] bg-[#ECE9FF] px-2.5"
                         onPress={() => restoreTodo(todo.id)}
                       >
-                        <Text className="text-[10px] font-extrabold text-primary">
+                        <Text className="text-[10px] font-semibold text-primary">
                           {labels.trash.restore}
                         </Text>
                       </Pressable>
@@ -193,7 +193,7 @@ const TrashScreen = ({
                         className="ml-1.5 h-7 w-7 items-center justify-center rounded-[9px] bg-[#FCECEF]"
                         onPress={() => requestPermanentDelete(todo.id)}
                       >
-                        <Text className="text-[12px] font-extrabold text-[#C84F60]">
+                        <Text className="text-[12px] font-semibold text-[#C84F60]">
                           ×
                         </Text>
                       </Pressable>
@@ -204,7 +204,7 @@ const TrashScreen = ({
 
               {trashedMilestones.length > 0 ? (
                 <View>
-                  <Text className="mb-2 px-1 text-[11px] font-extrabold text-[#767786]">
+                  <Text className="mb-2 px-1 text-[11px] font-semibold text-[#767786]">
                     {labels.trash.milestonesSection} ·{' '}
                     {trashedMilestones.length}
                   </Text>
@@ -247,7 +247,7 @@ const TrashScreen = ({
                         className="h-7 items-center justify-center rounded-[9px] bg-[#ECE9FF] px-2.5"
                         onPress={() => restoreMilestone(milestone.id)}
                       >
-                        <Text className="text-[10px] font-extrabold text-primary">
+                        <Text className="text-[10px] font-semibold text-primary">
                           {labels.trash.restore}
                         </Text>
                       </Pressable>
@@ -259,7 +259,7 @@ const TrashScreen = ({
                           requestPermanentMilestoneDelete(milestone.id)
                         }
                       >
-                        <Text className="text-[12px] font-extrabold text-[#C84F60]">
+                        <Text className="text-[12px] font-semibold text-[#C84F60]">
                           ×
                         </Text>
                       </Pressable>

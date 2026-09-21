@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#262738',
     fontSize: 25,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.5,
   },
   count: {
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   emptyTitle: {
     color: '#555667',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 13,
   },
 });

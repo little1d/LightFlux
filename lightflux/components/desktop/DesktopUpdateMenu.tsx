@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#303143',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   meta: {
     color: '#8A8B98',
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
   progressText: {
     color: '#6759E8',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
 

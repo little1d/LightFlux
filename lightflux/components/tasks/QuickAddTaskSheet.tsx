@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#303145',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   input: {
     backgroundColor: '#FFFFFF',
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     color: '#565769',
     flex: 1,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     marginHorizontal: 5,
   },
   pickerPanel: {
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
   calendarTitle: {
     color: '#404154',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   weekRow: {
     flexDirection: 'row',
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     color: '#9A9BA8',
     flex: 1,
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   days: {
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
   },
   dayTextSelected: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '600',
   },
   optionPanel: {
     backgroundColor: '#FFFFFF',

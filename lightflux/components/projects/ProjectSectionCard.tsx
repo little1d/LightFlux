@@ -188,12 +188,12 @@ const ProjectHeader = ({
             className="mr-3 h-3 w-3 rounded-[6px]"
             style={{ backgroundColor: section.color }}
           />
-          <Text className="text-[17px] font-extrabold text-[#292A3D]">
+          <Text className="text-[17px] font-semibold text-[#292A3D]">
             {section.name}
           </Text>
           {progress.total > 0 ? (
             <Text
-              className="ml-2 text-xs font-extrabold"
+              className="ml-2 text-xs font-semibold tabular-nums"
               style={{ color: complete ? PROJECT_COMPLETE_COLOR : '#A0A1AC' }}
             >
               {progressPercent(progress.ratio)}%

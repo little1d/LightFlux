@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
   calendarTitle: {
     color: '#303145',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   navButton: {
     alignItems: 'center',
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     color: '#9A9BA8',
     flex: 1,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     textAlign: 'center',
   },
   grid: {
@@ -488,11 +488,11 @@ const styles = StyleSheet.create({
   },
   dayTextToday: {
     color: '#6759E8',
-    fontWeight: '800',
+    fontWeight: '600',
   },
   dayTextSelected: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.6,

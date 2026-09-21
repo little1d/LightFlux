@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#232238',
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.5,
   },
   workspace: {
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
   monthTitle: {
     color: '#303145',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   headerControls: {
     alignItems: 'center',
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   weekdayText: {
     color: '#9597A5',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   daysGrid: {
     flexDirection: 'column',
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
   dayNumberText: {
     color: '#454659',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   dayNumberMuted: {
     color: '#C1C2CA',
@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
   dayTaskCount: {
     color: '#A09FAE',
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   dayTaskPill: {
     alignItems: 'center',

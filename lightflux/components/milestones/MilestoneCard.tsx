@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#303145',
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   type: {
     color: '#92939F',
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   archivedText: {
     color: '#777887',
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });
 

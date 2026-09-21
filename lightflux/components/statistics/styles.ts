@@ -46,14 +46,14 @@ const styles = StyleSheet.create({
     color: '#7B6FE1',
     fontFamily: 'monospace',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 1.1,
     marginBottom: 5,
   },
   title: {
     color: '#28293A',
     fontSize: 27,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.6,
   },
   subtitle: {
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   rangeText: {
     color: '#686976',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   rangeTextSelected: {
     color: '#6759E8',
@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
   estimatedText: {
     color: '#A46B00',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   metricGrid: {
     flexDirection: 'row',
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontSize: 30,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.7,
     marginTop: 13,
   },
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: '#303143',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   sectionDescription: {
     color: '#8B8C98',
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     color: '#9697A3',
     fontFamily: 'monospace',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0.8,
     marginBottom: 5,
   },
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   insightTitle: {
     color: '#363747',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   insightDescription: {
     color: '#777885',
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   insightActionText: {
     color: '#6759E8',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '600',
     marginRight: 4,
   },
   lowerGrid: {

@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#2E2F41',
     fontSize: 23,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
   },
   description: {
@@ -787,7 +787,7 @@ const styles = StyleSheet.create({
   methodOptionText: {
     color: '#858694',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   methodOptionTextActive: {
     color: '#4F45C4',
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   buttonPressed: {
     backgroundColor: '#594CCD',
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
   localButtonText: {
     color: '#6759E8',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   secondaryButton: {
     borderRadius: 6,
@@ -901,7 +901,7 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: '#6759E8',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   actionDivider: {
     backgroundColor: '#E3E2E9',

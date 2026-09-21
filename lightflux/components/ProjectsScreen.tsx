@@ -57,7 +57,7 @@ const ProjectsScreen = ({
         >
           {!compact ? (
             <View className="flex-row items-center justify-between pb-5 pt-4">
-              <Text className="text-[24px] font-extrabold text-ink">
+              <Text className="text-[24px] font-semibold text-ink">
                 {controller.labels.projects.title}
               </Text>
             </View>
@@ -94,7 +94,7 @@ const ProjectsScreen = ({
                 transform: [{ scale: pressed ? 0.94 : 1 }],
               })}
             >
-              <Text className="text-xs font-extrabold text-white">
+              <Text className="text-xs font-semibold text-white">
                 ＋ {controller.labels.projects.addProject}
               </Text>
             </Pressable>

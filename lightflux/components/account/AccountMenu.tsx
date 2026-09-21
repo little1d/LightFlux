@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   name: {
     color: '#303145',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   email: {
     color: '#858797',

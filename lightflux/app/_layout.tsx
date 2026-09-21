@@ -5,6 +5,7 @@
 // and flex layouts (sidebar row, flex-1 fill) collapse.
 import '../config/focusStyles';
 import '../config/nativewind';
+import '../config/webBaseStyles';
 import {
   COMPACT_MOBILE_HEIGHT_BREAKPOINT,
   DESKTOP_LAYOUT_BREAKPOINT,
@@ -1148,7 +1149,7 @@ const styles = StyleSheet.create({
   mobileNavigationLabel: {
     color: '#9596A3',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     marginTop: 4,
   },
   mobileNavigationLabelCompact: {

@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   selectedLabel: {
     color: '#6759E8',
-    fontWeight: '700',
+    fontWeight: '600',
   },
   trailing: {
     marginLeft: 10,

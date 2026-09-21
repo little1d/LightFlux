@@ -642,13 +642,13 @@ const styles = StyleSheet.create({
   eyebrow: {
     color: '#8B8C99',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: 0,
   },
   heading: {
     color: '#303145',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '600',
     marginTop: 2,
   },
   closeButton: {
@@ -673,7 +673,7 @@ const styles = StyleSheet.create({
     color: '#2E2F42',
     flex: 1,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     minHeight: 46,
     outlineColor: 'transparent',
     paddingHorizontal: 10,
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
   selectLabel: {
     color: '#8A8798',
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '600',
     marginLeft: 5,
   },
   selectValueRow: {
@@ -712,7 +712,7 @@ const styles = StyleSheet.create({
     color: '#3C3D50',
     flex: 1,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     marginRight: 5,
   },
   formSection: {
@@ -729,13 +729,13 @@ const styles = StyleSheet.create({
   sectionLabelText: {
     color: '#646174',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     marginLeft: 6,
   },
   fieldLabel: {
     color: '#7D7E8C',
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '600',
     marginBottom: 5,
   },
   segment: {

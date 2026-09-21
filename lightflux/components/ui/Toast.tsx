@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
   message: {
     flex: 1,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 17,
   },
   dismiss: {

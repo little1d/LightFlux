@@ -119,7 +119,8 @@ describe('persisted state V12 validation', () => {
       'projects',
       'today',
     ]);
-    expect(result?.navigationOrder).toHaveLength(6);
+    expect(result?.navigationOrder).toHaveLength(7);
+    expect(result?.navigationOrder.at(-1)).toBe('chat');
   });
 
   it('restores Inbox and repairs invalid Project references in V12', () => {

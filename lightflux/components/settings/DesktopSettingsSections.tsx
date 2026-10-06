@@ -18,6 +18,7 @@ import {
   importDesktopBackup,
 } from '../../services/desktopRuntime';
 import { useDesktopStore } from '../../store/desktopStore';
+import { flushChatState } from '../../store/chatStore';
 import {
   exportAppStateBackup,
   flushAppState,
@@ -138,6 +139,7 @@ const DesktopSettingsSections = ({
   const handleVersionAction = () => {
     if (updateStatus === 'ready') {
       void flushAppState()
+        .then(flushChatState)
         .then(relaunchForUpdate)
         .catch((error) => {
           console.warn('Unable to flush data before relaunch.', error);

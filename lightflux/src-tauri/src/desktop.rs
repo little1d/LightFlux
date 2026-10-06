@@ -129,11 +129,9 @@ fn build_tray_menu<R: Runtime>(
     )
     .accelerator("CmdOrCtrl+N")
     .build(app)?;
-    let today = MenuItemBuilder::with_id(
-        "today",
-        localized(language, "打开今日安排", "Open Today"),
-    )
-    .build(app)?;
+    let today =
+        MenuItemBuilder::with_id("today", localized(language, "打开今日安排", "Open Today"))
+            .build(app)?;
     let milestones = MenuItemBuilder::with_id(
         "milestones",
         localized(language, "打开重要节点", "Open Milestones"),
@@ -144,12 +142,9 @@ fn build_tray_menu<R: Runtime>(
         localized(language, "显示 LightFlux", "Show LightFlux"),
     )
     .build(app)?;
-    let settings = MenuItemBuilder::with_id(
-        "settings",
-        localized(language, "设置…", "Settings…"),
-    )
-    .accelerator("CmdOrCtrl+,")
-    .build(app)?;
+    let settings = MenuItemBuilder::with_id("settings", localized(language, "设置…", "Settings…"))
+        .accelerator("CmdOrCtrl+,")
+        .build(app)?;
     let quit = MenuItemBuilder::with_id(
         "quit",
         localized(language, "退出 LightFlux", "Quit LightFlux"),
@@ -269,10 +264,7 @@ fn emit_tray_action<R: Runtime>(app: &AppHandle<R>, action: &str) {
     let _ = app.emit(TRAY_ACTION_EVENT, action);
 }
 
-fn rebuild_tray<R: Runtime>(
-    app: &AppHandle<R>,
-    state: &DesktopState,
-) -> Result<(), String> {
+fn rebuild_tray<R: Runtime>(app: &AppHandle<R>, state: &DesktopState) -> Result<(), String> {
     let status = state
         .status
         .lock()
@@ -295,9 +287,7 @@ fn rebuild_tray<R: Runtime>(
     Ok(())
 }
 
-pub fn setup(
-    app: &mut tauri::App,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let state = DesktopState::default();
 
     #[cfg(target_os = "macos")]
@@ -307,7 +297,7 @@ pub fn setup(
         let tray = TrayIconBuilder::with_id(TRAY_ID)
             .icon(tray_image(false)?)
             .icon_as_template(true)
-            .tooltip("LightFlux")
+            .tooltip(app.config().product_name.as_deref().unwrap_or("LightFlux"))
             .menu(&menu)
             .show_menu_on_left_click(false)
             .on_menu_event(|app, event| match event.id().as_ref() {
@@ -437,10 +427,7 @@ pub fn load_desktop_auth_token(app: AppHandle) -> Result<Option<String>, String>
 }
 
 #[tauri::command]
-pub fn store_desktop_auth_token(
-    app: AppHandle,
-    token: Option<String>,
-) -> Result<(), String> {
+pub fn store_desktop_auth_token(app: AppHandle, token: Option<String>) -> Result<(), String> {
     let path = auth_token_path(&app)?;
     let Some(token) = token else {
         return match fs::remove_file(path) {

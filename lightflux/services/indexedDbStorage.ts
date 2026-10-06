@@ -97,6 +97,7 @@ const deleteIndexedState = async (key: string): Promise<void> => {
 
 export const loadWebState = async (
   legacyStorageKey: string,
+  options: { strict?: boolean } = {},
 ): Promise<string | null> => {
   try {
     const indexedState = await readIndexedState(legacyStorageKey);
@@ -116,6 +117,7 @@ export const loadWebState = async (
     }
     return null;
   } catch (error) {
+    if (options.strict) throw error;
     console.warn('IndexedDB is unavailable; using localStorage.', error);
     return runtime.localStorage?.getItem(legacyStorageKey) ?? null;
   }
@@ -124,10 +126,12 @@ export const loadWebState = async (
 export const saveWebState = async (
   legacyStorageKey: string,
   value: string,
+  options: { strict?: boolean } = {},
 ): Promise<void> => {
   try {
     await writeIndexedState(legacyStorageKey, value);
   } catch (error) {
+    if (options.strict) throw error;
     console.warn('Unable to save IndexedDB state; using localStorage.', error);
     runtime.localStorage?.setItem(legacyStorageKey, value);
   }

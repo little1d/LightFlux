@@ -30,6 +30,7 @@ export interface MenuSurfacePosition {
 const webFixedPosition = { position: 'fixed' } as unknown as ViewStyle;
 
 interface MenuSurfaceProps {
+  accessibilityLabel?: string;
   allowOverflow?: boolean;
   children: React.ReactNode;
   closeLabel?: string;
@@ -41,6 +42,7 @@ interface MenuSurfaceProps {
 }
 
 const MenuSurface = ({
+  accessibilityLabel,
   allowOverflow = false,
   children,
   closeLabel = 'Close menu',
@@ -122,6 +124,7 @@ const MenuSurface = ({
       ]}
     >
       <Animated.View
+        accessibilityLabel={accessibilityLabel}
         accessibilityRole="menu"
         style={[
           styles.surface,

@@ -78,6 +78,19 @@ describe('indexedDbStorage', () => {
     vi.resetModules();
   });
 
+  it('does not acknowledge a strict write or return stale fallback data when IndexedDB fails', async () => {
+    vi.stubGlobal('indexedDB', { open: () => { throw new Error('Storage denied'); } });
+    const fallbackWrite = vi.fn();
+    vi.stubGlobal('localStorage', {
+      getItem: () => 'older history', setItem: fallbackWrite,
+    });
+    vi.resetModules();
+    const { loadWebState, saveWebState } = await import('../services/indexedDbStorage');
+    await expect(loadWebState('lightflux.chat.v1', { strict: true })).rejects.toThrow('Storage denied');
+    await expect(saveWebState('lightflux.chat.v1', 'new messages', { strict: true })).rejects.toThrow('Storage denied');
+    expect(fallbackWrite).not.toHaveBeenCalled();
+  });
+
   it('moves a matching localStorage value and keeps business keys isolated', async () => {
     const records = new Map<string, string>();
     const localRecords = new Map([

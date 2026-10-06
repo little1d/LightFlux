@@ -11,6 +11,7 @@ export const NAVIGATION_ITEM_IDS = [
   'milestones',
   'projects',
   'trash',
+  'chat',
 ] as const;
 
 export type NavigationItemId = (typeof NAVIGATION_ITEM_IDS)[number];

@@ -63,7 +63,17 @@ cloud setup are outside the application and should be removed separately.
 
 ## Verification
 
-Use an isolated application identifier to avoid modifying real user data:
+For live development, run `npm run desktop:dev` from `lightflux/`. It opens
+**LightFlux Dev** with the `com.little1d.lightflux.dev` identifier and separate
+data and AI credentials. The installed stable app can remain running.
+
+Keep that terminal running while using the development window. The command
+starts both the desktop process and its frontend at `http://localhost:1420`.
+Opening `target/debug/lightflux-desktop` alone does not start the frontend;
+without the service, the window can be blank. If this happens, quit only
+LightFlux Dev and restart it with `npm run desktop:dev`.
+
+For a standalone test bundle, use an isolated application identifier:
 
 ```bash
 cd lightflux

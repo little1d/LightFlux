@@ -10,6 +10,7 @@ export const common: CommonContent = {
     milestones: 'Milestones',
     projects: 'Projects',
     trash: 'Trash',
+    chat: 'Xiaoguang',
   },
   search: {
     title: 'Search tasks',

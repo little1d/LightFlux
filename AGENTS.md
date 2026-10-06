@@ -39,6 +39,9 @@ subdirectory overrides it for that subtree.
   for older data. Never silently discard user data.
 - AI data mutations follow understand, disambiguate, preview, confirm, execute,
   audit, and undo semantics. The model must not mutate local data directly.
+- Keep AI conversation history separate from task state. Desktop API keys
+  belong in the system credential vault; Web preview keys are session-only.
+  Send only the selected conversation, never implicit task or workspace data.
 - Desktop data uses atomic local file replacement and pre-change backups.
   Preserve legacy WebView data during migration; stop writes on corrupt or
   unsupported state. Do not delete cloud data or retire servers without a
@@ -123,3 +126,8 @@ cargo check --manifest-path lightflux/src-tauri/Cargo.toml
   changes. Keep the app open and surface the error.
 - Desktop exports ignore legacy cloud environment variables and dotenv files.
   Update checks must be explicit; new task images must persist locally.
+- Use `npm run desktop:dev` with a separate app identifier, data directory and
+  credential namespace; sharing the stable identifier redirects development
+  launches through the single-instance plugin.
+- Cache desktop credentials only in process after the first system-vault read,
+  and synchronize that cache on store or removal to avoid repeated OS prompts.

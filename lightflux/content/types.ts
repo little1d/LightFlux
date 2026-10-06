@@ -10,6 +10,7 @@ export interface Translation {
     milestones: string;
     projects: string;
     trash: string;
+    chat: string;
   };
   search: {
     title: string;

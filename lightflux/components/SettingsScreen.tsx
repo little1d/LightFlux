@@ -42,8 +42,9 @@ const SettingsScreen = ({
   onOpenStatistics: () => void;
 }) => {
   const { width } = useWindowDimensions();
-  const compact = width < 520;
-  const stacked = width >= 520 && width < 640;
+  const contentWidth = onClose ? Math.min(width, 420) : width;
+  const compact = contentWidth < 520;
+  const stacked = contentWidth >= 520 && contentWidth < 640;
   const controlWidth: DimensionValue = compact
     ? 148
     : stacked

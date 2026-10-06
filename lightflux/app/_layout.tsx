@@ -73,6 +73,7 @@ import {
   quitDesktop,
 } from '../services/desktopRuntime';
 import { useDesktopStore } from '../store/desktopStore';
+import { flushChatState } from '../store/chatStore';
 import {
   flushAppState,
   TodoProvider,
@@ -108,6 +109,7 @@ const NAV_ICONS: Record<
   milestones: 'hourglass-outline',
   projects: 'folder-open-outline',
   trash: 'trash-outline',
+  chat: 'chatbubbles-outline',
 };
 
 const NAVIGABLE_VIEWS: AppView[] = [
@@ -117,6 +119,7 @@ const NAVIGABLE_VIEWS: AppView[] = [
   'milestones',
   'projects',
   'trash',
+  'chat',
   'settings',
   'statistics',
 ];
@@ -355,7 +358,8 @@ const AppShell = () => {
     ),
   );
   const visibleNavigationOrder = navigationOrder.filter(
-    (id) => !hiddenNavigationItems.includes(id as OptionalNavigationItemId),
+    (id) => !hiddenNavigationItems.includes(id as OptionalNavigationItemId) &&
+      (id !== 'chat' || Platform.OS === 'web'),
   );
   const navigationItems = visibleNavigationOrder
     .map((id) => ({
@@ -480,6 +484,7 @@ const AppShell = () => {
   const relaunchWithFlush = useCallback(async () => {
     try {
       await flushAppState();
+      await flushChatState();
       await relaunchForUpdate();
     } catch {
       notify(labels.notifications.saveFailed, 'error');
@@ -506,6 +511,7 @@ const AppShell = () => {
       }
       if (action === 'quit') {
         void flushAppState()
+          .then(flushChatState)
           .then(quitDesktop)
           .catch((error) => {
             console.warn('Unable to flush data before quitting.', error);
@@ -714,6 +720,7 @@ const AppShell = () => {
   const mainContentHidden = mobileEditorOpen || searchOpen;
   const showMobileUtilities =
     !usesDesktopLayout &&
+    activeView !== 'chat' &&
     !selectedTask &&
     !settingsPanelOpen &&
     navigationItems.some((item) => item.id === activeView);

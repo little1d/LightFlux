@@ -5,7 +5,7 @@ import type { OpenTaskMenu } from './tasks/useTaskContextMenu';
 import type { OptionalNavigationItemId } from '../types/todo';
 
 // A view the shell can navigate to. Kept in sync with the route files under
-// `app/`; `settings` and `statistics` are reached alongside the six primary
+// `app/`; `settings` and `statistics` are reached alongside the primary
 // navigation items.
 export type AppView =
   | 'today'
@@ -14,6 +14,7 @@ export type AppView =
   | 'milestones'
   | 'projects'
   | 'trash'
+  | 'chat'
   | 'settings'
   | 'statistics';
 

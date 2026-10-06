@@ -43,47 +43,83 @@ pub fn reply_local_api(api: State<LocalApi>, id: String, reply: ApiReply) -> Res
 
 pub fn start_api(app: &AppHandle) -> Result<(), String> {
     let server = tiny_http::Server::http("127.0.0.1:0").map_err(|e| e.to_string())?;
-    let address = server.server_addr().to_ip().ok_or("Missing loopback address")?;
+    let address = server
+        .server_addr()
+        .to_ip()
+        .ok_or("Missing loopback address")?;
     let token = format!("{}{}", uuid::Uuid::new_v4(), uuid::Uuid::new_v4());
     let descriptor = directory(app)?.join("local-api.json");
-    atomic_write(&descriptor, serde_json::to_vec(&json!({
-        "schemaVersion": 1,
-        "apiUrl": format!("http://{address}"),
-        "token": token,
-        "pid": std::process::id()
-    })).map_err(|e| e.to_string())?.as_slice())?;
+    atomic_write(
+        &descriptor,
+        serde_json::to_vec(&json!({
+            "schemaVersion": 1,
+            "apiUrl": format!("http://{address}"),
+            "token": token,
+            "pid": std::process::id()
+        }))
+        .map_err(|e| e.to_string())?
+        .as_slice(),
+    )?;
     let app = app.clone();
     thread::spawn(move || {
         for mut request in server.incoming_requests() {
-            let header = |name: &str| request.headers().iter()
-                .find(|h| h.field.as_str().as_str().eq_ignore_ascii_case(name))
-                .map(|h| h.value.as_str().to_owned());
+            let header = |name: &str| {
+                request
+                    .headers()
+                    .iter()
+                    .find(|h| h.field.as_str().as_str().eq_ignore_ascii_case(name))
+                    .map(|h| h.value.as_str().to_owned())
+            };
             // Reject browser-origin traffic and DNS rebinding before reading bodies.
             let authorized = header("Authorization").as_deref() == Some(&format!("Bearer {token}"))
                 && header("Host").as_deref() == Some(&address.to_string())
                 && header("Origin").is_none();
             let reply = if !authorized {
-                ApiReply { status: 403, body: json!({"error": "Local desktop authorization required."}) }
+                ApiReply {
+                    status: 403,
+                    body: json!({"error": "Local desktop authorization required."}),
+                }
             } else if request.body_length().unwrap_or(0) > 16 * 1024 * 1024 {
-                ApiReply { status: 413, body: json!({"error": "Request too large."}) }
+                ApiReply {
+                    status: 413,
+                    body: json!({"error": "Request too large."}),
+                }
             } else {
                 let idempotency_key = header("Idempotency-Key");
                 let method = request.method().as_str().to_owned();
                 let path = request.url().to_owned();
                 let mut bytes = Vec::new();
                 use std::io::Read;
-                let read = request.as_reader().take(16 * 1024 * 1024 + 1).read_to_end(&mut bytes);
-                let body = if bytes.is_empty() { Ok(json!({})) } else { serde_json::from_slice(&bytes) };
+                let read = request
+                    .as_reader()
+                    .take(16 * 1024 * 1024 + 1)
+                    .read_to_end(&mut bytes);
+                let body = if bytes.is_empty() {
+                    Ok(json!({}))
+                } else {
+                    serde_json::from_slice(&bytes)
+                };
                 if read.is_err() || bytes.len() > 16 * 1024 * 1024 || body.is_err() {
-                    ApiReply { status: 400, body: json!({"error": "Invalid JSON request."}) }
+                    ApiReply {
+                        status: 400,
+                        body: json!({"error": "Invalid JSON request."}),
+                    }
                 } else {
                     let id = uuid::Uuid::new_v4().to_string();
                     let (sender, receiver) = mpsc::channel();
                     let api = app.state::<LocalApi>();
                     api.pending.lock().unwrap().insert(id.clone(), sender);
-                    let _ = app.emit_to("main", "lightflux://local-api", ApiRequest {
-                        id: id.clone(), method, path, body: body.unwrap(), idempotency_key,
-                    });
+                    let _ = app.emit_to(
+                        "main",
+                        "lightflux://local-api",
+                        ApiRequest {
+                            id: id.clone(),
+                            method,
+                            path,
+                            body: body.unwrap(),
+                            idempotency_key,
+                        },
+                    );
                     let reply = receiver.recv_timeout(Duration::from_secs(15)).unwrap_or(ApiReply {
                         status: 503, body: json!({"error": "Desktop is not ready. Open LightFlux and retry."}),
                     });
@@ -93,7 +129,9 @@ pub fn start_api(app: &AppHandle) -> Result<(), String> {
             };
             let response = tiny_http::Response::from_string(reply.body.to_string())
                 .with_status_code(reply.status)
-                .with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())
+                .with_header(
+                    tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap(),
+                )
                 .with_header(tiny_http::Header::from_bytes("Cache-Control", "no-store").unwrap());
             let _ = request.respond(response);
         }
@@ -103,30 +141,26 @@ pub fn start_api(app: &AppHandle) -> Result<(), String> {
 
 pub struct LocalStorage(pub Mutex<()>);
 
-fn directory(app: &AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn directory(app: &AppHandle) -> Result<PathBuf, String> {
     let path = app.path().app_data_dir().map_err(|e| e.to_string())?;
     fs::create_dir_all(&path).map_err(|e| e.to_string())?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&path, fs::Permissions::from_mode(0o700))
-            .map_err(|e| e.to_string())?;
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).map_err(|e| e.to_string())?;
     }
     Ok(path)
 }
 
 fn validate(content: &str) -> Result<Value, String> {
     let value: Value = serde_json::from_str(content).map_err(|e| e.to_string())?;
-    if value["schemaVersion"] != 12
-        || !value["todos"].is_array()
-        || !value["projects"].is_array()
-    {
+    if value["schemaVersion"] != 12 || !value["todos"].is_array() || !value["projects"].is_array() {
         return Err("Unrecognized local state; existing data has been preserved.".into());
     }
     Ok(value)
 }
 
-fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
+pub(crate) fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
     let temporary = path.with_extension("pending");
     let mut options = OpenOptions::new();
     options.write(true).create(true).truncate(true);
@@ -183,8 +217,10 @@ fn save_state(directory: &Path, content: &str, restore: bool) -> Result<(), Stri
         Ok(previous) => {
             let previous_valid = validate(&previous);
             if previous_valid.is_err() && restore {
-                let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)
-                    .map_err(|e| e.to_string())?.as_nanos();
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .map_err(|e| e.to_string())?
+                    .as_nanos();
                 atomic_write(
                     &directory.join(format!("recovery-original-{timestamp}.json")),
                     previous.as_bytes(),
@@ -201,7 +237,9 @@ fn save_state(directory: &Path, content: &str, restore: bool) -> Result<(), Stri
             let backups = directory.join("backups");
             fs::create_dir_all(&backups).map_err(|e| e.to_string())?;
             let timestamp = SystemTime::now()
-                .duration_since(UNIX_EPOCH).map_err(|e| e.to_string())?.as_nanos();
+                .duration_since(UNIX_EPOCH)
+                .map_err(|e| e.to_string())?
+                .as_nanos();
             // Backup must succeed before replacing the only current state.
             atomic_write(
                 &backups.join(format!("lightflux-auto-{timestamp}.json")),
@@ -210,11 +248,19 @@ fn save_state(directory: &Path, content: &str, restore: bool) -> Result<(), Stri
                     "version": 1,
                     "createdAt": (timestamp / 1_000_000) as u64,
                     "state": serde_json::from_str::<Value>(&previous).map_err(|e| e.to_string())?
-                })).map_err(|e| e.to_string())?.as_slice(),
+                }))
+                .map_err(|e| e.to_string())?
+                .as_slice(),
             )?;
-            let mut files: Vec<_> = fs::read_dir(&backups).map_err(|e| e.to_string())?
+            let mut files: Vec<_> = fs::read_dir(&backups)
+                .map_err(|e| e.to_string())?
                 .filter_map(Result::ok)
-                .filter(|entry| entry.file_name().to_string_lossy().starts_with("lightflux-auto-"))
+                .filter(|entry| {
+                    entry
+                        .file_name()
+                        .to_string_lossy()
+                        .starts_with("lightflux-auto-")
+                })
                 .collect();
             files.sort_by_key(|entry| entry.file_name());
             let expired = files.len().saturating_sub(30);
@@ -249,11 +295,22 @@ mod tests {
         assert!(!path.join("backups").exists());
         let next = r#"{"schemaVersion":12,"todos":[{"id":"a"}],"projects":[],"updatedAt":2}"#;
         save_state(&path, next, false).unwrap();
-        assert_eq!(fs::read_to_string(path.join("local-state-v12.json")).unwrap(), next);
-        let backup = fs::read_dir(path.join("backups")).unwrap().next().unwrap().unwrap();
-        let value: Value = serde_json::from_str(&fs::read_to_string(backup.path()).unwrap()).unwrap();
+        assert_eq!(
+            fs::read_to_string(path.join("local-state-v12.json")).unwrap(),
+            next
+        );
+        let backup = fs::read_dir(path.join("backups"))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap();
+        let value: Value =
+            serde_json::from_str(&fs::read_to_string(backup.path()).unwrap()).unwrap();
         assert_eq!(value["format"], "lightflux-app-state");
-        assert_eq!(value["state"], serde_json::from_str::<Value>(first).unwrap());
+        assert_eq!(
+            value["state"],
+            serde_json::from_str::<Value>(first).unwrap()
+        );
         fs::remove_dir_all(path).unwrap();
     }
 
@@ -265,9 +322,20 @@ mod tests {
         let valid = r#"{"schemaVersion":12,"todos":[],"projects":[]}"#;
         assert!(save_state(&path, valid, false).is_err());
         save_state(&path, valid, true).unwrap();
-        let original = fs::read_dir(&path).unwrap().filter_map(Result::ok)
-            .find(|entry| entry.file_name().to_string_lossy().starts_with("recovery-original-")).unwrap();
-        assert_eq!(fs::read_to_string(original.path()).unwrap(), "corrupt original");
+        let original = fs::read_dir(&path)
+            .unwrap()
+            .filter_map(Result::ok)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("recovery-original-")
+            })
+            .unwrap();
+        assert_eq!(
+            fs::read_to_string(original.path()).unwrap(),
+            "corrupt original"
+        );
         fs::remove_dir_all(path).unwrap();
     }
 }

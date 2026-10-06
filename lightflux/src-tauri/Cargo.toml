@@ -1,6 +1,6 @@
 [package]
 name = "lightflux-desktop"
-version = "1.1.0"
+version = "1.1.3"
 description = "LightFlux desktop application"
 authors = ["little1d"]
 edition = "2021"
@@ -20,8 +20,20 @@ tauri-plugin-single-instance = { version = "2.4.4", features = ["deep-link"] }
 tauri-plugin-updater = "2"
 tiny_http = "0.12"
 uuid = { version = "1", features = ["v4"] }
+# Reuse the updater's ring-backed TLS provider.
+reqwest = { version = "0.13", default-features = false, features = ["json", "stream", "rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+futures-util = "0.3"
+tokio = { version = "1", features = ["sync", "macros"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSImage"] }
 objc2-foundation = { version = "0.3", features = ["NSData"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust", "vendored"] }

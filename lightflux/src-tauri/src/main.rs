@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod chat;
 mod desktop;
 mod local;
 
@@ -7,6 +8,8 @@ fn main() {
     let builder = tauri::Builder::default()
         .manage(local::LocalStorage(std::sync::Mutex::new(())))
         .manage(local::LocalApi::default())
+        .manage(chat::ChatRequests::default())
+        .manage(chat::ChatCredentials::default())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             use tauri::Manager;
             if let Some(window) = app.get_webview_window("main") {
@@ -27,6 +30,13 @@ fn main() {
             local::load_local_app_state,
             local::save_local_app_state,
             local::reply_local_api,
+            chat::load_chat_state,
+            chat::save_chat_state,
+            chat::has_chat_key,
+            chat::store_chat_key,
+            chat::remove_chat_key,
+            chat::stream_chat,
+            chat::cancel_chat_request,
             desktop::apply_desktop_preferences,
             desktop::desktop_environment,
             desktop::export_app_state_backup,
@@ -52,4 +62,21 @@ fn main() {
     builder
         .run(tauri::generate_context!())
         .expect("error while running LightFlux");
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Value;
+
+    #[test]
+    fn release_versions_stay_synchronized() {
+        let package: Value = serde_json::from_str(include_str!("../../package.json")).unwrap();
+        let app: Value = serde_json::from_str(include_str!("../../app.json")).unwrap();
+        let tauri: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let version = env!("CARGO_PKG_VERSION");
+
+        assert_eq!(package["version"], version);
+        assert_eq!(app["expo"]["version"], version);
+        assert_eq!(tauri["version"], version);
+    }
 }

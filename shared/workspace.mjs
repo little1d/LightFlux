@@ -450,7 +450,11 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
 
   const task = requireTask(state, taskId);
   requireExpectedVersion(task, body.expectedVersion);
-  if (task.trashedAt !== null && action !== 'task.restore') {
+  if (
+    task.trashedAt !== null &&
+    action !== 'task.restore' &&
+    action !== 'task.delete'
+  ) {
     throw httpError(409, 'Restore the task before changing it.');
   }
   const timestamp = nextTimestamp(task, stateTimestamp);
@@ -594,6 +598,14 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
         appendEvent(state, branchTask.id, 'trashed', timestamp);
       }
     }
+  } else if (action === 'task.delete') {
+    const branchIds = collectDescendantIds(state.todos, task.id);
+    state.todos = state.todos.filter(
+      (branchTask) => !branchIds.has(branchTask.id),
+    );
+    state.taskEvents = state.taskEvents.filter(
+      (event) => !branchIds.has(event.taskId),
+    );
   } else if (action === 'task.restore') {
     if (task.trashedAt !== null) {
       const branchIds = collectDescendantIds(state.todos, task.id, true);
@@ -968,4 +980,3 @@ export const mutateProjectState = ({
   state.updatedAt = Math.max(Number(state.updatedAt ?? 0) + 1, timestamp);
   return project;
 };
-

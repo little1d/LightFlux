@@ -148,6 +148,45 @@ describe("local desktop workspace transactions", () => {
     expect(undone.state.todos).toHaveLength(1);
   });
 
+  it("permanently deletes an active task branch with audit and latest-only undo", () => {
+    const parent = executeLocalRequest(initial(), create("Parent"));
+    const parentId = parent.state.todos[0].id;
+    const child = executeLocalRequest(parent.state, {
+      ...create("Child"),
+      body: { ...create("Child").body, parentId },
+    });
+    const removed = executeLocalRequest(
+      child.state,
+      {
+        method: "POST",
+        path: `/api/v1/tasks/${parentId}/mutations`,
+        idempotencyKey: "delete-branch",
+        body: {
+          action: "task.delete",
+          expectedVersion: child.state.todos[0].updatedAt,
+        },
+      },
+      { actorId: "xiaoguang" },
+    );
+    expect(removed.state.todos).toEqual([]);
+    expect(removed.state.taskEvents).toEqual([]);
+    expect(removed.result.task).toMatchObject({ id: parentId, title: "Parent" });
+    expect(removed.state.localAutomation?.mutations.at(-1)).toMatchObject({
+      action: "task.delete",
+      actorId: "xiaoguang",
+    });
+
+    const restored = executeLocalRequest(removed.state, {
+      method: "POST",
+      path: `/api/v1/mutations/${removed.result.mutationId}/undo`,
+    });
+    expect(restored.state.todos.map((task) => task.title)).toEqual([
+      "Parent",
+      "Child",
+    ]);
+    expect(restored.state.taskEvents).toHaveLength(2);
+  });
+
   it("creates, updates, reorders and deletes projects with audit and undo", () => {
     const stateWithInbox = () => {
       const state = initial();

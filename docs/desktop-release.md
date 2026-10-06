@@ -100,8 +100,19 @@ For desktop development:
 
 ```bash
 cd lightflux
-npx tauri dev
+npm run desktop:dev
 ```
+
+This starts the local frontend on port 1420 and opens **LightFlux Dev** without
+installing an app. `tauri.dev.conf.json` gives it a separate
+`com.little1d.lightflux.dev` identifier, URL scheme, data directory and AI
+credential namespace, so it can run alongside the installed stable app.
+Use this command instead of bare `npx tauri dev`, which reuses the stable
+identity and may be forwarded to the stable app by the single-instance plugin.
+
+Both development and desktop export ignore dotenv files and legacy cloud
+API environment variables. Model requests from the desktop window use the
+native transport, so browser CORS restrictions do not apply.
 
 ## Local Backup And Recovery
 
@@ -114,6 +125,11 @@ tasks, Projects, milestones, and task history.
 Backups do not contain authentication credentials or desktop preferences.
 Keep independent copies before uninstalling the application or clearing its
 WebView data.
+
+AI conversations use separate `chat-v1.json` and `chat-v1.backup.json` files in
+the application data directory; the V12 task export does not include them.
+API keys are stored in the system credential vault. See the
+[AI chat release notes](releases/ai-chat.md) for configuration and data scope.
 
 To exercise updater checks in a local release build, expose the public key
 while compiling:

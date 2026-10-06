@@ -1,6 +1,8 @@
 .dev_env/
 .tauri-keys/
 .trae/
+.dbg/
+.uicraft.md
 shared/node_modules/
 
 # Local personal registration documents (not for the remote)

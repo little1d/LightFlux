@@ -10,6 +10,7 @@ export const common: CommonContent = {
     milestones: '倒数纪念日',
     projects: '项目',
     trash: '垃圾桶',
+    chat: '小光',
   },
   search: {
     title: '搜索任务',

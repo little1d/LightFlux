@@ -120,6 +120,7 @@ const snapshotWithoutJournal = (
 export const executeLocalRequest = (
   state: PersistedAppState,
   request: LocalRequest,
+  options: { actorId: 'local-cli' | 'xiaoguang' } = { actorId: 'local-cli' },
 ): { state: PersistedAppState; result: Record<string, unknown> } => {
   const url = new URL(request.path, "http://127.0.0.1");
   const parts = url.pathname.split("/").filter(Boolean).map(decodeURIComponent);
@@ -321,7 +322,7 @@ export const executeLocalRequest = (
       taskId: id,
       message,
       createdAt: Date.now(),
-      actorId: "local-cli",
+      actorId: options.actorId,
     };
     automation.comments.push(comment);
     response = { comment };
@@ -332,7 +333,7 @@ export const executeLocalRequest = (
   automation.mutations.push({
     id: mutationId,
     action,
-    actorId: "local-cli",
+    actorId: options.actorId,
     createdAt: Date.now(),
     undoneAt: null,
   });

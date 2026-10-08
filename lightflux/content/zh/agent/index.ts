@@ -21,6 +21,7 @@ export const agent: Translation['agent'] = {
   previewFields: {
     title: '标题',
     scheduledDate: '日期',
+    scheduledTime: '时间',
     priority: '优先级',
     project: '项目',
     parent: '父任务',

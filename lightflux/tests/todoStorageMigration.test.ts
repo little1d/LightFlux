@@ -121,6 +121,24 @@ describe('persisted state V12 validation', () => {
     ]);
     expect(result?.navigationOrder).toHaveLength(7);
     expect(result?.navigationOrder.at(-1)).toBe('chat');
+    expect(result?.todos[0].scheduledTime).toBeNull();
+  });
+
+  it('preserves valid task times and clears malformed persisted values', () => {
+    const result = parsePersistedAppState(
+      JSON.stringify({
+        ...state,
+        todos: [
+          { ...todo, id: 'timed', scheduledTime: '09:45' },
+          { ...todo, id: 'invalid', scheduledTime: '25:00' },
+        ],
+      }),
+    );
+
+    expect(result?.todos.map((item) => item.scheduledTime)).toEqual([
+      '09:45',
+      null,
+    ]);
   });
 
   it('restores Inbox and repairs invalid Project references in V12', () => {

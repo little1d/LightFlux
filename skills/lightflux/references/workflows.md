@@ -47,6 +47,7 @@ while it stays the latest change.
 lightflux task create "Prepare release" \
   --project <project-id> \
   --date 2026-09-12 \
+  --time 14:30 \
   --content-file ./release-notes.txt \
   --json
 
@@ -57,6 +58,8 @@ lightflux task create "Verify artifacts" \
 ```
 
 A subtask inherits its parent Project. Use `--no-parent` to detach a task.
+Task time is optional and uses local `HH:mm`; use `--no-time` when updating a
+task to make it all-day again.
 
 ## Rich-Text Content
 

@@ -39,7 +39,9 @@ export default function ChatToolCard({ tool, conversationId, messageId, language
     finally { setWorking(false); }
   };
   const detail = (row: ToolRow) => [
-    row.project, row.scheduledDate, row.priority ? t[row.priority as 'none' | 'low' | 'medium' | 'high'] : '',
+    row.project,
+    [row.scheduledDate, row.scheduledTime].filter(Boolean).join(' '),
+    row.priority ? t[row.priority as 'none' | 'low' | 'medium' | 'high'] : '',
     row.completed === undefined ? '' : row.completed ? t.completed : t.active,
     row.trashed ? t.trash : '',
   ].filter(Boolean).join(' · ');

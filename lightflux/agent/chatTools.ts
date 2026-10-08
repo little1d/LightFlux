@@ -9,6 +9,13 @@ const string = (description: string) => ({ type: 'string', description });
 const fields = {
   title: string('Task title, 1–500 characters.'),
   scheduledDate: string('Local date YYYY-MM-DD. Omit on creation to use today.'),
+  scheduledTime: {
+    anyOf: [
+      { type: 'string', pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d$' },
+      { type: 'null' },
+    ],
+    description: 'Local time HH:mm, or null to make the task all-day.',
+  },
   priority: { type: 'string', enum: ['none', 'low', 'medium', 'high'] },
   project: string('Exact project ID or name. Omit on creation for Inbox.'),
 };
@@ -53,6 +60,14 @@ function validateFields(args: Record<string, unknown>) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) ||
       new Date(`${date}T12:00:00Z`).toISOString().slice(0, 10) !== date) throw new ChatError('tool-arguments');
   }
+  if (
+    args.scheduledTime !== undefined &&
+    args.scheduledTime !== null &&
+    (typeof args.scheduledTime !== 'string' ||
+      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(args.scheduledTime))
+  ) {
+    throw new ChatError('tool-arguments');
+  }
   if (args.priority !== undefined && !['none', 'low', 'medium', 'high'].includes(String(args.priority))) {
     throw new ChatError('tool-arguments');
   }
@@ -96,7 +111,7 @@ export function validToolRequest(value: unknown): value is LocalRequest {
     const path = text(value.path);
     const body = value.body;
     if (/^\/api\/v1\/projects\/[^/]+\/tasks$/.test(path)) {
-      keys(body, ['title', 'scheduledDate', 'priority']);
+      keys(body, ['title', 'scheduledDate', 'scheduledTime', 'priority']);
       text(body.title);
       text(body.scheduledDate);
       validateFields(body);
@@ -105,7 +120,7 @@ export function validToolRequest(value: unknown): value is LocalRequest {
       if (!Number.isSafeInteger(body.expectedVersion) || Number(body.expectedVersion) < 1) return false;
       if (body.action === 'task.update') {
         if (!object(body.changes) || !Object.keys(body.changes).length) return false;
-        keys(body.changes, ['title', 'scheduledDate', 'priority', 'projectId']);
+        keys(body.changes, ['title', 'scheduledDate', 'scheduledTime', 'priority', 'projectId']);
         validateFields(body.changes);
         if (body.changes.projectId !== undefined) text(body.changes.projectId);
       } else if (!['task.complete', 'task.reopen', 'task.trash', 'task.restore', 'task.delete'].includes(String(body.action)) || body.changes !== undefined) return false;
@@ -119,6 +134,7 @@ export interface ToolRow {
   title: string;
   project?: string;
   scheduledDate?: string;
+  scheduledTime?: string | null;
   priority?: string;
   completed?: boolean;
   trashed?: boolean;
@@ -136,7 +152,7 @@ export interface ToolPreview {
 
 export const taskRow = (task: Todo, state: PersistedAppState): ToolRow => ({
   id: task.id, title: task.title, project: state.projects.find((p) => p.id === task.projectId)?.name ?? task.projectId,
-  scheduledDate: task.scheduledDate, priority: task.priority, completed: task.completed, trashed: task.trashedAt !== null,
+  scheduledDate: task.scheduledDate, scheduledTime: task.scheduledTime, priority: task.priority, completed: task.completed, trashed: task.trashedAt !== null,
 });
 const resolve = <T extends { id: string }>(items: T[], value: unknown, label: (item: T) => string): T => {
   const name = text(value);
@@ -171,11 +187,14 @@ export function prepareChatTool(state: PersistedAppState, record: ChatToolRecord
     for (const key of ['title', 'scheduledDate', 'priority']) {
       if (args[key] !== undefined) changes[key] = String(args[key]).trim();
     }
+    if (args.scheduledTime !== undefined) {
+      changes.scheduledTime = args.scheduledTime;
+    }
     if (record.call.name === 'create_task') {
       request = {
         method: 'POST', path: `/api/v1/projects/${encodeURIComponent(projectId ?? 'inbox')}/tasks`,
         idempotencyKey: `xiaoguang-${crypto.randomUUID()}`,
-        body: { ...changes, scheduledDate: args.scheduledDate ?? todayKey(), priority: args.priority ?? 'none' },
+        body: { ...changes, scheduledDate: args.scheduledDate ?? todayKey(), scheduledTime: args.scheduledTime ?? null, priority: args.priority ?? 'none' },
       };
     } else {
       const task = resolve(state.todos.filter((t) =>

@@ -26,6 +26,7 @@ export const migrateTaskEvents = (todos: Todo[]): TaskEvent[] =>
     const metadata: TaskEventMetadata = {
       migrated: true,
       scheduledDate: todo.scheduledDate,
+      scheduledTime: todo.scheduledTime,
     };
     const events: TaskEvent[] = [
       {
@@ -71,6 +72,7 @@ export const deriveTaskEventsFromTodoDiff = (
       result.push(
         createTaskEvent(after.id, 'created', timestamp, {
           scheduledDate: after.scheduledDate,
+          scheduledTime: after.scheduledTime,
         }),
       );
       if (after.completed) {
@@ -82,11 +84,16 @@ export const deriveTaskEventsFromTodoDiff = (
       return;
     }
 
-    if (before.scheduledDate !== after.scheduledDate) {
+    if (
+      before.scheduledDate !== after.scheduledDate ||
+      before.scheduledTime !== after.scheduledTime
+    ) {
       result.push(
         createTaskEvent(after.id, 'rescheduled', timestamp, {
           previousScheduledDate: before.scheduledDate,
           scheduledDate: after.scheduledDate,
+          previousScheduledTime: before.scheduledTime,
+          scheduledTime: after.scheduledTime,
         }),
       );
     }

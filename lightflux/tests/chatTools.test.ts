@@ -28,7 +28,7 @@ const record = (name: string, args: object): ChatToolRecord => ({
 });
 const task = (id: string, title: string, projectId = 'inbox'): Todo => ({
   id, title, projectId, completed: false, completedAt: null, createdAt: 10, updatedAt: 10,
-  scheduledDate: '2026-10-06', milestoneId: null, parentId: null, priority: 'none',
+  scheduledDate: '2026-10-06', scheduledTime: null, milestoneId: null, parentId: null, priority: 'none',
   sortOrder: 0, trashedAt: null, content: { type: 'doc', content: [{ type: 'paragraph' }] },
 });
 
@@ -43,7 +43,12 @@ describe('Xiaoguang task tool preparation', () => {
     });
     expect(preview.request).toMatchObject({
       method: 'POST', path: '/api/v1/projects/inbox/tasks',
-      body: { title: 'test', scheduledDate: todayKey(), priority: 'none' },
+      body: {
+        title: 'test',
+        scheduledDate: todayKey(),
+        scheduledTime: null,
+        priority: 'none',
+      },
     });
 
     const result = executeLocalRequest(state, preview.request!, { actorId: 'xiaoguang' });
@@ -70,6 +75,20 @@ describe('Xiaoguang task tool preparation', () => {
     }));
     expect(preview.before?.[0]).toMatchObject({ title: 'Plan', project: '收件箱', priority: 'none' });
     expect(preview.rows[0]).toMatchObject({ title: 'Ship', project: '工作', priority: 'high' });
+  });
+
+  it('previews task times and supports clearing them', () => {
+    const state = baseState();
+    state.todos = [{ ...task('one', 'Plan'), scheduledTime: '09:30' }];
+    const preview = prepareChatTool(state, record('change_task', {
+      task: 'Plan', action: 'update', scheduledTime: null,
+    }));
+
+    expect(preview.before?.[0]).toMatchObject({ scheduledTime: '09:30' });
+    expect(preview.rows[0]).toMatchObject({ scheduledTime: null });
+    expect(() => prepareChatTool(state, record('change_task', {
+      task: 'Plan', action: 'update', scheduledTime: '24:00',
+    }))).toThrow('tool-arguments');
   });
 
   it('previews direct permanent deletion of the selected task branch', () => {

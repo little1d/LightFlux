@@ -29,6 +29,7 @@ import {
   emptyRichTextDocument,
   isRichTextDocument,
 } from '../utils/richText';
+import { isTaskTime, normalizeTaskTime } from '../utils/taskTime';
 import { deriveStateUpdatedAt } from './appStateMerge';
 import { isLocalAutomation } from './localWorkspace';
 import {
@@ -106,6 +107,7 @@ const normalizeTodo = (value: unknown, fallbackOrder: number): Todo | null => {
       typeof todo.scheduledDate === 'string'
         ? todo.scheduledDate
         : todayKey(),
+    scheduledTime: normalizeTaskTime(todo.scheduledTime),
     projectId:
       typeof todo.projectId === 'string'
         ? todo.projectId
@@ -178,6 +180,17 @@ const normalizeTaskEvent = (value: unknown): TaskEvent | null => {
             ? {
                 previousScheduledDate:
                   event.metadata.previousScheduledDate,
+              }
+            : {}),
+          ...(event.metadata.scheduledTime === null ||
+          isTaskTime(event.metadata.scheduledTime)
+            ? { scheduledTime: event.metadata.scheduledTime }
+            : {}),
+          ...(event.metadata.previousScheduledTime === null ||
+          isTaskTime(event.metadata.previousScheduledTime)
+            ? {
+                previousScheduledTime:
+                  event.metadata.previousScheduledTime,
               }
             : {}),
           ...(event.metadata.migrated === true ? { migrated: true } : {}),

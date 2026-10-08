@@ -175,6 +175,9 @@ const TrashScreen = ({
                             language === 'zh' ? 'zh-CN' : 'en-US',
                             { month: 'short', day: 'numeric' },
                           )}
+                          {todo.scheduledTime
+                            ? ` · ${todo.scheduledTime}`
+                            : ''}
                         </Text>
                       </Pressable>
                       <Pressable

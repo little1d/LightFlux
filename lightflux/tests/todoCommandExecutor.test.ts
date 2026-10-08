@@ -28,6 +28,7 @@ const todo = (
   parentId: null,
   priority: 'none',
   scheduledDate: '2026-08-10',
+  scheduledTime: null,
   sortOrder: 0,
   trashedAt: null,
   updatedAt: 1,
@@ -272,6 +273,51 @@ describe('agent task commands', () => {
         { confirmed: true, now: 100 },
       ).state.todos[0].scheduledDate,
     ).toBe('2026-08-11');
+  });
+
+  it('validates optional task times and treats time changes as rescheduling', () => {
+    const source = createTodoCommandState([todo('task')], []);
+    const operation: AgentOperation = {
+      ...operationBase('schedule-time'),
+      type: 'task.update',
+      taskId: 'task',
+      changes: { scheduledTime: '09:45' },
+    };
+
+    expectCommandError(
+      () =>
+        executeAgentProposal(
+          source,
+          proposal([operation], source.revision, { risk: 'low' }),
+          { confirmed: true, now: 100 },
+        ),
+      'risk-understated',
+    );
+    expect(
+      executeAgentProposal(
+        source,
+        proposal([operation], source.revision, { risk: 'medium' }),
+        { confirmed: true, now: 100 },
+      ).state.todos[0].scheduledTime,
+    ).toBe('09:45');
+    expectCommandError(
+      () =>
+        executeAgentProposal(
+          source,
+          proposal(
+            [
+              {
+                ...operation,
+                changes: { scheduledTime: '24:00' },
+              },
+            ],
+            source.revision,
+            { risk: 'medium' },
+          ),
+          { confirmed: true, now: 100 },
+        ),
+      'invalid-operation',
+    );
   });
 
   it('keeps the source unchanged when a later operation fails', () => {

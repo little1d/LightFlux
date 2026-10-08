@@ -28,6 +28,8 @@ export const editor: Translation['editor'] = {
   resizePane: '调整任务列表与详情宽度',
   metadataTitle: '任务信息',
   dateLabel: '日期',
+  timeLabel: '时间',
+  allDay: '全天',
   projectLabel: '项目',
   milestoneLabel: '重要节点',
   noMilestone: '无重要节点',

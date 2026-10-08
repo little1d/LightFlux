@@ -332,6 +332,8 @@ export interface Translation {
     resizePane: string;
     metadataTitle: string;
     dateLabel: string;
+    timeLabel: string;
+    allDay: string;
     projectLabel: string;
     milestoneLabel: string;
     noMilestone: string;

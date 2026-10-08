@@ -28,6 +28,8 @@ export const editor: Translation['editor'] = {
   resizePane: 'Resize task list and details',
   metadataTitle: 'Task info',
   dateLabel: 'Date',
+  timeLabel: 'Time',
+  allDay: 'All day',
   projectLabel: 'Project',
   milestoneLabel: 'Milestone',
   noMilestone: 'No milestone',

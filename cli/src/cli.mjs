@@ -35,6 +35,7 @@ const VALUE_FLAGS = new Set([
   '--project',
   '--reminders',
   '--start-year',
+  '--time',
   '--title',
   '--type',
 ]);
@@ -58,8 +59,8 @@ Usage:
   lightflux undo <mutation-id>      Undo the latest mutation
   lightflux task list [--project <id>] [--parent <id>] [--root] [--all] [--trash] [--json]
   lightflux task show <id> [--json]
-  lightflux task create <title> [--date <date>] [--project <id>] [--parent <id>] [--milestone <id>] [content]
-  lightflux task update <id> --expected-version <n> [task changes]
+  lightflux task create <title> [--date <date>] [--time <HH:mm>] [--project <id>] [--parent <id>] [--milestone <id>] [content]
+  lightflux task update <id> --expected-version <n> [--time <HH:mm>|--no-time] [task changes]
   lightflux task complete|reopen <id> --expected-version <n>
   lightflux task trash <id> --expected-version <n> [--yes]
   lightflux task restore <id> --expected-version <n>
@@ -333,6 +334,7 @@ const runTask = async (args) => {
     output(result, json, (value) => [
       `${value.task.id}\tv${value.task.version}\t${value.task.title}`,
       `Project: ${value.task.projectId}`,
+      `Schedule: ${value.task.scheduledDate}${value.task.scheduledTime ? ` ${value.task.scheduledTime}` : ' (all-day)'}`,
       `Parent: ${value.task.parentId ?? 'none'}`,
       `Milestone: ${value.task.milestoneId ?? 'none'}`,
       `Content: ${richTextPreview(value.task.content) || 'empty'}`,
@@ -360,6 +362,7 @@ const runTask = async (args) => {
       {
         title,
         scheduledDate: option(args, '--date') ?? today(),
+        scheduledTime: option(args, '--time') ?? null,
         priority: option(args, '--priority') ?? 'none',
         ...(parentId ? { parentId } : {}),
         ...(option(args, '--milestone') !== undefined
@@ -390,6 +393,9 @@ const runTask = async (args) => {
   const expectedVersion = integerOption(args, '--expected-version', true);
   let mutation;
   if (action === 'update') {
+    if (option(args, '--time') !== undefined && args.includes('--no-time')) {
+      throw new Error('Use either --time or --no-time, not both.');
+    }
     if (option(args, '--parent') !== undefined && args.includes('--no-parent')) {
       throw new Error('Use either --parent or --no-parent, not both.');
     }
@@ -407,6 +413,11 @@ const runTask = async (args) => {
       ...(option(args, '--date') !== undefined
         ? { scheduledDate: option(args, '--date') }
         : {}),
+      ...(option(args, '--time') !== undefined
+        ? { scheduledTime: option(args, '--time') }
+        : args.includes('--no-time')
+          ? { scheduledTime: null }
+          : {}),
       ...(option(args, '--priority') !== undefined
         ? { priority: option(args, '--priority') }
         : {}),

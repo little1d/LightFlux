@@ -111,6 +111,24 @@ const assertDateKey = (value: unknown, operationId: string): string => {
   return value;
 };
 
+const assertScheduledTime = (
+  value: unknown,
+  operationId: string,
+): string | null => {
+  if (
+    value !== null &&
+    (typeof value !== 'string' ||
+      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value))
+  ) {
+    return fail(
+      'invalid-operation',
+      'Scheduled time must use HH:mm or null.',
+      operationId,
+    );
+  }
+  return value;
+};
+
 const assertPriority = (
   value: unknown,
   operationId: string,
@@ -215,7 +233,10 @@ const operationRisk = (operation: AgentOperation): AgentRisk => {
     case 'task.trash':
       return 'high';
     case 'task.update':
-      return hasOwn(operation.changes, 'scheduledDate') ? 'medium' : 'low';
+      return hasOwn(operation.changes, 'scheduledDate') ||
+        hasOwn(operation.changes, 'scheduledTime')
+        ? 'medium'
+        : 'low';
     case 'task.move':
     case 'task.restore':
     case 'task.set_completion':
@@ -378,6 +399,10 @@ const applyCreate = (
       operation.scheduledDate,
       operation.operationId,
     ),
+    scheduledTime: assertScheduledTime(
+      operation.scheduledTime ?? null,
+      operation.operationId,
+    ),
     projectId,
     milestoneId: null,
     parentId: parent?.id ?? null,
@@ -425,7 +450,12 @@ const applyUpdate = (
   operation: Extract<AgentOperation, { type: 'task.update' }>,
   timestamp: number,
 ): AgentOperationResult => {
-  const allowedFields = new Set(['title', 'scheduledDate', 'priority']);
+  const allowedFields = new Set([
+    'title',
+    'scheduledDate',
+    'scheduledTime',
+    'priority',
+  ]);
   if (
     Object.keys(operation.changes).some((field) => !allowedFields.has(field)) ||
     Object.keys(operation.changes).length === 0
@@ -447,6 +477,12 @@ const applyUpdate = (
   if (hasOwn(operation.changes, 'scheduledDate')) {
     changes.scheduledDate = assertDateKey(
       operation.changes.scheduledDate,
+      operation.operationId,
+    );
+  }
+  if (hasOwn(operation.changes, 'scheduledTime')) {
+    changes.scheduledTime = assertScheduledTime(
+      operation.changes.scheduledTime,
       operation.operationId,
     );
   }

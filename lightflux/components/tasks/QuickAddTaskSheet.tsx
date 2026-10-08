@@ -29,6 +29,7 @@ import {
   toDateKey,
   todayKey,
 } from '../../utils/date';
+import ActionButton from '../ui/ActionButton';
 import IconButton from '../ui/IconButton';
 import { TASK_PRIORITY_THEME, TaskPriorityIcon } from './TaskPriorityIndicator';
 
@@ -96,7 +97,12 @@ const QuickAddTaskSheet = ({
       inputRef.current?.focus();
       return;
     }
-    addTodo({ title, scheduledDate: date, projectId, priority });
+    addTodo({
+      title,
+      scheduledDate: date,
+      projectId,
+      priority,
+    });
     resetAndClose();
   };
   const dateLabel = fromDateKey(date).toLocaleDateString(
@@ -309,6 +315,13 @@ const QuickAddTaskSheet = ({
                 </View>
               ) : null}
 
+              <View style={styles.footer}>
+                <ActionButton
+                  disabled={!title.trim()}
+                  label={labels.addTask}
+                  onPress={create}
+                />
+              </View>
             </View>
           </SafeAreaView>
         </KeyboardAvoidingView>
@@ -427,6 +440,7 @@ const styles = StyleSheet.create({
   },
   pickerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 10,
   },
@@ -437,8 +451,9 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     borderWidth: 1,
     flex: 1,
+    flexBasis: 112,
     flexDirection: 'row',
-    minWidth: 0,
+    minWidth: 112,
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
@@ -538,6 +553,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '600',
+  },
+  footer: {
+    alignItems: 'flex-end',
+    marginTop: 12,
+    paddingBottom: 12,
   },
 });
 

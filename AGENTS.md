@@ -51,6 +51,9 @@ subdirectory overrides it for that subtree.
 - Application source, CLI source, and desktop release assets live in the
   `little1d/LightFlux` repository. Desktop updater URLs and release automation
   must not target retired auxiliary repositories.
+- Every desktop release version must have a concise user-facing section in
+  `CHANGELOG.md` before tagging. The release workflow publishes that section
+  and must fail when it is missing or empty.
 - Desktop and CLI are the maintained product surfaces. Keep Expo Web as the
   Tauri frontend foundation; iOS, Android, and WeChat are frozen and must not
   receive new release or integration work.
@@ -131,3 +134,5 @@ cargo check --manifest-path lightflux/src-tauri/Cargo.toml
   launches through the single-instance plugin.
 - Cache desktop credentials only in process after the first system-vault read,
   and synchronize that cache on store or removal to avoid repeated OS prompts.
+- Keep the native tray menu stable after setup. Update retained item handles in
+  place instead of replacing the menu while AppKit may be dispatching events.

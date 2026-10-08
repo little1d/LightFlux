@@ -56,6 +56,7 @@ export interface Todo {
   createdAt: number;
   updatedAt: number;
   scheduledDate: string;
+  scheduledTime: string | null;
   projectId: string;
   milestoneId: string | null;
   parentId: string | null;
@@ -87,6 +88,8 @@ export type TaskEventType =
 export interface TaskEventMetadata {
   scheduledDate?: string;
   previousScheduledDate?: string;
+  scheduledTime?: string | null;
+  previousScheduledTime?: string | null;
   migrated?: boolean;
 }
 
@@ -166,6 +169,7 @@ export interface ProjectPlacement {
 export interface NewTodo {
   title: string;
   scheduledDate: string;
+  scheduledTime?: string | null;
   projectId?: string;
   milestoneId?: string | null;
   parentId?: string | null;
@@ -206,6 +210,7 @@ export type TodoUpdate = Partial<
     Todo,
     | 'title'
     | 'scheduledDate'
+    | 'scheduledTime'
     | 'projectId'
     | 'milestoneId'
     | 'parentId'

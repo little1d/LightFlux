@@ -7,9 +7,9 @@ use std::{
 };
 use tauri::{
     image::Image,
-    menu::{Menu, MenuBuilder, MenuItemBuilder},
+    menu::{Menu, MenuBuilder, MenuItem, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager, Runtime, State, Window, WindowEvent,
+    AppHandle, Emitter, Manager, Runtime, State, Window, WindowEvent, Wry,
 };
 
 const TRAY_ID: &str = "lightflux-menu-bar";
@@ -66,10 +66,23 @@ pub struct DesktopEnvironment {
     pub updater_configured: bool,
 }
 
+#[derive(Clone)]
+struct TrayMenuItems {
+    summary: MenuItem<Wry>,
+    new_task: MenuItem<Wry>,
+    today: MenuItem<Wry>,
+    milestones: MenuItem<Wry>,
+    update: MenuItem<Wry>,
+    show: MenuItem<Wry>,
+    settings: MenuItem<Wry>,
+    quit: MenuItem<Wry>,
+}
+
 pub struct DesktopState {
     preferences: Mutex<DesktopPreferences>,
     status: Mutex<DesktopStatus>,
     tray: Mutex<Option<TrayIcon>>,
+    tray_items: Mutex<Option<TrayMenuItems>>,
 }
 
 impl Default for DesktopState {
@@ -78,6 +91,7 @@ impl Default for DesktopState {
             preferences: Mutex::new(DesktopPreferences::default()),
             status: Mutex::new(DesktopStatus::default()),
             tray: Mutex::new(None),
+            tray_items: Mutex::new(None),
         }
     }
 }
@@ -104,12 +118,9 @@ fn localized<'a>(language: Option<&str>, chinese: &'a str, english: &'a str) -> 
     }
 }
 
-fn build_tray_menu<R: Runtime>(
-    app: &AppHandle<R>,
-    status: &DesktopStatus,
-) -> tauri::Result<Menu<R>> {
+fn tray_summary(status: &DesktopStatus) -> String {
     let language = status.language.as_deref();
-    let summary = if language == Some("en") {
+    if language == Some("en") {
         format!(
             "Today: {} pending · {} overdue",
             status.today_count, status.overdue_count
@@ -119,7 +130,27 @@ fn build_tray_menu<R: Runtime>(
             "今天：{} 项待办 · {} 项延期",
             status.today_count, status.overdue_count
         )
-    };
+    }
+}
+
+fn update_menu_text(status: &DesktopStatus) -> String {
+    let language = status.language.as_deref();
+    match (&status.update_version, status.update_ready, language) {
+        (Some(version), true, Some("en")) => format!("Restart to finish {version}…"),
+        (Some(version), true, _) => format!("重启并完成 {version}…"),
+        (Some(version), false, Some("en")) => format!("Update to {version}…"),
+        (Some(version), false, _) => format!("更新到 {version}…"),
+        (None, _, Some("en")) => "No update available".into(),
+        (None, _, _) => "暂无可用更新".into(),
+    }
+}
+
+fn build_tray_menu(
+    app: &AppHandle,
+    status: &DesktopStatus,
+) -> tauri::Result<(Menu<Wry>, TrayMenuItems)> {
+    let language = status.language.as_deref();
+    let summary = tray_summary(status);
     let summary_item = MenuItemBuilder::with_id("summary", summary)
         .enabled(false)
         .build(app)?;
@@ -145,6 +176,9 @@ fn build_tray_menu<R: Runtime>(
     let settings = MenuItemBuilder::with_id("settings", localized(language, "设置…", "Settings…"))
         .accelerator("CmdOrCtrl+,")
         .build(app)?;
+    let update = MenuItemBuilder::with_id("update", update_menu_text(status))
+        .enabled(status.update_version.is_some())
+        .build(app)?;
     let quit = MenuItemBuilder::with_id(
         "quit",
         localized(language, "退出 LightFlux", "Quit LightFlux"),
@@ -152,38 +186,36 @@ fn build_tray_menu<R: Runtime>(
     .accelerator("CmdOrCtrl+Q")
     .build(app)?;
 
-    let mut builder = MenuBuilder::new(app)
+    let builder = MenuBuilder::new(app)
         .item(&summary_item)
         .separator()
         .item(&new_task)
         .separator()
         .item(&today)
-        .item(&milestones);
+        .item(&milestones)
+        .separator()
+        .item(&update);
 
-    if let Some(version) = &status.update_version {
-        let update = MenuItemBuilder::with_id(
-            "update",
-            if status.update_ready && language == Some("en") {
-                format!("Restart to finish {version}…")
-            } else if status.update_ready {
-                format!("重启并完成 {version}…")
-            } else if language == Some("en") {
-                format!("Update to {version}…")
-            } else {
-                format!("更新到 {version}…")
-            },
-        )
-        .build(app)?;
-        builder = builder.separator().item(&update);
-    }
-
-    builder
+    let menu = builder
         .separator()
         .item(&show)
         .item(&settings)
         .separator()
         .item(&quit)
-        .build()
+        .build()?;
+    Ok((
+        menu,
+        TrayMenuItems {
+            summary: summary_item,
+            new_task,
+            today,
+            milestones,
+            update,
+            show,
+            settings,
+            quit,
+        },
+    ))
 }
 
 fn dock_should_be_visible(preferences: &DesktopPreferences, window_visible: bool) -> bool {
@@ -264,20 +296,61 @@ fn emit_tray_action<R: Runtime>(app: &AppHandle<R>, action: &str) {
     let _ = app.emit(TRAY_ACTION_EVENT, action);
 }
 
-fn rebuild_tray<R: Runtime>(app: &AppHandle<R>, state: &DesktopState) -> Result<(), String> {
+fn refresh_tray(state: &DesktopState) -> Result<(), String> {
     let status = state
         .status
         .lock()
         .map_err(|_| "Desktop status is unavailable.".to_string())?
         .clone();
-    let menu = build_tray_menu(app, &status).map_err(|error| error.to_string())?;
+    let items = state
+        .tray_items
+        .lock()
+        .map_err(|_| "Menu bar items are unavailable.".to_string())?
+        .clone();
+    if let Some(items) = items {
+        let language = status.language.as_deref();
+        items
+            .summary
+            .set_text(tray_summary(&status))
+            .map_err(|error| error.to_string())?;
+        items
+            .new_task
+            .set_text(localized(language, "快速新建任务…", "Quick add task…"))
+            .map_err(|error| error.to_string())?;
+        items
+            .today
+            .set_text(localized(language, "打开今日安排", "Open Today"))
+            .map_err(|error| error.to_string())?;
+        items
+            .milestones
+            .set_text(localized(language, "打开重要节点", "Open Milestones"))
+            .map_err(|error| error.to_string())?;
+        items
+            .update
+            .set_text(update_menu_text(&status))
+            .map_err(|error| error.to_string())?;
+        items
+            .update
+            .set_enabled(status.update_version.is_some())
+            .map_err(|error| error.to_string())?;
+        items
+            .show
+            .set_text(localized(language, "显示 LightFlux", "Show LightFlux"))
+            .map_err(|error| error.to_string())?;
+        items
+            .settings
+            .set_text(localized(language, "设置…", "Settings…"))
+            .map_err(|error| error.to_string())?;
+        items
+            .quit
+            .set_text(localized(language, "退出 LightFlux", "Quit LightFlux"))
+            .map_err(|error| error.to_string())?;
+    }
     let tray = state
         .tray
         .lock()
         .map_err(|_| "Menu bar state is unavailable.".to_string())?;
     if let Some(tray) = tray.as_ref() {
-        tray.set_menu(Some(menu))
-            .map_err(|error| error.to_string())?;
         tray.set_icon_with_as_template(
             Some(tray_image(status.update_version.is_some()).map_err(|error| error.to_string())?),
             true,
@@ -293,7 +366,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "macos")]
     {
         let initial_status = state.status.lock().unwrap().clone();
-        let menu = build_tray_menu(app.handle(), &initial_status)?;
+        let (menu, items) = build_tray_menu(app.handle(), &initial_status)?;
         let tray = TrayIconBuilder::with_id(TRAY_ID)
             .icon(tray_image(false)?)
             .icon_as_template(true)
@@ -322,6 +395,7 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
             })
             .build(app)?;
         *state.tray.lock().unwrap() = Some(tray);
+        *state.tray_items.lock().unwrap() = Some(items);
     }
 
     app.manage(state);
@@ -398,7 +472,7 @@ pub fn update_desktop_status(
         .status
         .lock()
         .map_err(|_| "Desktop status is unavailable.".to_string())? = status;
-    rebuild_tray(&app, &state)
+    refresh_tray(&state)
 }
 
 #[tauri::command]
@@ -479,4 +553,47 @@ pub fn export_app_state_backup(
     path.push(filename);
     fs::write(&path, content).map_err(|error| error.to_string())?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{tray_summary, update_menu_text, DesktopStatus};
+
+    #[test]
+    fn tray_summary_uses_the_selected_language() {
+        let chinese = DesktopStatus {
+            overdue_count: 2,
+            today_count: 5,
+            ..DesktopStatus::default()
+        };
+        let english = DesktopStatus {
+            language: Some("en".into()),
+            overdue_count: 2,
+            today_count: 5,
+            ..DesktopStatus::default()
+        };
+
+        assert_eq!(tray_summary(&chinese), "今天：5 项待办 · 2 项延期");
+        assert_eq!(tray_summary(&english), "Today: 5 pending · 2 overdue");
+    }
+
+    #[test]
+    fn update_menu_text_reflects_download_state() {
+        let available = DesktopStatus {
+            language: Some("en".into()),
+            update_version: Some("1.2.0".into()),
+            ..DesktopStatus::default()
+        };
+        let ready = DesktopStatus {
+            update_ready: true,
+            ..available.clone()
+        };
+
+        assert_eq!(update_menu_text(&available), "Update to 1.2.0…");
+        assert_eq!(update_menu_text(&ready), "Restart to finish 1.2.0…");
+        assert_eq!(
+            update_menu_text(&DesktopStatus::default()),
+            "暂无可用更新"
+        );
+    }
 }

@@ -69,6 +69,7 @@ const todo = (id: string): Todo => ({
   parentId: null,
   priority: 'none',
   scheduledDate: '2026-08-10',
+  scheduledTime: null,
   sortOrder: 0,
   trashedAt: null,
   updatedAt: 1,

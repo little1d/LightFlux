@@ -37,6 +37,7 @@ import {
   isValidMilestoneStartYear,
   normalizeReminderOffsets,
 } from '../utils/milestoneDate';
+import { normalizeTaskTime } from '../utils/taskTime';
 import {
   MILESTONE_TYPE_THEME,
   milestoneState,
@@ -212,6 +213,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         createdAt: timestamp,
         updatedAt: timestamp,
         scheduledDate: todo.scheduledDate,
+        scheduledTime: normalizeTaskTime(todo.scheduledTime),
         projectId: todo.projectId ?? INBOX_PROJECT_ID,
         milestoneId: todo.milestoneId ?? null,
         parentId: todo.parentId ?? null,
@@ -259,6 +261,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
           ...state.taskEvents,
           createTaskEvent(newTodo.id, 'created', timestamp, {
             scheduledDate: newTodo.scheduledDate,
+            scheduledTime: newTodo.scheduledTime,
           }),
         ],
       };
@@ -306,14 +309,23 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         return state;
       }
       const timestamp = Date.now();
+      const normalizedChanges =
+        changes.scheduledTime === undefined
+          ? changes
+          : {
+              ...changes,
+              scheduledTime: normalizeTaskTime(changes.scheduledTime),
+            };
       const scheduleChanged =
-        changes.scheduledDate !== undefined &&
-        changes.scheduledDate !== target.scheduledDate;
+        (normalizedChanges.scheduledDate !== undefined &&
+          normalizedChanges.scheduledDate !== target.scheduledDate) ||
+        (normalizedChanges.scheduledTime !== undefined &&
+          normalizedChanges.scheduledTime !== target.scheduledTime);
       return {
         ...todoState(
           state.allTodos.map((todo) =>
             todo.id === id
-              ? { ...todo, ...changes, updatedAt: timestamp }
+              ? { ...todo, ...normalizedChanges, updatedAt: timestamp }
               : todo,
           ),
         ),
@@ -322,7 +334,14 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
               ...state.taskEvents,
               createTaskEvent(id, 'rescheduled', timestamp, {
                 previousScheduledDate: target.scheduledDate,
-                scheduledDate: changes.scheduledDate,
+                scheduledDate:
+                  normalizedChanges.scheduledDate ??
+                  target.scheduledDate,
+                previousScheduledTime: target.scheduledTime,
+                scheduledTime:
+                  normalizedChanges.scheduledTime === undefined
+                    ? target.scheduledTime
+                    : normalizedChanges.scheduledTime,
               }),
             ]
           : state.taskEvents,

@@ -20,6 +20,7 @@ export interface AgentTaskCreateOperation extends AgentOperationBase {
   taskId: string;
   title: string;
   scheduledDate: string;
+  scheduledTime?: string | null;
   projectId?: string;
   parentId?: string | null;
   priority?: TodoPriority;
@@ -33,6 +34,7 @@ export interface AgentTaskUpdateOperation extends AgentOperationBase {
   changes: {
     title?: string;
     scheduledDate?: string;
+    scheduledTime?: string | null;
     priority?: TodoPriority;
   };
 }
@@ -185,6 +187,7 @@ export interface AgentExecutionResult {
 export type AgentPreviewField =
   | 'title'
   | 'scheduledDate'
+  | 'scheduledTime'
   | 'priority'
   | 'project'
   | 'parent'

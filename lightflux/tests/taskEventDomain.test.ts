@@ -22,6 +22,7 @@ const todo = (
   parentId: null,
   priority: 'none',
   scheduledDate: '2026-08-10',
+  scheduledTime: null,
   sortOrder: 0,
   trashedAt: null,
   updatedAt: 10,
@@ -46,6 +47,7 @@ describe('task event domain', () => {
         metadata: expect.objectContaining({
           migrated: true,
           scheduledDate: '2026-08-10',
+          scheduledTime: null,
         }),
       }),
       expect.objectContaining({
@@ -68,6 +70,7 @@ describe('task event domain', () => {
         completed: true,
         completedAt: 100,
         scheduledDate: '2026-08-11',
+        scheduledTime: '09:30',
         trashedAt: 100,
       }),
     ];
@@ -83,6 +86,8 @@ describe('task event domain', () => {
         metadata: {
           previousScheduledDate: '2026-08-10',
           scheduledDate: '2026-08-11',
+          previousScheduledTime: null,
+          scheduledTime: '09:30',
         },
       },
       { type: 'completed', metadata: undefined },

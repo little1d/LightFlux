@@ -162,6 +162,20 @@ fn valid_priority(value: &Value) -> bool {
     matches!(value.as_str(), Some("none" | "low" | "medium" | "high"))
 }
 
+fn valid_scheduled_time(value: &Value) -> bool {
+    value.is_null()
+        || value.as_str().is_some_and(|time| {
+            let bytes = time.as_bytes();
+            bytes.len() == 5
+                && bytes[2] == b':'
+                && [bytes[0], bytes[1], bytes[3], bytes[4]]
+                    .iter()
+                    .all(u8::is_ascii_digit)
+                && (bytes[0] - b'0') * 10 + (bytes[1] - b'0') <= 23
+                && (bytes[3] - b'0') * 10 + (bytes[4] - b'0') <= 59
+        })
+}
+
 fn valid_tool_name(value: &Value) -> bool {
     matches!(
         value.as_str(),
@@ -182,12 +196,19 @@ fn valid_tool_arguments(name: &str, arguments: &str) -> bool {
     let allowed: &[&str] = match name {
         "search_tasks" => &["query", "project", "scheduledDate", "status"],
         "list_projects" => &["query"],
-        "create_task" => &["title", "scheduledDate", "priority", "project"],
+        "create_task" => &[
+            "title",
+            "scheduledDate",
+            "scheduledTime",
+            "priority",
+            "project",
+        ],
         "change_task" => &[
             "task",
             "action",
             "title",
             "scheduledDate",
+            "scheduledTime",
             "priority",
             "project",
         ],
@@ -196,6 +217,7 @@ fn valid_tool_arguments(name: &str, arguments: &str) -> bool {
     if args.keys().any(|key| !allowed.contains(&key.as_str()))
         || args.iter().any(|(key, value)| match key.as_str() {
             "scheduledDate" => !valid_date(value),
+            "scheduledTime" => !valid_scheduled_time(value),
             "priority" => !valid_priority(value),
             "status" => !matches!(
                 value.as_str(),
@@ -259,12 +281,20 @@ fn valid_local_request(value: &Value) -> bool {
     if create {
         return body
             .keys()
-            .all(|key| matches!(key.as_str(), "title" | "scheduledDate" | "priority"))
+            .all(|key| {
+                matches!(
+                    key.as_str(),
+                    "title" | "scheduledDate" | "scheduledTime" | "priority"
+                )
+            })
             && body
                 .get("title")
                 .and_then(Value::as_str)
                 .is_some_and(|title| !title.trim().is_empty() && title.len() <= 500)
             && body.get("scheduledDate").is_some_and(valid_date)
+            && body
+                .get("scheduledTime")
+                .is_none_or(valid_scheduled_time)
             && body.get("priority").is_some_and(valid_priority);
     }
     if !mutation
@@ -296,6 +326,7 @@ fn valid_local_request(value: &Value) -> bool {
                 .as_str()
                 .is_some_and(|text| !text.trim().is_empty() && text.len() <= 500),
             "scheduledDate" => valid_date(value),
+            "scheduledTime" => valid_scheduled_time(value),
             "priority" => valid_priority(value),
             _ => false,
         })
@@ -844,6 +875,11 @@ mod tests {
 
     #[test]
     fn validates_tool_history_and_model_request_boundaries() {
+        assert!(valid_scheduled_time(&serde_json::json!("09:45")));
+        assert!(valid_scheduled_time(&Value::Null));
+        assert!(!valid_scheduled_time(&serde_json::json!("24:00")));
+        assert!(!valid_scheduled_time(&serde_json::json!("1é:0")));
+
         let request = serde_json::json!({
             "method": "POST",
             "path": "/api/v1/projects/inbox/tasks",

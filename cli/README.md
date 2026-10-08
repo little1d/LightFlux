@@ -51,10 +51,11 @@ guarantees as task mutations.
 lightflux projects --json
 lightflux task list --project <id> --all --json
 lightflux task show <task-id> --json
-lightflux task create "Prepare release" --date 2026-09-12 --content "Notes" --json
+lightflux task create "Prepare release" --date 2026-09-12 --time 14:30 --content "Notes" --json
 lightflux task create "Verify artifacts" --parent <task-id> --json
 lightflux task list --parent <task-id> --json
 lightflux task update <task-id> --expected-version <n> --content-file notes.txt
+lightflux task update <task-id> --expected-version <n> --no-time
 lightflux task update <task-id> --expected-version <n> --no-parent
 lightflux task complete <task-id> --expected-version <n>
 lightflux task reopen <task-id> --expected-version <n>

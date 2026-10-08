@@ -39,6 +39,7 @@ export interface AgentTaskContext {
   title: string;
   completed: boolean;
   scheduledDate: string;
+  scheduledTime: string | null;
   projectId: string;
   parentId: string | null;
   priority: TodoPriority;
@@ -290,6 +291,7 @@ const operationPreview = (
     case 'task.create':
       addChange('title', null, operation.title);
       addChange('scheduledDate', null, operation.scheduledDate);
+      addChange('scheduledTime', null, operation.scheduledTime ?? null);
       addChange('priority', null, operation.priority ?? 'none');
       addChange(
         'project',
@@ -311,6 +313,13 @@ const operationPreview = (
           'scheduledDate',
           beforeTask?.scheduledDate ?? null,
           operation.changes.scheduledDate,
+        );
+      }
+      if (operation.changes.scheduledTime !== undefined) {
+        addChange(
+          'scheduledTime',
+          beforeTask?.scheduledTime ?? null,
+          operation.changes.scheduledTime,
         );
       }
       if (operation.changes.priority !== undefined) {
@@ -520,6 +529,7 @@ export const getAgentContextSnapshot = (): AgentContextSnapshot => {
     title: todo.title,
     completed: todo.completed,
     scheduledDate: todo.scheduledDate,
+    scheduledTime: todo.scheduledTime,
     projectId: todo.projectId,
     parentId: todo.parentId,
     priority: todo.priority,

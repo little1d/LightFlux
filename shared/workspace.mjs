@@ -4,6 +4,7 @@ const isCurrentAppState = (value) => value?.schemaVersion === 12 && Array.isArra
 const randomUUID = () => globalThis.crypto.randomUUID();
 
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TASK_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 const PRIORITIES = new Set(['none', 'high', 'medium', 'low']);
 const MILESTONE_TYPES = new Set([
   'anniversary',
@@ -53,6 +54,8 @@ const isDateKey = (value) => {
     date.getUTCDate() === day
   );
 };
+const isTaskTime = (value) =>
+  typeof value === 'string' && TASK_TIME_PATTERN.test(value);
 
 export const httpError = (status, message, details = {}) => {
   const error = new Error(message);
@@ -80,6 +83,7 @@ export const publicTask = (task, revision, includeContent = false) => ({
   createdAt: task.createdAt,
   updatedAt: task.updatedAt,
   scheduledDate: task.scheduledDate,
+  scheduledTime: task.scheduledTime ?? null,
   projectId: task.projectId,
   milestoneId: task.milestoneId ?? null,
   parentId: task.parentId ?? null,
@@ -384,6 +388,10 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
     if (!isDateKey(scheduledDate)) {
       throw httpError(400, 'scheduledDate must use YYYY-MM-DD.');
     }
+    const scheduledTime = body.scheduledTime ?? null;
+    if (scheduledTime !== null && !isTaskTime(scheduledTime)) {
+      throw httpError(400, 'scheduledTime must use HH:mm or null.');
+    }
     const priority = body.priority ?? 'none';
     if (!PRIORITIES.has(priority)) {
       throw httpError(400, 'Task priority is invalid.');
@@ -432,6 +440,7 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
       createdAt: stateTimestamp,
       updatedAt: stateTimestamp,
       scheduledDate,
+      scheduledTime,
       projectId,
       milestoneId,
       parentId,
@@ -443,6 +452,7 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
     state.todos.push(task);
     appendEvent(state, task.id, 'created', stateTimestamp, {
       scheduledDate,
+      scheduledTime,
     });
     state.updatedAt = stateTimestamp;
     return task;
@@ -471,6 +481,7 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
       'priority',
       'projectId',
       'scheduledDate',
+      'scheduledTime',
       'title',
     ]);
     if (
@@ -484,18 +495,33 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
       if (!title) throw httpError(400, 'Task title cannot be empty.');
       task.title = title;
     }
+    const previousScheduledDate = task.scheduledDate;
+    const previousScheduledTime = task.scheduledTime ?? null;
     if (changes.scheduledDate !== undefined) {
       if (!isDateKey(changes.scheduledDate)) {
         throw httpError(400, 'scheduledDate must use YYYY-MM-DD.');
       }
-      const previousScheduledDate = task.scheduledDate;
       task.scheduledDate = changes.scheduledDate;
-      if (previousScheduledDate !== task.scheduledDate) {
-        appendEvent(state, task.id, 'rescheduled', timestamp, {
-          previousScheduledDate,
-          scheduledDate: task.scheduledDate,
-        });
+    }
+    if (changes.scheduledTime !== undefined) {
+      if (
+        changes.scheduledTime !== null &&
+        !isTaskTime(changes.scheduledTime)
+      ) {
+        throw httpError(400, 'scheduledTime must use HH:mm or null.');
       }
+      task.scheduledTime = changes.scheduledTime;
+    }
+    if (
+      previousScheduledDate !== task.scheduledDate ||
+      previousScheduledTime !== (task.scheduledTime ?? null)
+    ) {
+      appendEvent(state, task.id, 'rescheduled', timestamp, {
+        previousScheduledDate,
+        scheduledDate: task.scheduledDate,
+        previousScheduledTime,
+        scheduledTime: task.scheduledTime ?? null,
+      });
     }
     if (changes.priority !== undefined) {
       if (!PRIORITIES.has(changes.priority)) {

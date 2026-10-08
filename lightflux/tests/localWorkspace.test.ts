@@ -40,6 +40,38 @@ describe("local desktop workspace transactions", () => {
     expect(executeLocalRequest(restored, create()).result.replayed).toBe(true);
   });
 
+  it("creates, updates, and clears an optional task time", () => {
+    const created = executeLocalRequest(initial(), {
+      ...create(),
+      body: { ...create().body, scheduledTime: "09:45" },
+    });
+    expect(created.state.todos[0].scheduledTime).toBe("09:45");
+    expect(created.result.task).toMatchObject({ scheduledTime: "09:45" });
+
+    const updated = executeLocalRequest(created.state, {
+      method: "POST",
+      path: `/api/v1/tasks/${created.state.todos[0].id}/mutations`,
+      idempotencyKey: "clear-time",
+      body: {
+        action: "task.update",
+        expectedVersion: created.state.todos[0].updatedAt,
+        changes: { scheduledTime: null },
+      },
+    });
+
+    expect(updated.state.todos[0].scheduledTime).toBeNull();
+    expect(updated.state.taskEvents.at(-1)?.metadata).toMatchObject({
+      previousScheduledTime: "09:45",
+      scheduledTime: null,
+    });
+    expect(() =>
+      executeLocalRequest(initial(), {
+        ...create("Invalid time"),
+        body: { ...create("Invalid time").body, scheduledTime: "24:00" },
+      }),
+    ).toThrow("scheduledTime must use HH:mm or null");
+  });
+
   it("rejects key collisions and preserves original state after invalid operations", () => {
     const created = executeLocalRequest(initial(), create());
     expect(() =>

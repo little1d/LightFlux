@@ -154,6 +154,11 @@ const CalendarDay = ({
                   ]}
                 />
               )}
+              {todo.scheduledTime ? (
+                <Text style={styles.dayTaskTime}>
+                  {todo.scheduledTime}
+                </Text>
+              ) : null}
               <Text numberOfLines={1} style={styles.dayTaskTitle}>
                 {todo.title}
               </Text>
@@ -801,6 +806,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 9,
     fontWeight: '500',
+  },
+  dayTaskTime: {
+    color: '#777786',
+    fontSize: 8,
+    fontWeight: '600',
+    marginRight: 4,
   },
   moreTasks: {
     color: '#999BA8',

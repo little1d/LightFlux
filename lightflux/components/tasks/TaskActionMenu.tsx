@@ -39,6 +39,7 @@ import {
   TASK_PRIORITY_THEME,
   TaskPriorityIcon,
 } from './TaskPriorityIndicator';
+import TaskTimePicker from './TaskTimePicker';
 import { TaskMenuPosition } from './useTaskContextMenu';
 
 const MENU_WIDTH = 240;
@@ -46,6 +47,7 @@ const EDIT_MENU_WIDTH = 300;
 const PROJECT_FLYOUT_WIDTH = 216;
 type MenuMode =
   | 'date'
+  | 'time'
   | 'project'
   | 'priority'
   | 'rename'
@@ -224,6 +226,10 @@ const TaskActionMenu = ({
     updateTodo(todo.id, { scheduledDate });
     onClose();
   };
+  const setScheduledTime = (scheduledTime: string | null) => {
+    updateTodo(todo.id, { scheduledTime });
+    onClose();
+  };
 
   const renderProjectList = (mobile = false) => (
     <ScrollView
@@ -287,7 +293,9 @@ const TaskActionMenu = ({
     const today = todayKey();
     return (
       <>
-        {renderSheetHeader(labels.editor.dateLabel, true)}
+        {mobileSheet
+          ? renderSheetHeader(labels.editor.dateLabel, true)
+          : null}
         <View style={styles.calendar}>
           <View style={styles.calendarHeader}>
             <IconButton
@@ -387,6 +395,18 @@ const TaskActionMenu = ({
     if (mode === 'date') {
       return renderDatePicker();
     }
+    if (mode === 'time') {
+      return (
+        <>
+          {renderSheetHeader(labels.editor.timeLabel, true)}
+          <TaskTimePicker
+            labels={labels}
+            onSelect={setScheduledTime}
+            value={todo.scheduledTime}
+          />
+        </>
+      );
+    }
     if (mode === 'project') {
       return (
         <>
@@ -485,6 +505,12 @@ const TaskActionMenu = ({
             value={dateLabel}
           />
           <MobileAction
+            icon="time-outline"
+            label={labels.editor.timeLabel}
+            onPress={() => openMode('time')}
+            value={todo.scheduledTime ?? labels.editor.allDay}
+          />
+          <MobileAction
             icon="folder-outline"
             label={labels.editor.projectLabel}
             onPress={() => openMode('project')}
@@ -532,6 +558,8 @@ const TaskActionMenu = ({
             ? 510
             : mode === 'project'
               ? Math.min(520, 80 + orderedProjects.length * 44)
+              : mode === 'time'
+                ? 370
               : mode
                 ? 270
                 : 350
@@ -560,13 +588,17 @@ const TaskActionMenu = ({
       allowOverflow={desktopWeb}
       closeLabel={labels.cancel}
       estimatedHeight={
-        mode === 'project'
-          ? Math.min(370, 62 + orderedProjects.length * 44)
-          : mode === 'rename' || mode === 'subtask'
-            ? compactEdit
-              ? 164
-              : 118
-            : 240
+        mode === 'date'
+          ? 430
+          : mode === 'time'
+            ? 350
+            : mode === 'project'
+              ? Math.min(370, 62 + orderedProjects.length * 44)
+              : mode === 'rename' || mode === 'subtask'
+                ? compactEdit
+                  ? 164
+                  : 118
+                : 320
       }
       onClose={onClose}
       position={position}
@@ -576,7 +608,35 @@ const TaskActionMenu = ({
           : MENU_WIDTH
       }
     >
-      {mode === 'project' ? (
+      {mode === 'date' ? (
+        <View style={styles.projectPicker}>
+          <MenuItem
+            icon={
+              <Ionicons color="#696A7A" name="chevron-back" size={17} />
+            }
+            label={labels.taskMenu.backToActions}
+            onPress={() => setMode(null)}
+          />
+          <View style={styles.divider} />
+          {renderDatePicker()}
+        </View>
+      ) : mode === 'time' ? (
+        <View style={styles.projectPicker}>
+          <MenuItem
+            icon={
+              <Ionicons color="#696A7A" name="chevron-back" size={17} />
+            }
+            label={labels.taskMenu.backToActions}
+            onPress={() => setMode(null)}
+          />
+          <View style={styles.divider} />
+          <TaskTimePicker
+            labels={labels}
+            onSelect={setScheduledTime}
+            value={todo.scheduledTime}
+          />
+        </View>
+      ) : mode === 'project' ? (
         <View style={styles.projectPicker}>
           <MenuItem
             icon={
@@ -648,6 +708,23 @@ const TaskActionMenu = ({
             label={labels.taskMenu.rename}
             onPress={() => openMode('rename')}
           />
+          <MenuItem
+            icon={
+              <Ionicons color="#6F7080" name="calendar-outline" size={16} />
+            }
+            label={`${labels.editor.dateLabel}: ${fromDateKey(todo.scheduledDate).toLocaleDateString(
+              language === 'zh' ? 'zh-CN' : 'en-US',
+              { day: 'numeric', month: 'short' },
+            )}`}
+            onPress={() => openMode('date')}
+          />
+          <MenuItem
+            icon={
+              <Ionicons color="#6F7080" name="time-outline" size={16} />
+            }
+            label={`${labels.editor.timeLabel}: ${todo.scheduledTime ?? labels.editor.allDay}`}
+            onPress={() => openMode('time')}
+          />
           <TaskPrioritySelector
             label={labels.taskMenu.priority}
             labels={labels.taskMenu.priorityOptions}
@@ -701,7 +778,7 @@ const TaskActionMenu = ({
         </>
       )}
 
-      {mode !== 'project' ? (
+      {mode !== 'project' && mode !== 'date' && mode !== 'time' ? (
         <MenuItem
           danger
           label={labels.taskMenu.moveToTrash}
@@ -720,6 +797,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     flex: 1,
+    flexBasis: 120,
     minHeight: 84,
     paddingHorizontal: 8,
     paddingVertical: 10,
@@ -752,6 +830,7 @@ const styles = StyleSheet.create({
   },
   mobileActions: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 7,
   },
   mobileSheetContent: {

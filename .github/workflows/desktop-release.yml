@@ -102,6 +102,17 @@ jobs:
         working-directory: lightflux
         run: npm --prefix ../shared ci && npm ci
 
+      - name: Prepare release notes
+        id: release_notes
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./lightflux/src-tauri/tauri.conf.json').version")"
+          {
+            echo "body<<LIGHTFLUX_RELEASE_NOTES"
+            node lightflux/scripts/release-notes.mjs "${VERSION}" CHANGELOG.md
+            echo "LIGHTFLUX_RELEASE_NOTES"
+          } >> "${GITHUB_OUTPUT}"
+
       - name: Build and publish desktop bundle
         uses: tauri-apps/tauri-action@v1
         env:
@@ -116,7 +127,7 @@ jobs:
           releaseCommitish: main
           tagName: desktop-v__VERSION__
           releaseName: LightFlux Desktop v__VERSION__
-          releaseBody: Download the installer for your desktop platform from the assets below.
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           generateReleaseNotes: false
@@ -151,6 +162,16 @@ jobs:
             (.platforms["darwin-x86_64"].signature | length > 0) and
             (.platforms["linux-x86_64"].signature | length > 0)
           ' "${RELEASE_DIR}/latest.json"
+          gh release view "${TAG}" \
+            --repo little1d/LightFlux \
+            --json assets \
+            --jq '.assets[].name | select(endswith(".sig"))' |
+          while IFS= read -r asset; do
+            [ -n "${asset}" ] || continue
+            gh release delete-asset "${TAG}" "${asset}" \
+              --repo little1d/LightFlux \
+              --yes
+          done
           gh release edit "${TAG}" \
             --repo little1d/LightFlux \
             --draft=false \

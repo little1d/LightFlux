@@ -13,13 +13,15 @@ verification workflows.
 
 ## Release A Version
 
-1. Update the version in:
+1. Move the user-facing changes from `CHANGELOG.md`'s `[Unreleased]` section
+   into a dated `## [x.y.z] - YYYY-MM-DD` section. Keep the notes concise.
+2. Update the version in:
    - `lightflux/package.json`
    - `lightflux/app.json`
    - `lightflux/src-tauri/Cargo.toml`
    - `lightflux/src-tauri/tauri.conf.json`
-2. Commit and push the version change.
-3. Create and push a matching desktop tag:
+3. Commit and push the changelog and version changes together.
+4. Create and push a matching desktop tag:
 
 ```bash
 git tag desktop-v1.0.0
@@ -29,7 +31,9 @@ git push origin desktop-v1.0.0
 The `Desktop release` workflow verifies the web export, builds all three
 desktop targets, creates a public GitHub Release, and uploads the installers.
 It can also be started manually from the repository's Actions page; manual
-runs use the version from `tauri.conf.json`.
+runs use the version from `tauri.conf.json`. The workflow publishes the
+matching `CHANGELOG.md` section as the Release body and fails before building
+when that section is missing or empty.
 
 ## Enable Signed Updates
 
@@ -70,13 +74,21 @@ When enabled, `tauri-action` creates signed updater artifacts and publishes
 https://github.com/little1d/LightFlux/releases/latest/download/latest.json
 ```
 
-Installers, signatures, source, release notes, and `latest.json` are published
-from the single public `little1d/LightFlux` repository.
+Installers, updater payloads, GitHub-generated source archives, release notes,
+and `latest.json` are published from the single public
+`little1d/LightFlux` repository. Standalone `.sig` files are removed after
+manifest validation because their signatures are already embedded in
+`latest.json`.
 
 Platform builds run serially against a draft Release so each updater target is
 merged into the same `latest.json`. A final job verifies the Windows x64,
-macOS Apple Silicon, and macOS Intel signatures before publishing the Release
-as Latest. Clients therefore never receive a partially built update manifest.
+macOS Apple Silicon, macOS Intel, and Linux x64 signatures before publishing
+the Release as Latest. It then removes only the redundant standalone
+signature assets.
+Clients therefore never receive a partially built update manifest, while the
+`.app.tar.gz` updater payloads remain available alongside the `.dmg`
+installers. GitHub always adds both Source code archives and does not provide a
+workflow setting to hide either one.
 
 The updater can optionally enforce a minimum supported version by adding
 `minimumSupportedVersion` to the update manifest. Ordinary releases remain

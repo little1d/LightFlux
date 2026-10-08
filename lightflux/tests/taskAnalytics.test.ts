@@ -27,6 +27,7 @@ const todo = (
   parentId: null,
   priority: 'none',
   scheduledDate,
+  scheduledTime: null,
   sortOrder: 0,
   trashedAt: null,
   updatedAt: timestamp(1),

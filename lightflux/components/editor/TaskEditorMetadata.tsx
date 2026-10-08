@@ -30,8 +30,9 @@ import {
   TASK_PRIORITY_THEME,
   TaskPriorityIcon,
 } from '../tasks/TaskPriorityIndicator';
+import TaskTimePicker from '../tasks/TaskTimePicker';
 
-type PickerKind = 'date' | 'milestone' | 'project' | 'priority';
+type PickerKind = 'date' | 'time' | 'milestone' | 'project' | 'priority';
 
 const MetadataChip = ({
   active,
@@ -225,6 +226,10 @@ const TaskEditorMetadata = ({
     updateTodo(todo.id, { scheduledDate: dateKey });
     closePicker();
   };
+  const setTime = (scheduledTime: string | null) => {
+    updateTodo(todo.id, { scheduledTime });
+    closePicker();
+  };
   const setPriority = (priority: TodoPriority) => {
     updateTodo(todo.id, { priority });
     closePicker();
@@ -245,6 +250,13 @@ const TaskEditorMetadata = ({
         icon="calendar-outline"
         label={dateLabel}
         onPress={openPicker('date')}
+      />
+      <MetadataChip
+        active={picker === 'time'}
+        icon="time-outline"
+        label={todo.scheduledTime ?? labels.editor.allDay}
+        onPress={openPicker('time')}
+        tint={todo.scheduledTime ? '#6759E8' : undefined}
       />
       <MetadataChip
         active={picker === 'project'}
@@ -324,6 +336,22 @@ const TaskEditorMetadata = ({
               }
             />
           ))}
+        </MenuSurface>
+      ) : null}
+
+      {picker === 'time' ? (
+        <MenuSurface
+          closeLabel={labels.cancel}
+          estimatedHeight={330}
+          onClose={closePicker}
+          position={position}
+          width={240}
+        >
+          <TaskTimePicker
+            labels={labels}
+            onSelect={setTime}
+            value={todo.scheduledTime}
+          />
         </MenuSurface>
       ) : null}
 

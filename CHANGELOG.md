@@ -5,6 +5,19 @@ written for people using LightFlux rather than for repository maintainers.
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-11-17
+
+### Fixed
+
+- Local data that cannot be read is no longer treated as an empty workspace, so
+  a storage error can no longer overwrite real tasks on the next save.
+- Deleting a task now requires it to be in the trash first, and subtasks left
+  behind by a deleted parent become top-level tasks instead of dangling.
+- Restoring a task whose parent has moved to another Project no longer creates
+  a parent link that crosses Projects.
+- Pressing Escape in a menu no longer also closes the task details pane.
+- The CLI installer no longer misreads the installed Node.js version.
+
 ## [1.1.4] - 2026-10-08
 
 ### Added

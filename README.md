@@ -3,7 +3,7 @@
 **本地优先的桌面任务工具 · A local-first desktop task manager**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-6E5BE8.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.4-6E5BE8.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.5-6E5BE8.svg)](CHANGELOG.md)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-339933.svg)](https://nodejs.org)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-555.svg)](#安装)
 

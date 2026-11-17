@@ -82,11 +82,14 @@ const MenuSurface = ({
 
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        // Claim the key so the shell handler does not also close task details.
+        event.preventDefault();
+        event.stopPropagation();
         onClose();
       }
     };
-    document.addEventListener('keydown', closeOnEscape);
-    return () => document.removeEventListener('keydown', closeOnEscape);
+    document.addEventListener('keydown', closeOnEscape, true);
+    return () => document.removeEventListener('keydown', closeOnEscape, true);
   }, [onClose]);
 
   const resolvedWebWidth = Math.min(

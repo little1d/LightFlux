@@ -527,7 +527,9 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
       const saved = await invoke<string | null>('load_local_app_state');
       if (saved !== null) return requireLocalState(saved);
     }
-    const raw = await loadWebState(STORAGE_KEY);
+    // Fail closed: a silent fallback after an IndexedDB error makes an empty
+    // state authoritative, and the next save overwrites the real data.
+    const raw = await loadWebState(STORAGE_KEY, { strict: true });
     if (raw !== null) {
       const state = requireLocalState(raw);
       if (isTauri()) {
@@ -537,7 +539,7 @@ export const loadAppState = async (): Promise<PersistedAppState | null> => {
       return state;
     }
     for (const key of ['current', 'lightflux.app-state.v1']) {
-      if (await loadWebState(key) !== null) {
+      if (await loadWebState(key, { strict: true }) !== null) {
         throw new Error('Legacy local data requires recovery; it has not been deleted.');
       }
     }
@@ -559,7 +561,7 @@ export const saveAppState = (
       if (isTauri()) {
         await invoke('save_local_app_state', { content, restore });
       } else {
-        await saveWebState(STORAGE_KEY, content);
+        await saveWebState(STORAGE_KEY, content, { strict: true });
       }
     } else {
       stateFile().write(content);

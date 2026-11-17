@@ -91,10 +91,10 @@ describe('Xiaoguang task tool preparation', () => {
     }))).toThrow('tool-arguments');
   });
 
-  it('previews direct permanent deletion of the selected task branch', () => {
+  it('previews permanent deletion of a trashed task branch', () => {
     const state = baseState();
     state.todos = [
-      task('parent', 'Remove'),
+      { ...task('parent', 'Remove'), trashedAt: 20 },
       { ...task('child', 'Nested'), parentId: 'parent', trashedAt: 20 },
     ];
     const preview = prepareChatTool(state, record('change_task', {

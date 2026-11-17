@@ -225,13 +225,19 @@ export const restoreTodoBranch = (
   }
 
   const idsToRestore = collectTodoFamily(trashedTodos, [id]);
+  const parent = root.parentId
+    ? todos.find((todo) => todo.id === root.parentId)
+    : undefined;
   const parentWillBeActive =
-    !root.parentId ||
-    todos.some(
-      (todo) =>
-        todo.id === root.parentId &&
-        (todo.trashedAt === null || idsToRestore.has(todo.id)),
-    );
+    !parent ||
+    parent.trashedAt === null ||
+    idsToRestore.has(parent.id);
+  // A task moved to another Project leaves its trashed descendants behind, so
+  // restoring one of them must not create a cross-Project parent link.
+  const projectWillMatch =
+    !parent ||
+    parent.projectId === root.projectId ||
+    idsToRestore.has(parent.id);
 
   return todos.map((todo) => {
     if (!idsToRestore.has(todo.id)) {
@@ -241,7 +247,9 @@ export const restoreTodoBranch = (
     return {
       ...todo,
       parentId:
-        todo.id === id && !parentWillBeActive ? null : todo.parentId,
+        todo.id === id && (!parentWillBeActive || !projectWillMatch)
+          ? null
+          : todo.parentId,
       trashedAt: null,
       updatedAt: timestamp,
     };

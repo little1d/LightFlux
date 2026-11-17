@@ -625,26 +625,39 @@ export const mutateTaskState = ({ action, body, state, taskId, now, allowInlineI
       }
     }
   } else if (action === 'task.delete') {
-    const branchIds = collectDescendantIds(state.todos, task.id);
-    state.todos = state.todos.filter(
-      (branchTask) => !branchIds.has(branchTask.id),
-    );
+    if (task.trashedAt === null) {
+      throw httpError(409, 'Trash the task before deleting it.');
+    }
+    const branchIds = collectDescendantIds(state.todos, task.id, true);
+    state.todos = state.todos
+      .filter((branchTask) => !branchIds.has(branchTask.id))
+      .map((branchTask) =>
+        branchTask.parentId && branchIds.has(branchTask.parentId)
+          ? { ...branchTask, parentId: null }
+          : branchTask,
+      );
     state.taskEvents = state.taskEvents.filter(
       (event) => !branchIds.has(event.taskId),
     );
   } else if (action === 'task.restore') {
     if (task.trashedAt !== null) {
       const branchIds = collectDescendantIds(state.todos, task.id, true);
+      const parent = task.parentId
+        ? state.todos.find((candidate) => candidate.id === task.parentId)
+        : null;
+      // A task moved to another Project leaves its trashed descendants behind;
+      // restoring one of them must not create a cross-Project parent link.
+      const projectWillMatch =
+        !parent ||
+        parent.projectId === task.projectId ||
+        branchIds.has(parent.id);
       const parentWillBeActive =
-        !task.parentId ||
-        state.todos.some(
-          (candidate) =>
-            candidate.id === task.parentId &&
-            (candidate.trashedAt === null || branchIds.has(candidate.id)),
-        );
+        !parent ||
+        parent.trashedAt === null ||
+        branchIds.has(parent.id);
       for (const branchTask of state.todos) {
         if (branchIds.has(branchTask.id)) {
-          if (branchTask.id === task.id && !parentWillBeActive) {
+          if (branchTask.id === task.id && (!parentWillBeActive || !projectWillMatch)) {
             branchTask.parentId = null;
           }
           branchTask.trashedAt = null;

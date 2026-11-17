@@ -186,22 +186,31 @@ describe("local desktop workspace transactions", () => {
     expect(undone.state.todos).toHaveLength(1);
   });
 
-  it("permanently deletes an active task branch with audit and latest-only undo", () => {
+  it("permanently deletes a trashed task branch with audit and latest-only undo", () => {
     const parent = executeLocalRequest(initial(), create("Parent"));
     const parentId = parent.state.todos[0].id;
     const child = executeLocalRequest(parent.state, {
       ...create("Child"),
       body: { ...create("Child").body, parentId },
     });
+    const trashed = executeLocalRequest(child.state, {
+      method: "POST",
+      path: `/api/v1/tasks/${parentId}/mutations`,
+      idempotencyKey: "trash-branch",
+      body: {
+        action: "task.trash",
+        expectedVersion: child.state.todos[0].updatedAt,
+      },
+    });
     const removed = executeLocalRequest(
-      child.state,
+      trashed.state,
       {
         method: "POST",
         path: `/api/v1/tasks/${parentId}/mutations`,
         idempotencyKey: "delete-branch",
         body: {
           action: "task.delete",
-          expectedVersion: child.state.todos[0].updatedAt,
+          expectedVersion: trashed.state.todos[0].updatedAt,
         },
       },
       { actorId: "xiaoguang" },
@@ -222,7 +231,11 @@ describe("local desktop workspace transactions", () => {
       "Parent",
       "Child",
     ]);
-    expect(restored.state.taskEvents).toHaveLength(2);
+    // Undo returns to the pre-delete snapshot, where the branch was trashed.
+    expect(
+      restored.state.todos.every((task) => task.trashedAt !== null),
+    ).toBe(true);
+    expect(restored.state.taskEvents).toHaveLength(4);
   });
 
   it("creates, updates, reorders and deletes projects with audit and undo", () => {

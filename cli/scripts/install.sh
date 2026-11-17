@@ -11,7 +11,7 @@ for command in curl node npm tar; do
   }
 done
 
-node_major="$(node -p 'Number(process.versions.node.split(\".\")[0])')"
+node_major="$(node -p 'Number(process.versions.node.split(".")[0])')"
 if (( node_major < 22 )); then
   echo "LightFlux requires Node.js 22 or newer." >&2
   exit 1

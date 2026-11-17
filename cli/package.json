@@ -14,7 +14,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "check": "node --check src/api.mjs && node --check src/cli.mjs && node --check src/config.mjs && node --check src/content.mjs && node --check src/context.mjs && node --check src/credentials.mjs && node --check src/desktop.mjs && node --check src/local.mjs && node --check src/milestone.mjs && bash -n scripts/install.sh && npm test",
+    "check": "node --check src/cli.mjs && for file in src/*.mjs src/commands/*.mjs; do node --check \"$file\" || exit 1; done && bash -n scripts/install.sh && npm test",
     "prepublishOnly": "npm run check",
     "test": "node --test tests/*.test.mjs"
   },

@@ -1,3 +1,5 @@
+import { VERSION } from './version.mjs';
+
 export class LightFluxApiError extends Error {
   constructor(message, status, details = {}) {
     super(message);
@@ -28,7 +30,7 @@ const request = async ({
         ...(body ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
-        'User-Agent': 'lightflux-cli/0.1.0',
+        'User-Agent': `lightflux-cli/${VERSION}`,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     },
@@ -98,11 +100,6 @@ export const createApiClient = ({
           method: 'POST',
         },
       ),
-    exchangeDeviceAuthorization: (deviceCode) =>
-      call('/api/v1/auth/device/token', {
-        body: { deviceCode },
-        method: 'POST',
-      }),
     listProjects: async (workspaceId) => {
       const result = await call(
         `/api/v1/workspaces/${encodeURIComponent(workspaceId)}/projects`,
@@ -142,7 +139,6 @@ export const createApiClient = ({
       const result = await call('/api/v1/workspaces');
       return result.workspaces;
     },
-    logout: () => call('/api/v1/auth/logout', { method: 'POST' }),
     mutateTask: (taskId, mutation, idempotencyKey) =>
       call(`/api/v1/tasks/${encodeURIComponent(taskId)}/mutations`, {
         body: mutation,
@@ -167,8 +163,6 @@ export const createApiClient = ({
           method: 'POST',
         },
       ),
-    requestDeviceAuthorization: () =>
-      call('/api/v1/auth/device', { method: 'POST' }),
     showTask: (taskId) =>
       call(`/api/v1/tasks/${encodeURIComponent(taskId)}`),
     showMilestone: (milestoneId) =>

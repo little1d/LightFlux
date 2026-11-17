@@ -46,18 +46,7 @@ fn main() {
             desktop::update_desktop_status,
         ]);
 
-    let updater_public_key = option_env!("LIGHTFLUX_UPDATER_PUBLIC_KEY")
-        .map(str::trim)
-        .filter(|value| !value.is_empty());
-    let builder = if let Some(public_key) = updater_public_key {
-        builder.plugin(
-            tauri_plugin_updater::Builder::new()
-                .pubkey(public_key)
-                .build(),
-        )
-    } else {
-        builder
-    };
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
 
     builder
         .run(tauri::generate_context!())

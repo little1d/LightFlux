@@ -29,6 +29,16 @@ curl -fsSL https://raw.githubusercontent.com/little1d/LightFlux/main/cli/scripts
 
 The installer requires Node.js 22+ and does not need any configuration.
 
+## Options
+
+Flags may be written as `--date 2026-09-12` or `--date=2026-09-12`.
+Unknown flags, repeated flags and missing values are rejected with the
+relevant usage line, and validation runs before the CLI connects to the
+desktop, so a typo never launches the app. `--` ends flag parsing, which
+allows a value that begins with a dash. Every command accepts `--json`;
+`lightflux <group> --help` lists a group and `lightflux <group> <command>
+--help` prints one command's usage.
+
 ## Projects
 
 ```bash
@@ -67,7 +77,8 @@ lightflux task comment <task-id> --message "Verified locally"
 ```
 
 Content inputs: `--content <text>`, `--content-file <UTF-8 path>`, or
-`--content-json <path|->` for Tiptap JSON. Choose one per command.
+`--content-json <path|->` for Tiptap JSON (`-` reads standard input).
+Choose one per command.
 `--no-milestone` clears a Milestone association. Subtasks inherit their parent Project.
 
 ## Milestones

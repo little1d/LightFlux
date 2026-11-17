@@ -1,3 +1,4 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
@@ -9,282 +10,20 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useShallow } from 'zustand/react/shallow';
 
-import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { DESKTOP_LAYOUT_BREAKPOINT } from '../config/layout';
 import { translations } from '../content';
+import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
 import { buildChildCountByParent } from '../store/todoDomain';
 import { useTodoStore } from '../store/todoStore';
-import { Language, Todo } from '../types/todo';
-import {
-  addMonths,
-  fromDateKey,
-  monthGrid,
-  toDateKey,
-} from '../utils/date';
-import TaskIndicators from './tasks/TaskIndicators';
-import TaskPriorityIndicator, {
-  TaskPriorityIcon,
-  TASK_PRIORITY_THEME,
-} from './tasks/TaskPriorityIndicator';
-import {
-  TaskCheckbox,
-  TaskMoreButton,
-  TaskNestingIndicator,
-} from './tasks/TaskRowControls';
-import {
-  OpenTaskMenu,
-  useTaskContextMenu,
-} from './tasks/useTaskContextMenu';
+import { Todo } from '../types/todo';
+import { addMonths, fromDateKey, monthGrid, toDateKey } from '../utils/date';
+import CalendarDay from './calendar/CalendarDay';
+import CalendarTask from './calendar/CalendarTask';
+import CircleNavButton from './calendar/CircleNavButton';
 import MobileQuickAddButton from './tasks/MobileQuickAddButton';
-
-interface CalendarDayProps {
-  currentMonth: number;
-  date: Date;
-  projectColors: Map<string, string>;
-  language: Language;
-  onSelect: (date: Date) => void;
-  selected: boolean;
-  showTaskTitles: boolean;
-  taskCountLabel: (count: number) => string;
-  tasks: Todo[];
-  today: boolean;
-}
-
-interface CircleNavButtonProps {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  onPress: () => void;
-}
-
-const CircleNavButton = ({ icon, label, onPress }: CircleNavButtonProps) => {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.navRound,
-        hovered && styles.navRoundHover,
-        pressed && styles.navRoundPressed,
-      ]}
-    >
-      <Ionicons
-        color={hovered ? '#6759E8' : '#858692'}
-        name={icon}
-        size={16}
-      />
-    </Pressable>
-  );
-};
-
-const CalendarDay = ({
-  currentMonth,
-  date,
-  projectColors,
-  language,
-  onSelect,
-  selected,
-  showTaskTitles,
-  taskCountLabel,
-  tasks,
-  today,
-}: CalendarDayProps) => {
-  const [hovered, setHovered] = useState(false);
-  const inCurrentMonth = date.getMonth() === currentMonth;
-  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-  return (
-    <Pressable
-      accessibilityLabel={`${date.toLocaleDateString(
-        language === 'zh' ? 'zh-CN' : 'en-US',
-      )}, ${taskCountLabel(tasks.length)}`}
-      accessibilityRole="button"
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      onPress={() => onSelect(date)}
-      style={({ pressed }) => [
-        styles.dayCell,
-        { minHeight: showTaskTitles ? 84 : 62 },
-        selected && styles.daySelected,
-        hovered && !selected && styles.dayHovered,
-        hovered && selected && styles.daySelectedHovered,
-        pressed && styles.dayPressed,
-      ]}
-    >
-      <View style={styles.dayHeader}>
-        <View style={[styles.dayNumber, today && styles.todayNumber]}>
-          <Text
-            style={[
-              styles.dayNumberText,
-              !inCurrentMonth && styles.dayNumberMuted,
-              isWeekend && inCurrentMonth && styles.dayNumberWeekend,
-              today && styles.todayNumberText,
-            ]}
-          >
-            {date.getDate()}
-          </Text>
-        </View>
-        {tasks.length > 0 ? (
-          <Text style={styles.dayTaskCount}>{tasks.length}</Text>
-        ) : null}
-      </View>
-
-      {showTaskTitles ? (
-        <>
-          {tasks.slice(0, 2).map((todo) => (
-            <View key={todo.id} style={styles.dayTaskPill}>
-              {todo.priority !== 'none' ? (
-                <View style={styles.dayTaskPriority}>
-                  <TaskPriorityIcon priority={todo.priority} size={10} />
-                </View>
-              ) : (
-                <View
-                  style={[
-                    styles.dayTaskDot,
-                    {
-                      backgroundColor:
-                        projectColors.get(todo.projectId ?? '') ?? '#8B7EFF',
-                    },
-                  ]}
-                />
-              )}
-              {todo.scheduledTime ? (
-                <Text style={styles.dayTaskTime}>
-                  {todo.scheduledTime}
-                </Text>
-              ) : null}
-              <Text numberOfLines={1} style={styles.dayTaskTitle}>
-                {todo.title}
-              </Text>
-            </View>
-          ))}
-          {tasks.length > 2 ? (
-            <Text style={styles.moreTasks}>+{tasks.length - 2}</Text>
-          ) : null}
-        </>
-      ) : tasks.length > 0 ? (
-        <View style={styles.compactDots}>
-          {tasks.slice(0, 3).map((todo) => (
-            <View
-              key={todo.id}
-              style={[
-                styles.compactDot,
-                {
-                  backgroundColor:
-                    projectColors.get(todo.projectId ?? '') ?? '#8B7EFF',
-                },
-              ]}
-            />
-          ))}
-        </View>
-      ) : null}
-    </Pressable>
-  );
-};
-
-const CalendarTask = ({
-  todo,
-  color,
-  editLabel,
-  moreActionsLabel,
-  hovered,
-  onEdit,
-  onHoverIn,
-  onHoverOut,
-  onOpenMenu,
-  onToggle,
-  selected,
-  showProjectColor,
-  childCount,
-  markActive,
-  markComplete,
-}: {
-  todo: Todo;
-  color: string;
-  editLabel: string;
-  moreActionsLabel: string;
-  hovered: boolean;
-  onEdit: (id: string) => void;
-  onHoverIn: (id: string) => void;
-  onHoverOut: () => void;
-  onOpenMenu: OpenTaskMenu;
-  onToggle: (id: string) => void;
-  selected: boolean;
-  showProjectColor: boolean;
-  childCount: number;
-  markActive: string;
-  markComplete: string;
-}) => {
-  const { targetRef, openFromButton, openFromLongPress } = useTaskContextMenu(
-    todo.id,
-    onOpenMenu,
-  );
-
-  return (
-    <View
-      accessibilityState={{ selected }}
-      onPointerEnter={() => onHoverIn(todo.id)}
-      onPointerLeave={onHoverOut}
-      ref={targetRef}
-      style={[
-        styles.taskRowBase,
-        todo.parentId ? styles.taskRowChild : styles.taskRowRoot,
-        todo.priority !== 'none' &&
-          !selected && {
-            backgroundColor: TASK_PRIORITY_THEME[todo.priority].rowBackground,
-          },
-        selected && styles.taskRowSelected,
-        hovered && !selected && styles.taskRowHovered,
-      ]}
-    >
-      {todo.parentId ? <TaskNestingIndicator /> : null}
-      <TaskCheckbox
-        completed={todo.completed}
-        markActive={markActive}
-        markComplete={markComplete}
-        onPress={() => onToggle(todo.id)}
-      />
-      <Pressable
-        accessibilityLabel={`${editLabel}: ${todo.title}`}
-        accessibilityRole="button"
-        delayLongPress={350}
-        onLongPress={openFromLongPress}
-        onPress={() => onEdit(todo.id)}
-        style={({ pressed }) => [
-          styles.taskContent,
-          pressed && styles.taskRowPressed,
-        ]}
-      >
-        <Text
-          style={[
-            styles.taskTitle,
-            todo.completed && styles.taskTitleCompleted,
-          ]}
-          numberOfLines={1}
-        >
-          {todo.title}
-        </Text>
-      </Pressable>
-      <TaskPriorityIndicator priority={todo.priority} />
-      <TaskIndicators childCount={childCount} todo={todo} />
-      {showProjectColor ? (
-        <View
-          style={[styles.taskProjectDot, { backgroundColor: color }]}
-        />
-      ) : null}
-      <TaskMoreButton
-        label={moreActionsLabel}
-        onPress={openFromButton}
-      />
-    </View>
-  );
-};
+import { OpenTaskMenu } from './tasks/useTaskContextMenu';
 
 const CalendarScreen = ({
   onAddTask,
@@ -418,7 +157,11 @@ const CalendarScreen = ({
           <View style={styles.workspace}>
             <View
               nativeID="calendar-month-panel"
-              style={[styles.calendarCard, styles.calendarShadow, styles.calendarBorder]}
+              style={[
+                styles.calendarCard,
+                styles.calendarShadow,
+                styles.calendarBorder,
+              ]}
             >
               <View style={styles.calendarHeader}>
                 <View style={styles.monthTitleGroup}>
@@ -509,10 +252,7 @@ const CalendarScreen = ({
             </View>
 
             {selectedTodos.length > 0 ? (
-              <View
-                nativeID="calendar-agenda-panel"
-                style={styles.agendaList}
-              >
+              <View nativeID="calendar-agenda-panel" style={styles.agendaList}>
                 <View style={styles.agendaHeader}>
                   <Text style={styles.agendaHeaderTitle}>
                     {agendaDateTitle}
@@ -558,10 +298,7 @@ const CalendarScreen = ({
             accessibilityLabel={`${labels.addTask}: ${selectedDateLabel}`}
             accessibilityRole="button"
             onPress={() => onAddTask(selectedDate)}
-            style={({ pressed }) => [
-              styles.fab,
-              pressed && styles.fabPressed,
-            ]}
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
           >
             <Ionicons color="#FFFFFF" name="add" size={28} />
           </Pressable>
@@ -660,20 +397,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
-  navRound: {
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 16,
-    height: 32,
-    justifyContent: 'center',
-    width: 32,
-  },
-  navRoundHover: {
-    backgroundColor: '#F3F1FE',
-  },
-  navRoundPressed: {
-    backgroundColor: '#E9E5FC',
-  },
   controlGap: {
     width: 4,
   },
@@ -724,155 +447,6 @@ const styles = StyleSheet.create({
   weekColumn: {
     flex: 1,
     minWidth: 0,
-  },
-  dayCell: {
-    backgroundColor: '#FFFFFF',
-    borderBottomColor: '#EFEEF3',
-    borderBottomWidth: 1,
-    borderRightColor: '#EFEEF3',
-    borderRightWidth: 1,
-    flex: 1,
-    minWidth: 0,
-    padding: 7,
-  },
-  dayHovered: {
-    backgroundColor: '#F7F6FB',
-  },
-  daySelected: {
-    backgroundColor: '#F0EEFF',
-  },
-  daySelectedHovered: {
-    backgroundColor: '#E8E5FF',
-  },
-  dayPressed: {
-    opacity: 0.72,
-  },
-  dayHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dayNumber: {
-    alignItems: 'center',
-    borderRadius: 11,
-    height: 22,
-    justifyContent: 'center',
-    minWidth: 22,
-  },
-  todayNumber: {
-    backgroundColor: '#6759E8',
-  },
-  dayNumberText: {
-    color: '#454659',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dayNumberMuted: {
-    color: '#C1C2CA',
-  },
-  dayNumberWeekend: {
-    color: '#9798A4',
-  },
-  todayNumberText: {
-    color: '#FFFFFF',
-  },
-  dayTaskCount: {
-    color: '#A09FAE',
-    fontSize: 9,
-    fontWeight: '600',
-  },
-  dayTaskPill: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginTop: 3,
-    minHeight: 17,
-    paddingHorizontal: 1,
-  },
-  dayTaskDot: {
-    borderRadius: 3,
-    height: 6,
-    marginRight: 5,
-    width: 6,
-  },
-  dayTaskPriority: {
-    alignItems: 'center',
-    height: 12,
-    justifyContent: 'center',
-    marginRight: 3,
-    width: 12,
-  },
-  dayTaskTitle: {
-    color: '#535466',
-    flex: 1,
-    fontSize: 9,
-    fontWeight: '500',
-  },
-  dayTaskTime: {
-    color: '#777786',
-    fontSize: 8,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  moreTasks: {
-    color: '#999BA8',
-    fontSize: 8,
-    marginTop: 2,
-  },
-  compactDots: {
-    flexDirection: 'row',
-    marginTop: 5,
-  },
-  compactDot: {
-    borderRadius: 3,
-    height: 6,
-    marginRight: 3,
-    width: 6,
-  },
-  taskRowBase: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 11,
-    flexDirection: 'row',
-    marginBottom: 4,
-    minHeight: 44,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-  },
-  taskRowRoot: {
-    minHeight: 44,
-  },
-  taskRowChild: {
-    marginLeft: 20,
-    minHeight: 38,
-  },
-  taskRowHovered: {
-    backgroundColor: '#F5F4F8',
-  },
-  taskRowSelected: {
-    backgroundColor: '#F2F1FC',
-  },
-  taskRowPressed: {
-    opacity: 0.62,
-  },
-  taskContent: {
-    flex: 1,
-    marginLeft: 10,
-    paddingVertical: 8,
-  },
-  taskTitle: {
-    color: '#343548',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  taskTitleCompleted: {
-    color: '#9A9BAA',
-    textDecorationLine: 'line-through',
-  },
-  taskProjectDot: {
-    borderRadius: 3,
-    height: 8,
-    marginLeft: 8,
-    width: 8,
   },
   fab: {
     alignItems: 'center',

@@ -15,13 +15,8 @@ import {
 import { Translation } from '../../content';
 import { useTodoStore } from '../../store/todoStore';
 import { Language, Todo, TodoPriority } from '../../types/todo';
-import {
-  addMonths,
-  fromDateKey,
-  monthGrid,
-  toDateKey,
-  todayKey,
-} from '../../utils/date';
+import { fromDateKey } from '../../utils/date';
+import DatePicker from '../ui/DatePicker';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface, {
   MenuSurfacePosition,
@@ -87,98 +82,6 @@ const MetadataChip = ({
       </Text>
       <Ionicons color="#B0B1BC" name="chevron-down" size={12} />
     </Pressable>
-  );
-};
-
-const MiniCalendar = ({
-  labels,
-  language,
-  onSelect,
-  value,
-}: {
-  labels: Translation;
-  language: Language;
-  onSelect: (dateKey: string) => void;
-  value: string;
-}) => {
-  const [month, setMonth] = useState(() => fromDateKey(value || todayKey()));
-  const days = monthGrid(month);
-  const today = todayKey();
-  const locale = language === 'zh' ? 'zh-CN' : 'en-US';
-
-  return (
-    <View style={styles.calendar}>
-      <View style={styles.calendarHeader}>
-        <Pressable
-          accessibilityLabel={labels.calendar.previousMonth}
-          accessibilityRole="button"
-          hitSlop={6}
-          onPress={() => setMonth((current) => addMonths(current, -1))}
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
-        >
-          <Ionicons color="#6C6D7E" name="chevron-back" size={16} />
-        </Pressable>
-        <Text style={styles.calendarTitle}>
-          {labels.calendar.monthTitle(
-            month.getFullYear(),
-            month.getMonth() + 1,
-          )}
-        </Text>
-        <Pressable
-          accessibilityLabel={labels.calendar.nextMonth}
-          accessibilityRole="button"
-          hitSlop={6}
-          onPress={() => setMonth((current) => addMonths(current, 1))}
-          style={({ pressed }) => [styles.navButton, pressed && styles.pressed]}
-        >
-          <Ionicons color="#6C6D7E" name="chevron-forward" size={16} />
-        </Pressable>
-      </View>
-      <View style={styles.weekRow}>
-        {labels.calendar.weekdays.map((weekday, index) => (
-          <Text key={`${weekday}-${index}`} style={styles.weekday}>
-            {weekday}
-          </Text>
-        ))}
-      </View>
-      <View style={styles.grid}>
-        {days.map((day) => {
-          const key = toDateKey(day);
-          const inMonth = day.getMonth() === month.getMonth();
-          const selected = key === value;
-          const isToday = key === today;
-          return (
-            <Pressable
-              accessibilityLabel={day.toLocaleDateString(locale, {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              key={key}
-              onPress={() => onSelect(key)}
-              style={({ pressed }) => [
-                styles.dayCell,
-                selected && styles.dayCellSelected,
-                pressed && !selected && styles.dayCellPressed,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  !inMonth && styles.dayTextMuted,
-                  isToday && !selected && styles.dayTextToday,
-                  selected && styles.dayTextSelected,
-                ]}
-              >
-                {day.getDate()}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 };
 
@@ -289,28 +192,12 @@ const TaskEditorMetadata = ({
           position={position}
           width={288}
         >
-          <MiniCalendar
-            labels={labels}
+          <DatePicker
             language={language}
+            labels={labels}
             onSelect={setDate}
+            shortcuts
             value={todo.scheduledDate}
-          />
-          <View style={styles.divider} />
-          <MenuItem
-            icon={<Ionicons color="#6F7080" name="today-outline" size={16} />}
-            label={labels.editor.scheduleToday}
-            onPress={() => setDate(todayKey())}
-          />
-          <MenuItem
-            icon={
-              <Ionicons color="#6F7080" name="arrow-forward-outline" size={16} />
-            }
-            label={labels.editor.scheduleTomorrow}
-            onPress={() => {
-              const tomorrow = fromDateKey(todayKey());
-              tomorrow.setDate(tomorrow.getDate() + 1);
-              setDate(toDateKey(tomorrow));
-            }}
           />
         </MenuSurface>
       ) : null}
@@ -448,82 +335,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     maxWidth: 180,
-  },
-  divider: {
-    backgroundColor: '#ECEBF1',
-    height: 1,
-    marginHorizontal: 8,
-    marginVertical: 4,
-  },
-  calendar: {
-    paddingHorizontal: 6,
-    paddingTop: 4,
-  },
-  calendarHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  calendarTitle: {
-    color: '#303145',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  navButton: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 28,
-    justifyContent: 'center',
-    width: 28,
-  },
-  weekRow: {
-    flexDirection: 'row',
-  },
-  weekday: {
-    color: '#9A9BA8',
-    flex: 1,
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 4,
-  },
-  dayCell: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 34,
-    justifyContent: 'center',
-    width: `${100 / 7}%`,
-  },
-  dayCellSelected: {
-    backgroundColor: '#6759E8',
-  },
-  dayCellPressed: {
-    backgroundColor: '#EEECFF',
-  },
-  dayText: {
-    color: '#3B3C4E',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dayTextMuted: {
-    color: '#C3C4CE',
-  },
-  dayTextToday: {
-    color: '#6759E8',
-    fontWeight: '600',
-  },
-  dayTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });
 

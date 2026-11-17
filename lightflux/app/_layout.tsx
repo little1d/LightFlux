@@ -11,39 +11,32 @@ import {
   DESKTOP_LAYOUT_BREAKPOINT,
 } from '../config/layout';
 
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { Slot, usePathname, useRouter } from 'expo-router';
-import React, {
-  ComponentProps,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
-  Image,
-  Modal,
   Platform,
-  Pressable,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from 'react-native';
-import {
-  SafeAreaProvider,
-  SafeAreaView,
-} from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
 import SearchOverlay from '../components/SearchOverlay';
-import SettingsScreen from '../components/SettingsScreen';
 import DesktopUpdateMenu from '../components/desktop/DesktopUpdateMenu';
 import TaskEditorScreen from '../components/editor/TaskEditorScreen';
+import DesktopSidebar from '../components/layout/DesktopSidebar';
+import MobileEditorOverlay from '../components/layout/MobileEditorOverlay';
+import MobileNavigationBar from '../components/layout/MobileNavigationBar';
+import MobileUtilityOverlay from '../components/layout/MobileUtilityOverlay';
 import ResizableDivider from '../components/layout/ResizableDivider';
-import DraggableNavigationItem from '../components/navigation/DraggableNavigationItem';
+import SettingsPanelOverlay from '../components/layout/SettingsPanelOverlay';
+import styles from '../components/layout/appShellStyles';
+import {
+  NAV_ICONS,
+  viewFromPathname,
+} from '../components/navigation/navigationConfig';
 import { NavigationDragState } from '../components/navigation/navigationDrag';
 import TaskActionMenu from '../components/tasks/TaskActionMenu';
 import MobileQuickAddButton from '../components/tasks/MobileQuickAddButton';
@@ -53,7 +46,6 @@ import {
   TaskMenuPosition,
 } from '../components/tasks/useTaskContextMenu';
 import IconButton from '../components/ui/IconButton';
-import Tooltip from '../components/ui/Tooltip';
 import {
   ConfirmationProvider,
 } from '../components/ui/ConfirmationProvider';
@@ -67,11 +59,8 @@ import {
   AppView,
 } from '../components/appShellContext';
 import { useCurrentDateKey } from '../hooks/useCurrentDateKey';
-import { listenForLocalApi } from '../services/localApiBridge';
-import {
-  listenForTrayActions,
-  quitDesktop,
-} from '../services/desktopRuntime';
+import useDesktopRuntimeEffects from '../hooks/useDesktopRuntimeEffects';
+import useWebKeyboardShortcuts from '../hooks/useWebKeyboardShortcuts';
 import { useDesktopStore } from '../store/desktopStore';
 import { flushChatState } from '../store/chatStore';
 import {
@@ -86,8 +75,6 @@ import {
   OptionalNavigationItemId,
 } from '../types/todo';
 
-type NavigationView = NavigationItemId;
-
 type SelectedTask = {
   id: string;
   readOnly: boolean;
@@ -98,146 +85,6 @@ const DESKTOP_NAV_WIDTH = 78;
 const DIVIDER_WIDTH = 8;
 const MIN_LIST_WIDTH = 360;
 const MIN_DETAILS_WIDTH = 360;
-
-const NAV_ICONS: Record<
-  NavigationView,
-  ComponentProps<typeof Ionicons>['name']
-> = {
-  today: 'sunny-outline',
-  completed: 'checkmark-done-outline',
-  calendar: 'calendar-outline',
-  milestones: 'hourglass-outline',
-  projects: 'folder-open-outline',
-  trash: 'trash-outline',
-  chat: 'chatbubbles-outline',
-};
-
-const NAVIGABLE_VIEWS: AppView[] = [
-  'today',
-  'completed',
-  'calendar',
-  'milestones',
-  'projects',
-  'trash',
-  'chat',
-  'settings',
-  'statistics',
-];
-
-// Derive the active view from the current route so navigation highlighting and
-// selection guards stay in sync with the URL. Unknown paths fall back to the
-// primary workspace.
-const viewFromPathname = (pathname: string): AppView => {
-  const segment = pathname.replace(/^\/+/, '').split('/')[0];
-  const match = NAVIGABLE_VIEWS.find((view) => view === segment);
-  return match ?? 'today';
-};
-
-const DesktopNavigationButton = ({
-  icon,
-  isActive,
-  label,
-  onPress,
-}: {
-  icon: ComponentProps<typeof Ionicons>['name'];
-  isActive: boolean;
-  label: string;
-  onPress: () => void;
-}) => {
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <View style={styles.desktopNavigationButton}>
-      <Pressable
-        accessibilityLabel={label}
-        accessibilityRole="tab"
-        accessibilityState={{ selected: isActive }}
-        onBlur={() => setFocused(false)}
-        onFocus={() => setFocused(true)}
-        onHoverIn={() => setHovered(true)}
-        onHoverOut={() => setHovered(false)}
-        onPress={onPress}
-        style={({ pressed }) => [
-          styles.navigationButton,
-          isActive && styles.navigationButtonActive,
-          hovered && !isActive && styles.navigationButtonHovered,
-          focused && styles.navigationButtonFocused,
-          pressed && styles.navigationButtonPressed,
-        ]}
-      >
-        <Ionicons
-          color={isActive ? '#6759E8' : hovered ? '#666778' : '#92939F'}
-          name={icon}
-          size={22}
-        />
-      </Pressable>
-      <Tooltip
-        label={label}
-        position="right"
-        visible={(hovered || focused) && !isActive}
-      />
-    </View>
-  );
-};
-
-const AccountTrigger = ({
-  active,
-  avatarUrl,
-  label,
-  onPress,
-  tooltipPosition,
-  variant,
-}: {
-  active: boolean;
-  avatarUrl?: string;
-  label: string;
-  onPress: () => void;
-  tooltipPosition: 'right' | 'bottom';
-  variant?: 'primary' | 'neutral';
-}) => {
-  const [focused, setFocused] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  if (avatarUrl) {
-    return (
-      <View style={styles.accountTrigger}>
-        <Pressable
-          accessibilityLabel={label}
-          accessibilityRole="button"
-          onBlur={() => setFocused(false)}
-          onFocus={() => setFocused(true)}
-          onHoverIn={() => setHovered(true)}
-          onHoverOut={() => setHovered(false)}
-          onPress={onPress}
-          style={({ pressed }) => [
-            styles.accountAvatarButton,
-            active && styles.accountAvatarButtonActive,
-            (hovered || focused) && styles.accountAvatarButtonFocused,
-            pressed && styles.navigationButtonPressed,
-          ]}
-        >
-          <Image source={{ uri: avatarUrl }} style={styles.accountAvatarImage} />
-        </Pressable>
-        <Tooltip
-          label={label}
-          position={tooltipPosition}
-          visible={hovered || focused}
-        />
-      </View>
-    );
-  }
-
-  return (
-    <IconButton
-      icon="person-circle-outline"
-      label={label}
-      onPress={onPress}
-      size="large"
-      tooltipPosition={tooltipPosition}
-      variant={variant ?? (active ? 'primary' : 'neutral')}
-    />
-  );
-};
 
 const AppShell = () => {
   const notify = useToast();
@@ -490,72 +337,37 @@ const AppShell = () => {
       notify(labels.notifications.saveFailed, 'error');
     }
   }, [relaunchForUpdate, notify, labels.notifications.saveFailed]);
-  const handleTrayAction = useCallback(
-    (action: string) => {
-      if (action === 'new-task') {
-        changeView('today');
-        setQuickCreateRequestId(Date.now());
-        return;
-      }
-      if (action === 'today' || action === 'milestones') {
-        changeView(action);
-        return;
-      }
-      if (action === 'settings') {
-        changeView('settings');
-        return;
-      }
-      if (action === 'update') {
-        setUpdateMenuOpen(true);
-        return;
-      }
-      if (action === 'quit') {
-        void flushAppState()
-          .then(flushChatState)
-          .then(quitDesktop)
-          .catch((error) => {
-            console.warn('Unable to flush data before quitting.', error);
-            notify(labels.notifications.saveFailed, 'error');
-          });
-      }
-    },
-    [changeView, notify, labels.notifications.saveFailed],
-  );
-
-  useEffect(() => {
-    void initializeDesktop();
-  }, [initializeDesktop]);
-
-  // Quietly check for updates once after desktop startup. The store treats this
-  // as a background check: it stays silent when up-to-date or offline and only
-  // surfaces an update according to the user's reminder preference.
-  useEffect(() => {
-    if (
-      desktopEnvironment.isDesktop &&
-      desktopEnvironment.updaterConfigured &&
-      updateStatus === 'idle'
-    ) {
-      void checkForUpdates(false);
-    }
-  }, [
-    checkForUpdates,
-    desktopEnvironment.isDesktop,
-    desktopEnvironment.updaterConfigured,
-    updateStatus,
-  ]);
-
-  useEffect(() => {
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-    void listenForLocalApi().then((listener) => {
-      if (disposed) listener();
-      else unlisten = listener;
-    }).catch((error) => console.warn('Unable to initialize local CLI.', error));
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
+  const composeTask = useCallback(() => {
+    setQuickCreateRequestId(Date.now());
   }, []);
+  const resetOverlays = useCallback(() => {
+    setSearchOpen(false);
+    setTaskMenu(null);
+    setSelectedTask(null);
+  }, []);
+
+  useDesktopRuntimeEffects({
+    changeView,
+    checkForUpdates,
+    composeTask,
+    initializeDesktop,
+    isDesktop: desktopEnvironment.isDesktop,
+    notify,
+    onQuitFailed: labels.notifications.saveFailed,
+    openUpdateMenu: () => setUpdateMenuOpen(true),
+    updaterConfigured: desktopEnvironment.updaterConfigured,
+    updateStatus,
+  });
+
+  useWebKeyboardShortcuts({
+    onComposeTask: () => {
+      changeView('today');
+      composeTask();
+    },
+    onOpenSearch: openSearch,
+    onOpenSettings: () => changeView('settings'),
+    onReset: resetOverlays,
+  });
 
   useEffect(() => {
     if (!desktopEnvironment.isDesktop) {
@@ -608,57 +420,6 @@ const AppShell = () => {
       setUpdateMenuOpen(true);
     }
   }, [updateInfo]);
-
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    void listenForTrayActions(handleTrayAction).then((listener) => {
-      unlisten = listener;
-    });
-    return () => unlisten?.();
-  }, [handleTrayAction]);
-
-  useEffect(() => {
-    if (
-      Platform.OS !== 'web'
-    ) {
-      return undefined;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'n') {
-        event.preventDefault();
-        changeView('today');
-        setQuickCreateRequestId(Date.now());
-        return;
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key === ',') {
-        event.preventDefault();
-        changeView('settings');
-        return;
-      }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
-        event.preventDefault();
-        openSearch();
-        return;
-      }
-
-      if (event.key === 'Escape') {
-        if (searchOpen) {
-          setSearchOpen(false);
-          return;
-        }
-        setTaskMenu(null);
-        setSelectedTask(null);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [
-    changeView,
-    openSearch,
-    searchOpen,
-  ]);
 
   useEffect(() => {
     if (!selectedTask) {
@@ -742,65 +503,26 @@ const AppShell = () => {
       ]}
     >
       {showAppShell && usesDesktopLayout ? (
-        <SafeAreaView
-          key="desktop-sidebar"
-          style={styles.desktopSidebar}
-        >
-          <View style={styles.desktopNavigation}>
-            <View style={styles.desktopAccountPosition}>
-              <AccountTrigger
-                active={
-                  activeView === 'settings' || activeView === 'statistics'
-                }
-                label={labels.account.settings}
-                onPress={() => changeView('settings')}
-                tooltipPosition="right"
-              />
-            </View>
-            {navigationItems.map((item, index) => {
-              const isActive = item.id === activeView;
-              return (
-                <DraggableNavigationItem
-                  dragState={navigationDrag}
-                  id={item.id}
-                  index={index}
-                  itemCount={navigationItems.length}
-                  key={item.id}
-                  label={labels.navigation[item.id]}
-                  onDragStateChange={setNavigationDrag}
-                  onMove={moveNavigationItem}
-                >
-                  <DesktopNavigationButton
-                    icon={item.icon}
-                    isActive={isActive}
-                    label={labels.navigation[item.id]}
-                    onPress={() => selectNavigationView(item.id)}
-                  />
-                </DraggableNavigationItem>
-              );
-            })}
-          </View>
-          <View style={styles.agentButtonPosition}>
-            {showSidebarUpdate ? (
-              <View style={styles.updateButtonPosition}>
-                <IconButton
-                  icon={
-                    updateStatus === 'ready'
-                      ? 'checkmark-circle'
-                      : 'download-outline'
-                  }
-                  label={labels.desktop.updateToVersion(
-                    updateInfo?.version ?? '',
-                  )}
-                  onPress={() => setUpdateMenuOpen(true)}
-                  size="large"
-                  tooltipPosition="right"
-                  variant="primary"
-                />
-              </View>
-            ) : null}
-          </View>
-        </SafeAreaView>
+        <DesktopSidebar
+          accountActive={
+            activeView === 'settings' || activeView === 'statistics'
+          }
+          accountLabel={labels.account.settings}
+          activeView={activeView}
+          items={navigationItems}
+          labels={labels.navigation}
+          navigationDrag={navigationDrag}
+          onAccountPress={() => changeView('settings')}
+          onDragStateChange={setNavigationDrag}
+          onMove={moveNavigationItem}
+          onSelect={selectNavigationView}
+          onUpdatePress={() => setUpdateMenuOpen(true)}
+          showUpdate={showSidebarUpdate}
+          updateLabel={labels.desktop.updateToVersion(
+            updateInfo?.version ?? '',
+          )}
+          updateReady={updateStatus === 'ready'}
+        />
       ) : null}
 
       <View
@@ -832,51 +554,13 @@ const AppShell = () => {
         {showAppShell &&
         !usesDesktopLayout &&
         activeView !== 'statistics' ? (
-          <SafeAreaView
-            edges={['bottom']}
-            style={styles.mobileNavigationSafeArea}
-          >
-            <View
-              style={[
-                styles.mobileNavigationBar,
-                compactMobileHeight && styles.mobileNavigationBarCompact,
-              ]}
-            >
-              {navigationItems.map((item) => {
-                const isActive = item.id === activeView;
-                return (
-                  <Pressable
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isActive }}
-                    key={item.id}
-                    onPress={() => selectNavigationView(item.id)}
-                    style={({ pressed }) => [
-                      styles.mobileNavigationItem,
-                      compactMobileHeight &&
-                        styles.mobileNavigationItemCompact,
-                      pressed && styles.mobileNavigationItemPressed,
-                    ]}
-                  >
-                    <Ionicons
-                      color={isActive ? '#6759E8' : '#A3A3AF'}
-                      name={item.icon}
-                      size={compactMobileHeight ? 19 : 21}
-                    />
-                    <Text
-                      style={[
-                        styles.mobileNavigationLabel,
-                        compactMobileHeight &&
-                          styles.mobileNavigationLabelCompact,
-                        isActive && styles.mobileNavigationLabelActive,
-                      ]}
-                    >
-                      {labels.navigation[item.id]}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </SafeAreaView>
+          <MobileNavigationBar
+            activeView={activeView}
+            compact={compactMobileHeight}
+            items={navigationItems}
+            labels={labels.navigation}
+            onSelect={selectNavigationView}
+          />
         ) : null}
       </View>
 
@@ -902,26 +586,13 @@ const AppShell = () => {
       ) : null}
 
       {showAppShell && showMobileUtilities ? (
-        <SafeAreaView style={styles.mobileUtilityOverlay}>
-          <View style={styles.mobileUtilityRow}>
-            <AccountTrigger
-              active={settingsPanelOpen}
-              label={labels.account.settings}
-              onPress={() => setSettingsPanelOpen(true)}
-              tooltipPosition="bottom"
-            />
-            <View style={styles.mobileUtilityActions}>
-              <IconButton
-                icon="search-outline"
-                label={labels.search.title}
-                onPress={openSearch}
-                size="large"
-                tooltipPosition="bottom"
-                variant="neutral"
-              />
-            </View>
-          </View>
-        </SafeAreaView>
+        <MobileUtilityOverlay
+          accountActive={settingsPanelOpen}
+          accountLabel={labels.account.settings}
+          onAccountPress={() => setSettingsPanelOpen(true)}
+          onSearchPress={openSearch}
+          searchLabel={labels.search.title}
+        />
       ) : null}
 
       {showAppShell && taskMenu ? (
@@ -960,33 +631,17 @@ const AppShell = () => {
       ) : null}
     </View>
     {showAppShell && settingsPanelOpen && !usesDesktopLayout ? (
-      <View
-        pointerEvents="box-none"
-        style={StyleSheet.absoluteFill}
-      >
-        <Pressable
-          onPress={() => setSettingsPanelOpen(false)}
-          style={styles.settingsBackdrop}
-        />
-        <Animated.View
-          style={[
-            styles.settingsPanel,
-            { width: Math.min(width, 420), transform: [{ translateX: settingsSlideAnim }] },
-          ]}
-        >
-          <SafeAreaView style={styles.settingsPanelSafeArea}>
-            <SettingsScreen
-              hiddenNavigationItems={hiddenNavigationItems}
-              onClose={() => setSettingsPanelOpen(false)}
-              onNavigationVisibilityChange={setNavigationVisible}
-              onOpenStatistics={() => {
-                setSettingsPanelOpen(false);
-                changeView('statistics');
-              }}
-            />
-          </SafeAreaView>
-        </Animated.View>
-      </View>
+      <SettingsPanelOverlay
+        hiddenNavigationItems={hiddenNavigationItems}
+        onClose={() => setSettingsPanelOpen(false)}
+        onNavigationVisibilityChange={setNavigationVisible}
+        onOpenStatistics={() => {
+          setSettingsPanelOpen(false);
+          changeView('statistics');
+        }}
+        slideAnim={settingsSlideAnim}
+        width={width}
+      />
     ) : null}
     {showAppShell ? (
       <>
@@ -1007,260 +662,18 @@ const AppShell = () => {
       </>
     ) : null}
     {showAppShell && selectedTask && !usesDesktopLayout ? (
-      <Modal
-        animationType={Platform.OS === 'web' ? 'none' : 'slide'}
-        onRequestClose={closeSelectedTask}
-        presentationStyle="overFullScreen"
-        transparent
-        visible
-      >
-        <View style={styles.mobileEditorOverlay}>
-          <Pressable
-            accessibilityLabel={labels.editor.close}
-            onPress={closeSelectedTask}
-            style={StyleSheet.absoluteFill}
-          />
-          <SafeAreaView
-            edges={['bottom']}
-            style={[
-              styles.mobileEditorSheet,
-              Platform.OS === 'web'
-                ? {
-                    height: Math.min(
-                      420,
-                      Math.max(300, Math.round(height * 0.4)),
-                    ),
-                  }
-                : styles.nativeEditorSheet,
-            ]}
-          >
-            <TaskEditorScreen
-              embedded
-              key={`${selectedTask.id}-${selectedTask.requestId}`}
-              onClose={closeSelectedTask}
-              readOnly={selectedTask.readOnly}
-              todoId={selectedTask.id}
-            />
-          </SafeAreaView>
-        </View>
-      </Modal>
+      <MobileEditorOverlay
+        closeLabel={labels.editor.close}
+        height={height}
+        onClose={closeSelectedTask}
+        readOnly={selectedTask.readOnly}
+        requestKey={`${selectedTask.id}-${selectedTask.requestId}`}
+        todoId={selectedTask.id}
+      />
     ) : null}
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  appBackground: {
-    backgroundColor: '#F5F5FA',
-    flex: 1,
-    maxWidth: '100%',
-    minWidth: 0,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  appShell: {
-    backgroundColor: '#F5F5FA',
-    flex: 1,
-    flexDirection: 'row',
-    maxWidth: '100%',
-    minWidth: 0,
-    width: '100%',
-  },
-  appShellHidden: {
-    display: 'none',
-  },
-  bootOverlay: {
-    backgroundColor: '#F3F2F7',
-  },
-  accountTrigger: {
-    position: 'relative',
-  },
-  accountAvatarButton: {
-    backgroundColor: '#F3F2F6',
-    borderColor: 'transparent',
-    borderRadius: 10,
-    borderWidth: 2,
-    height: 40,
-    padding: 2,
-    width: 40,
-  },
-  accountAvatarButtonActive: {
-    backgroundColor: '#F0EEFF',
-    borderColor: '#AFA6F5',
-  },
-  accountAvatarButtonFocused: {
-    borderColor: '#AFA6F5',
-    shadowColor: '#6759E8',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-  },
-  accountAvatarImage: {
-    borderRadius: 6,
-    height: '100%',
-    width: '100%',
-  },
-  desktopAccountPosition: {
-    marginBottom: 28,
-  },
-  desktopSidebar: {
-    backgroundColor: '#F7F6F9',
-    borderRightColor: '#E2E1E8',
-    borderRightWidth: 1,
-    overflow: 'visible',
-    position: 'relative',
-    width: 78,
-    zIndex: 100,
-  },
-  desktopNavigation: {
-    alignItems: 'center',
-    flex: 1,
-    paddingTop: 20,
-  },
-  detailsPane: {
-    backgroundColor: '#FFFFFF',
-    flex: 1,
-  },
-  fullPane: {
-    flex: 1,
-    minWidth: 0,
-  },
-  mobileNavigationSafeArea: {
-    backgroundColor: '#F5F5FA',
-    borderTopColor: '#E4E3EA',
-    borderTopWidth: 1,
-  },
-  mobileNavigationBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: 58,
-    justifyContent: 'space-around',
-    paddingHorizontal: 12,
-  },
-  mobileNavigationBarCompact: {
-    height: 48,
-    paddingHorizontal: 8,
-  },
-  mobileNavigationItem: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  mobileNavigationItemCompact: {
-    paddingVertical: 4,
-  },
-  mobileNavigationItemPressed: {
-    opacity: 0.68,
-  },
-  mobileNavigationLabel: {
-    color: '#9596A3',
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  mobileNavigationLabelCompact: {
-    fontSize: 9,
-    marginTop: 2,
-  },
-  mobileNavigationLabelActive: {
-    color: '#6759E8',
-  },
-  desktopNavigationButton: {
-    position: 'relative',
-  },
-  navigationButton: {
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderColor: 'transparent',
-    borderRadius: 15,
-    borderWidth: 2,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  navigationButtonActive: {
-    backgroundColor: '#E8E5FF',
-  },
-  navigationButtonHovered: {
-    backgroundColor: '#EFEDF5',
-    transform: [{ translateY: -1 }],
-  },
-  navigationButtonFocused: {
-    borderColor: '#AFA6F5',
-    shadowColor: '#6759E8',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-  },
-  navigationButtonPressed: {
-    opacity: 0.72,
-    transform: [{ scale: 0.93 }],
-  },
-  mobileUtilityOverlay: {
-    bottom: 0,
-    left: 0,
-    pointerEvents: 'box-none',
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    zIndex: 50,
-  },
-  mobileUtilityRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    pointerEvents: 'box-none',
-  },
-  mobileUtilityActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  agentButtonPosition: {
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  updateButtonPosition: {
-    alignItems: 'center',
-    marginBottom: 9,
-  },
-  mobileEditorOverlay: {
-    backgroundColor: 'rgba(31, 30, 43, 0.2)',
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  mobileEditorSheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    overflow: 'hidden',
-  },
-  nativeEditorSheet: {
-    height: '88%',
-    maxHeight: 760,
-  },
-  settingsBackdrop: {
-    backgroundColor: 'rgba(31, 30, 43, 0.25)',
-    flex: 1,
-  },
-  settingsPanel: {
-    backgroundColor: '#FFFFFF',
-    bottom: 0,
-    elevation: 24,
-    position: 'absolute',
-    shadowColor: '#000',
-    shadowOffset: { height: 0, width: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
-    top: 0,
-    width: '60%',
-  },
-  settingsPanelSafeArea: {
-    flex: 1,
-  },
-});
 
 export default function RootLayout() {
   return (

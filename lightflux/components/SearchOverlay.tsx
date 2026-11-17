@@ -188,21 +188,33 @@ const SearchOverlay = ({
     () => buildChildCountByParent(todos),
     [todos],
   );
+  // Building the haystack walks each task's whole rich-text document, so it must
+  // not run per keystroke. It only depends on the tasks and project names, so
+  // precompute it once and let the query scan the prepared strings.
+  const searchTextByTaskId = useMemo(() => {
+    const map = new Map<string, string>();
+    todos.forEach((todo) => {
+      map.set(
+        todo.id,
+        [
+          todo.title,
+          richTextPreview(todo.content, Number.MAX_SAFE_INTEGER),
+          projectNames.get(todo.projectId ?? '') ?? '',
+        ]
+          .join(' ')
+          .toLocaleLowerCase(),
+      );
+    });
+    return map;
+  }, [projectNames, todos]);
   const results = useMemo(() => {
     if (!normalizedQuery) {
       return [];
     }
     return todos.filter((todo) =>
-      [
-        todo.title,
-        richTextPreview(todo.content, Number.MAX_SAFE_INTEGER),
-        projectNames.get(todo.projectId ?? '') ?? '',
-      ]
-        .join(' ')
-        .toLocaleLowerCase()
-        .includes(normalizedQuery),
+      (searchTextByTaskId.get(todo.id) ?? '').includes(normalizedQuery),
     );
-  }, [projectNames, normalizedQuery, todos]);
+  }, [normalizedQuery, searchTextByTaskId, todos]);
 
   useEffect(() => {
     if (!visible) {

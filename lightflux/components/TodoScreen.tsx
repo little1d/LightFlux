@@ -345,35 +345,44 @@ const TodoScreen = ({
 
   // Completing a task earns a bit of praise; the last remaining task of the day
   // gets a louder celebration. Reopening quietly confirms the change.
-  const handleToggle = (id: string) => {
-    const target = todos.find((todo) => todo.id === id);
-    const willComplete = target ? !target.completed : false;
-    toggleTodo(id);
+  //
+  // Wrapped in useCallback because it is a prop of the memoized TodoRow: a fresh
+  // function identity on every render would defeat the memo.
+  const handleToggle = useCallback(
+    (id: string) => {
+      const target = todos.find((todo) => todo.id === id);
+      const willComplete = target ? !target.completed : false;
+      toggleTodo(id);
 
-    if (!target) {
-      return;
-    }
-    if (!willComplete) {
-      onNotify(labels.notifications.taskReopened, 'success');
-      return;
-    }
+      if (!target) {
+        return;
+      }
+      if (!willComplete) {
+        onNotify(labels.notifications.taskReopened, 'success');
+        return;
+      }
 
-    const remainingActive = todos.filter(
-      (todo) => !todo.completed && todo.id !== id,
-    ).length;
-    if (todos.length > 1 && remainingActive === 0) {
-      onNotify(labels.notifications.allTasksDone, 'celebrate');
-      return;
-    }
-    const praises = labels.notifications.taskCompleted;
-    const message =
-      praises[Math.floor(Math.random() * praises.length)] ?? praises[0];
-    onNotify(message, 'celebrate');
-  };
+      const remainingActive = todos.filter(
+        (todo) => !todo.completed && todo.id !== id,
+      ).length;
+      if (todos.length > 1 && remainingActive === 0) {
+        onNotify(labels.notifications.allTasksDone, 'celebrate');
+        return;
+      }
+      const praises = labels.notifications.taskCompleted;
+      const message =
+        praises[Math.floor(Math.random() * praises.length)] ?? praises[0];
+      onNotify(message, 'celebrate');
+    },
+    [labels, onNotify, todos, toggleTodo],
+  );
 
-  const handleRename = (id: string, title: string) => {
-    updateTodo(id, { title });
-  };
+  const handleRename = useCallback(
+    (id: string, title: string) => {
+      updateTodo(id, { title });
+    },
+    [updateTodo],
+  );
 
   const moveTask = useCallback(
     (id: string, targetIndex: number) => {

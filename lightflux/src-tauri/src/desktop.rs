@@ -591,9 +591,6 @@ mod tests {
 
         assert_eq!(update_menu_text(&available), "Update to 1.2.0…");
         assert_eq!(update_menu_text(&ready), "Restart to finish 1.2.0…");
-        assert_eq!(
-            update_menu_text(&DesktopStatus::default()),
-            "暂无可用更新"
-        );
+        assert_eq!(update_menu_text(&DesktopStatus::default()), "暂无可用更新");
     }
 }

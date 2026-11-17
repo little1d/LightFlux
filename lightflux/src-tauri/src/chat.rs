@@ -279,22 +279,17 @@ fn valid_local_request(value: &Value) -> bool {
         .and_then(|rest| rest.strip_suffix("/mutations"))
         .is_some_and(|id| !id.is_empty() && !id.contains('/'));
     if create {
-        return body
-            .keys()
-            .all(|key| {
-                matches!(
-                    key.as_str(),
-                    "title" | "scheduledDate" | "scheduledTime" | "priority"
-                )
-            })
-            && body
-                .get("title")
-                .and_then(Value::as_str)
-                .is_some_and(|title| !title.trim().is_empty() && title.len() <= 500)
+        return body.keys().all(|key| {
+            matches!(
+                key.as_str(),
+                "title" | "scheduledDate" | "scheduledTime" | "priority"
+            )
+        }) && body
+            .get("title")
+            .and_then(Value::as_str)
+            .is_some_and(|title| !title.trim().is_empty() && title.len() <= 500)
             && body.get("scheduledDate").is_some_and(valid_date)
-            && body
-                .get("scheduledTime")
-                .is_none_or(valid_scheduled_time)
+            && body.get("scheduledTime").is_none_or(valid_scheduled_time)
             && body.get("priority").is_some_and(valid_priority);
     }
     if !mutation

@@ -61,8 +61,12 @@ jobs:
             libsoup-3.0-dev \
             patchelf
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: lightflux/src-tauri -> target
+      - name: Check formatting
+        run: cargo fmt --manifest-path lightflux/src-tauri/Cargo.toml --check
       - name: Run Rust tests
         run: cargo test --manifest-path lightflux/src-tauri/Cargo.toml

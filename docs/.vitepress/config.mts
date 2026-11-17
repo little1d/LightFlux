@@ -23,7 +23,6 @@ export default defineConfig({
     nav: [
       { text: '功能一览', link: '/screenshots' },
       { text: '本地架构', link: '/local-desktop' },
-      { text: '发布流程', link: '/desktop-release' },
       { text: '更新日志', link: 'https://github.com/little1d/LightFlux/blob/main/CHANGELOG.md' },
     ],
     sidebar: [
@@ -32,21 +31,7 @@ export default defineConfig({
         items: [
           { text: '功能一览', link: '/screenshots' },
           { text: '本地架构', link: '/local-desktop' },
-        ],
-      },
-      {
-        text: '版本与发布',
-        items: [
           { text: '1.1.3 小光 AI 对话', link: '/releases/ai-chat' },
-          { text: '桌面发布流程', link: '/desktop-release' },
-        ],
-      },
-      {
-        text: '归档',
-        items: [
-          { text: '归档说明', link: '/archive/README' },
-          { text: 'PostgreSQL 后端', link: '/archive/backend-postgresql' },
-          { text: '落地页调研', link: '/archive/landing-page-research' },
         ],
       },
     ],

@@ -120,5 +120,5 @@ docker compose -p lightflux -f deploy/compose.prod.yaml ps
 certbot renew --dry-run
 ```
 
-Back up PostgreSQL and the upload volume independently. See
-`docs/archive/backend-postgresql.md` for database backup and migration rules.
+Back up PostgreSQL and the upload volume independently. See `server/README.md`
+for the database model, migration rules, and upload layout.

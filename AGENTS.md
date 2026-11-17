@@ -105,6 +105,28 @@ subdirectory overrides it for that subtree.
   interaction code changes. A screenshot is evidence of intent, not
   permission to copy another product's branding blindly.
 
+## Desktop Releases
+
+`docs/` is user-facing documentation only. Maintainer procedures live here.
+
+- `.github/workflows/desktop-release.yml` triggers on a pushed `desktop-v*` tag
+  or a manual dispatch. The `verify` job fails before building when the tag does
+  not equal `desktop-v${version}` from `lightflux/src-tauri/tauri.conf.json`.
+- Move `CHANGELOG.md`'s `[Unreleased]` entries into a dated
+  `## [x.y.z] - YYYY-MM-DD` section and bump the version in
+  `lightflux/package.json`, `lightflux/app.json`,
+  `lightflux/src-tauri/Cargo.toml`, and `lightflux/src-tauri/tauri.conf.json`.
+  Commit and push all of it together, then tag.
+- The workflow publishes that changelog section as the Release body and fails
+  when it is missing or empty. Releases are created as drafts and only flipped
+  to Latest by the `publish` job after every platform signature validates.
+- Updater config lives only in `plugins.updater` in `tauri.conf.json`. Secrets
+  `TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, plus
+  the variable `LIGHTFLUX_UPDATER_ENABLED`, enable `latest.json`. `.tauri-keys`
+  is gitignored; the private key must never be committed.
+- macOS builds are ad-hoc signed and Windows builds unsigned, so users may see
+  Gatekeeper or SmartScreen warnings. Linux is best effort.
+
 ## Verification Baseline
 
 Run the smallest relevant checks first, then broaden according to risk:

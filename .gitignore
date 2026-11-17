@@ -4,6 +4,11 @@
 .dbg/
 .uicraft.md
 shared/node_modules/
+docs/node_modules/
 
 # Local personal registration documents (not for the remote)
 Website_Information_Form.doc
+
+# VitePress build output
+docs/.vitepress/dist/
+docs/.vitepress/cache/

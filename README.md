@@ -9,6 +9,8 @@
 
 [简体中文](#简体中文) · [English](#english)
 
+![今日列表](docs/public/shots/today.png)
+
 ---
 
 ## 简体中文
@@ -32,6 +34,18 @@ macOS 为首选平台，Windows 次之，Linux 为 best effort。Expo Web 是 Ta
 对话模型由你自己配置（OpenAI、DeepSeek 或任意 OpenAI Chat Completions 兼容服务），密钥存在系统凭据库，费用由你的账户承担。
 
 以下**不属于**维护范围：iOS、Android、微信、账号体系、云同步、内置云 AI。
+
+### 界面
+
+| 日历 | Milestone |
+| --- | --- |
+| ![日历](./docs/public/shots/calendar.png) | ![Milestone](./docs/public/shots/milestones.png) |
+| **任务详情** | **统计** |
+| ![任务详情](./docs/public/shots/editor.png) | ![统计](./docs/public/shots/statistics.png) |
+| **Project** | **小光 AI** |
+| ![Project](./docs/public/shots/projects.png) | ![小光 AI](./docs/public/shots/chat.png) |
+
+更多截图见[文档站的功能一览](docs/screenshots.md)，全部来自 `main` 分支的真实构建。
 
 ### 安装
 
@@ -108,6 +122,7 @@ npx skills@latest add ./ --skill lightflux --global
 | `shared/` | 不依赖网络与数据库的任务、Project、Milestone 规则 |
 | `cli/` | 本机 CLI |
 | `skills/lightflux/` | Agent Skill |
+| `docs/` | 文档站（VitePress），构建后发布到 GitHub Pages |
 | `server/`、`deploy/` | 归档的云服务与恢复工具，不是桌面运行依赖 |
 
 ### 验证
@@ -117,6 +132,7 @@ npm --prefix lightflux test
 npm --prefix lightflux run typecheck
 npm --prefix lightflux run desktop:web
 npm --prefix cli run check
+npm --prefix docs run docs:build
 cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 cargo test  --manifest-path lightflux/src-tauri/Cargo.toml
 ```
@@ -146,6 +162,18 @@ macOS is the primary platform, Windows secondary, and Linux best effort. Expo We
 You bring your own chat model (OpenAI, DeepSeek, or any OpenAI Chat Completions compatible service). Keys live in the system credential vault, and usage is billed to your own account.
 
 Explicitly **out of scope**: iOS, Android, WeChat, accounts, cloud sync, and built-in hosted AI.
+
+### Screens
+
+| Calendar | Milestones |
+| --- | --- |
+| ![Calendar](./docs/public/shots/calendar.png) | ![Milestones](./docs/public/shots/milestones.png) |
+| **Task details** | **Statistics** |
+| ![Task details](./docs/public/shots/editor.png) | ![Statistics](./docs/public/shots/statistics.png) |
+| **Projects** | **Xiaoguang AI** |
+| ![Projects](./docs/public/shots/projects.png) | ![Xiaoguang AI](./docs/public/shots/chat.png) |
+
+See the [feature tour](docs/screenshots.md) for more, all captured from a real build of `main`.
 
 ### Install
 
@@ -222,6 +250,7 @@ On first launch, V12 data from the current WebView is migrated into the desktop 
 | `shared/` | Task, Project and Milestone rules with no network or database |
 | `cli/` | The local CLI |
 | `skills/lightflux/` | Agent Skill |
+| `docs/` | Documentation site (VitePress), published to GitHub Pages |
 | `server/`, `deploy/` | Archived cloud service and recovery tooling; not a runtime dependency of the desktop app |
 
 ### Verifying a change
@@ -231,6 +260,7 @@ npm --prefix lightflux test
 npm --prefix lightflux run typecheck
 npm --prefix lightflux run desktop:web
 npm --prefix cli run check
+npm --prefix docs run docs:build
 cargo check --manifest-path lightflux/src-tauri/Cargo.toml
 cargo test  --manifest-path lightflux/src-tauri/Cargo.toml
 ```

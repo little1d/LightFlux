@@ -230,10 +230,14 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
             item.parentId === newTodo.parentId,
         )
         .sort(byTodoOrder);
+      // A new task is appended to the end of its sibling list, matching the
+      // shared workspace contract (`sortOrder: max + 1`). Only an explicit
+      // insertAfterId anchor places it anywhere else.
       const anchorIndex = todo.insertAfterId
         ? siblings.findIndex((item) => item.id === todo.insertAfterId)
         : -1;
-      const insertIndex = anchorIndex >= 0 ? anchorIndex + 1 : 0;
+      const insertIndex =
+        anchorIndex >= 0 ? anchorIndex + 1 : siblings.length;
       const reordered = [...siblings];
       reordered.splice(insertIndex, 0, newTodo);
       const orderById = new Map(

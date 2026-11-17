@@ -8,6 +8,7 @@ import {
   executeLocalRequest,
   LocalRequest,
   MAX_JOURNAL_MUTATIONS,
+  MAX_JOURNAL_REPLAY_BYTES,
   MAX_JOURNAL_REPLAYS,
 } from "../services/localWorkspace";
 import {
@@ -451,6 +452,38 @@ describe("local desktop workspace transactions", () => {
       false,
     );
   });
+
+  it("prunes replays by size, not just by count", () => {
+    // Long documents push the journal past its byte budget long before the
+    // replay count cap would ever come into play.
+    const paragraph = "x".repeat(190_000);
+    const heavy = (index: number): LocalRequest => ({
+      ...create(`Heavy ${index}`),
+      body: {
+        ...create().body,
+        title: `Heavy ${index}`,
+        content: {
+          type: "doc",
+          content: [
+            { type: "paragraph", content: [{ type: "text", text: paragraph }] },
+          ],
+        },
+      },
+    });
+
+    let state = initial();
+    for (let index = 0; index < 40; index += 1) {
+      state = executeLocalRequest(state, heavy(index)).state;
+    }
+    const replays = state.localAutomation!.replays;
+    const total = Object.values(replays).reduce(
+      (bytes, replay) => bytes + JSON.stringify(replay).length,
+      0,
+    );
+    expect(Object.keys(replays).length).toBeGreaterThan(0);
+    expect(Object.keys(replays).length).toBeLessThan(MAX_JOURNAL_REPLAYS);
+    expect(total).toBeLessThanOrEqual(MAX_JOURNAL_REPLAY_BYTES * 2);
+  }, 15_000);
 
   it("prunes the oldest audit entries once the mutation cap is reached", () => {
     const seeded = Array.from({ length: MAX_JOURNAL_MUTATIONS }, (_, index) => ({

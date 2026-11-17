@@ -12,7 +12,6 @@
     "web": "expo start --web"
   },
   "dependencies": {
-    "@better-auth/expo": "^1.7.1",
     "@expo/metro-runtime": "~57.0.8",
     "@expo/vector-icons": "^15.0.2",
     "@lightflux/domain": "file:../shared",
@@ -28,7 +27,6 @@
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",
-    "better-auth": "^1.7.1",
     "expo": "~57.0.11",
     "expo-constants": "~57.0.9",
     "expo-file-system": "~57.0.2",

@@ -34,12 +34,13 @@ npx tauri dev            # 桌面应用
 
 ```bash
 npm run web              # 共享界面预览，无需服务端
-npm run desktop:web      # 纯本地静态资源，忽略旧云端环境配置
+npm run desktop:web      # 纯本地静态资源，不读 .env
 npx tauri build          # 桌面安装包
 ```
 
-桌面构建不读取 `.env`，也不需要任何环境变量；`lightflux/.env.example`
-里的变量只为归档代码保留。可选 Dev Container 仅启动开发工作区。
+桌面构建不读取 `.env`，也不需要任何环境变量：`desktop:web`、`desktop:dev`
+和正式安装包都以 `EXPO_NO_DOTENV=1` 启动，只与它自己的 loopback API 通信。
+可选 Dev Container 仅启动开发工作区。
 
 ## CLI 与 Agent
 

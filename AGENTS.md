@@ -32,6 +32,9 @@ subdirectory overrides it for that subtree.
 - Keep the product local-only. Desktop startup and task workflows must not
   require accounts, network access, or a hosted server. Expo Web is the desktop
   frontend and local preview, not a separately deployed product.
+- The desktop has no sign-in surface: `app/login.tsx` only redirects to Today.
+  Do not reintroduce account screens, session markers, or an auth API client;
+  the loopback API token is the only credential the app reads.
 - Desktop and CLI are the maintained product surfaces. Keep Expo Web as the
   Tauri frontend foundation; iOS, Android, and WeChat are frozen and must not
   receive new release or integration work.

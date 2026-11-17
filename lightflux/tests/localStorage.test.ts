@@ -20,12 +20,7 @@ vi.mock("../services/indexedDbStorage", () => ({
     mocks.storage.set(key, value),
 }));
 
-import {
-  loadAppState,
-  parsePersistedAppState,
-  saveAppState,
-} from "../services/todoStorage";
-import { loadSessionState, saveSessionState } from "../services/sessionStorage";
+import { loadAppState, parsePersistedAppState, saveAppState } from "../services/todoStorage";
 
 const raw = JSON.stringify({
   schemaVersion: 12,
@@ -41,13 +36,15 @@ describe("local-only startup and persistence", () => {
     mocks.storage.clear();
   });
 
-  it("starts locally without touching old session markers or the network", async () => {
+  it("starts locally without touching the network", async () => {
     const network = vi.fn(() => {
       throw new Error("Network must not be used");
     });
     vi.stubGlobal("fetch", network);
-    await expect(loadSessionState()).resolves.toBe("local");
-    await saveSessionState("signed-out");
+    mocks.storage.set("lightflux.app-state.v12", raw);
+    const state = await loadAppState();
+    expect(state?.schemaVersion).toBe(12);
+    await saveAppState(state!);
     expect(network).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });

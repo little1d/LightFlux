@@ -1,30 +1,21 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList,
   Image,
-  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StatusBar as NativeStatusBar,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useShallow } from 'zustand/react/shallow';
 
-import { inputAccentProps } from '../config/input';
 import {
   DESKTOP_LAYOUT_BREAKPOINT,
   listContentMaxWidth,
@@ -58,6 +49,7 @@ import {
 } from './tasks/useTaskContextMenu';
 import { ToastVariant } from './ui/ToastProvider';
 import DailyPoemCard from './today/DailyPoemCard';
+import TaskComposer from './today/TaskComposer';
 
 interface TodayMilestoneRowProps {
   labels: Translation['milestones'];
@@ -157,7 +149,7 @@ interface TodoRowProps {
   onToggle: (id: string) => void;
 }
 
-const TodoRow = ({
+const TodoRow = React.memo(({
   labels,
   childCount,
   nested,
@@ -220,7 +212,8 @@ const TodoRow = ({
       />
     </View>
   );
-};
+});
+TodoRow.displayName = 'TodoRow';
 
 const TodoScreen = ({
   focusComposerRequestId,
@@ -237,9 +230,7 @@ const TodoScreen = ({
   onNotify: (message: string, variant?: ToastVariant) => void;
   selectedTaskId: string | null;
 }) => {
-  const [draft, setDraft] = useState('');
   const [taskDrag, setTaskDrag] = useState<TaskDragState | null>(null);
-  const composerRef = useRef<TextInput>(null);
   const {
     language,
     todos: allTodos,
@@ -313,26 +304,6 @@ const TodoScreen = ({
   const labels = translations[language];
   const { width } = useWindowDimensions();
   const showBrandHeader = width >= DESKTOP_LAYOUT_BREAKPOINT;
-  const canAddTodo = draft.trim().length > 0;
-
-  useEffect(() => {
-    if (!focusComposerRequestId) {
-      return undefined;
-    }
-    const timer = setTimeout(() => composerRef.current?.focus(), 60);
-    return () => clearTimeout(timer);
-  }, [focusComposerRequestId]);
-
-  const addTodo = () => {
-    const title = draft.trim();
-    if (!title) {
-      return;
-    }
-
-    createTodo({ title, scheduledDate: dateKey });
-    setDraft('');
-    Keyboard.dismiss();
-  };
 
   const createMilestoneTask = (milestone: Milestone) => {
     createTodo({
@@ -343,14 +314,26 @@ const TodoScreen = ({
     onNotify(labels.milestones.relatedTaskCreated);
   };
 
+  const createTodayTask = useCallback(
+    (title: string, scheduledDate: string) => {
+      createTodo({ title, scheduledDate });
+    },
+    [createTodo],
+  );
+
   // Completing a task earns a bit of praise; the last remaining task of the day
   // gets a louder celebration. Reopening quietly confirms the change.
   //
   // Wrapped in useCallback because it is a prop of the memoized TodoRow: a fresh
-  // function identity on every render would defeat the memo.
+  // function identity on every render would defeat the memo. The task list is
+  // read from the store at call time rather than closed over, so the callback
+  // does not change identity every time any task is edited.
   const handleToggle = useCallback(
     (id: string) => {
-      const target = todos.find((todo) => todo.id === id);
+      const dayTodos = useTodoStore
+        .getState()
+        .todos.filter((todo) => todo.scheduledDate === dateKey);
+      const target = dayTodos.find((todo) => todo.id === id);
       const willComplete = target ? !target.completed : false;
       toggleTodo(id);
 
@@ -362,10 +345,10 @@ const TodoScreen = ({
         return;
       }
 
-      const remainingActive = todos.filter(
+      const remainingActive = dayTodos.filter(
         (todo) => !todo.completed && todo.id !== id,
       ).length;
-      if (todos.length > 1 && remainingActive === 0) {
+      if (dayTodos.length > 1 && remainingActive === 0) {
         onNotify(labels.notifications.allTasksDone, 'celebrate');
         return;
       }
@@ -374,7 +357,7 @@ const TodoScreen = ({
         praises[Math.floor(Math.random() * praises.length)] ?? praises[0];
       onNotify(message, 'celebrate');
     },
-    [labels, onNotify, todos, toggleTodo],
+    [dateKey, labels, onNotify, toggleTodo],
   );
 
   const handleRename = useCallback(
@@ -477,43 +460,13 @@ const TodoScreen = ({
         </View>
       ) : null}
 
-      <View
-        className="mb-5 flex-row items-center rounded-[20px] border border-[#E8E7EF] bg-surface p-[7px] pl-[17px]"
-        nativeID="today-task-composer"
-        style={styles.composerShadow}
-      >
-        <TextInput
-          {...inputAccentProps}
-          accessibilityLabel={labels.inputPlaceholder}
-          className="min-h-[46px] flex-1 py-2.5 text-[15px] text-[#292A3D]"
-          maxLength={120}
-          onChangeText={setDraft}
-          onSubmitEditing={addTodo}
-          placeholder={labels.inputPlaceholder}
-          placeholderTextColor="#9297A8"
-          ref={composerRef}
-          returnKeyType="done"
-          submitBehavior="blurAndSubmit"
-          value={draft}
-        />
-        <Pressable
-          accessibilityLabel={labels.addTask}
-          accessibilityRole="button"
-          className={`ml-2.5 h-11 flex-row items-center justify-center rounded-[15px] px-3.5 ${
-            canAddTodo ? 'bg-primary' : 'bg-[#C8C5DD]'
-          }`}
-          disabled={!canAddTodo}
-          onPress={addTodo}
-          style={({ pressed }) => [
-            pressed && canAddTodo && styles.addButtonPressed,
-          ]}
-        >
-          <Text className="mr-1 text-[17px] font-medium text-white">＋</Text>
-          <Text className="text-[13px] font-semibold text-white">
-            {labels.addTask}
-          </Text>
-        </Pressable>
-      </View>
+      <TaskComposer
+        key={dateKey}
+        dateKey={dateKey}
+        focusRequestId={focusComposerRequestId}
+        labels={labels}
+        onCreate={createTodayTask}
+      />
 
     </>
   );
@@ -615,12 +568,6 @@ const styles = StyleSheet.create({
     height: 44,
     marginRight: 11,
     width: 44,
-  },
-  composerShadow: {
-    shadowColor: '#45435F',
-    shadowOffset: { height: 5, width: 0 },
-    shadowOpacity: 0.07,
-    shadowRadius: 13,
   },
   todayMilestoneShadow: {
     shadowColor: '#45435F',

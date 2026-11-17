@@ -1,0 +1,68 @@
+name: Desktop CI
+
+on:
+  pull_request:
+    paths:
+      - "lightflux/**"
+      - "shared/**"
+      - ".github/workflows/desktop-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "lightflux/**"
+      - "shared/**"
+      - ".github/workflows/desktop-ci.yml"
+
+concurrency:
+  group: desktop-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Test and typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: lightflux/package-lock.json
+      - name: Install dependencies
+        working-directory: lightflux
+        run: npm --prefix ../shared ci && npm ci
+      - name: Test shared domain rules and app
+        working-directory: lightflux
+        run: npm test
+      - name: Typecheck
+        working-directory: lightflux
+        run: npm run typecheck
+      - name: Build the local web bundle
+        working-directory: lightflux
+        run: npm run desktop:web
+
+  rust:
+    name: Rust tests
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            patchelf
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: lightflux/src-tauri -> target
+      - name: Run Rust tests
+        run: cargo test --manifest-path lightflux/src-tauri/Cargo.toml

@@ -17,12 +17,25 @@ jobs:
   verify:
     name: Verify web build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: lightflux
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Check tag matches the configured version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [ "desktop-v${VERSION}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match the version ${VERSION} in tauri.conf.json." >&2
+            echo "The release job tags builds as desktop-v${VERSION}, so this run would publish the wrong tag." >&2
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -34,6 +47,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm --prefix ../shared ci && npm ci
 
+      - name: Run tests
+        run: npm test
+
       - name: Run TypeScript checks
         run: npm run typecheck
 
@@ -44,6 +60,8 @@ jobs:
     name: Build ${{ matrix.name }}
     needs: verify
     runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -138,6 +156,8 @@ jobs:
     name: Validate and publish release
     needs: release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

@@ -5,18 +5,28 @@ use std::{
     path::PathBuf,
     sync::Mutex,
 };
+use tauri::{AppHandle, Manager, Runtime, State, Window, WindowEvent};
+
+// Menu bar, Dock, and close-to-tray behaviour is macOS-only. Everything below
+// that depends on these imports is gated the same way, so Windows and Linux
+// builds carry no tray code at all.
+#[cfg(target_os = "macos")]
 use tauri::{
     image::Image,
     menu::{Menu, MenuBuilder, MenuItem, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter, Manager, Runtime, State, Window, WindowEvent, Wry,
+    Emitter, Wry,
 };
 
+#[cfg(target_os = "macos")]
 const TRAY_ID: &str = "lightflux-menu-bar";
+#[cfg(target_os = "macos")]
 const TRAY_ACTION_EVENT: &str = "lightflux://tray-action";
 const AUTH_TOKEN_FILE: &str = "auth-session";
 
+#[cfg(target_os = "macos")]
 const TRAY_ICON: &[u8] = include_bytes!("../icons/tray-default/36x36.png");
+#[cfg(target_os = "macos")]
 const TRAY_UPDATE_ICON: &[u8] = include_bytes!("../icons/tray-update/36x36.png");
 
 #[cfg(target_os = "macos")]
@@ -66,6 +76,7 @@ pub struct DesktopEnvironment {
     pub updater_configured: bool,
 }
 
+#[cfg(target_os = "macos")]
 #[derive(Clone)]
 struct TrayMenuItems {
     summary: MenuItem<Wry>,
@@ -81,7 +92,9 @@ struct TrayMenuItems {
 pub struct DesktopState {
     preferences: Mutex<DesktopPreferences>,
     status: Mutex<DesktopStatus>,
+    #[cfg(target_os = "macos")]
     tray: Mutex<Option<TrayIcon>>,
+    #[cfg(target_os = "macos")]
     tray_items: Mutex<Option<TrayMenuItems>>,
 }
 
@@ -90,7 +103,9 @@ impl Default for DesktopState {
         Self {
             preferences: Mutex::new(DesktopPreferences::default()),
             status: Mutex::new(DesktopStatus::default()),
+            #[cfg(target_os = "macos")]
             tray: Mutex::new(None),
+            #[cfg(target_os = "macos")]
             tray_items: Mutex::new(None),
         }
     }
@@ -111,6 +126,7 @@ fn updater_configured(app: &AppHandle) -> bool {
         .is_some_and(|key| !key.is_empty())
 }
 
+#[cfg(target_os = "macos")]
 fn tray_image(update_available: bool) -> tauri::Result<Image<'static>> {
     Image::from_bytes(if update_available {
         TRAY_UPDATE_ICON
@@ -119,6 +135,7 @@ fn tray_image(update_available: bool) -> tauri::Result<Image<'static>> {
     })
 }
 
+#[cfg(target_os = "macos")]
 fn localized<'a>(language: Option<&str>, chinese: &'a str, english: &'a str) -> &'a str {
     if language == Some("en") {
         english
@@ -127,6 +144,9 @@ fn localized<'a>(language: Option<&str>, chinese: &'a str, english: &'a str) -> 
     }
 }
 
+// The tests below exercise these two directly, so they must also build on the
+// platforms that do not compile the tray.
+#[cfg(any(target_os = "macos", test))]
 fn tray_summary(status: &DesktopStatus) -> String {
     let language = status.language.as_deref();
     if language == Some("en") {
@@ -142,6 +162,7 @@ fn tray_summary(status: &DesktopStatus) -> String {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn update_menu_text(status: &DesktopStatus) -> String {
     let language = status.language.as_deref();
     match (&status.update_version, status.update_ready, language) {
@@ -154,6 +175,7 @@ fn update_menu_text(status: &DesktopStatus) -> String {
     }
 }
 
+#[cfg(target_os = "macos")]
 fn build_tray_menu(
     app: &AppHandle,
     status: &DesktopStatus,
@@ -227,6 +249,7 @@ fn build_tray_menu(
     ))
 }
 
+#[cfg(target_os = "macos")]
 fn dock_should_be_visible(preferences: &DesktopPreferences, window_visible: bool) -> bool {
     match preferences.dock_visibility.as_str() {
         "hidden" => false,
@@ -258,31 +281,34 @@ fn set_macos_dock_icon(style: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
-fn set_macos_dock_icon(_style: &str) -> Result<(), String> {
-    Ok(())
-}
-
+#[cfg(target_os = "macos")]
 fn apply_preferences<R: Runtime>(
     app: &AppHandle<R>,
     preferences: &DesktopPreferences,
     window_visible: bool,
 ) -> Result<(), String> {
-    #[cfg(target_os = "macos")]
-    {
-        app.set_dock_visibility(dock_should_be_visible(preferences, window_visible))
-            .map_err(|error| error.to_string())?;
-        let style = preferences.dock_icon.clone();
-        app.run_on_main_thread(move || {
-            if let Err(error) = set_macos_dock_icon(&style) {
-                eprintln!("{error}");
-            }
-        })
+    app.set_dock_visibility(dock_should_be_visible(preferences, window_visible))
         .map_err(|error| error.to_string())?;
-    }
+    let style = preferences.dock_icon.clone();
+    app.run_on_main_thread(move || {
+        if let Err(error) = set_macos_dock_icon(&style) {
+            eprintln!("{error}");
+        }
+    })
+    .map_err(|error| error.to_string())
+}
+
+// Windows and Linux have no Dock, so there is nothing to apply.
+#[cfg(not(target_os = "macos"))]
+fn apply_preferences<R: Runtime>(
+    _app: &AppHandle<R>,
+    _preferences: &DesktopPreferences,
+    _window_visible: bool,
+) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
 fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     let Some(window) = app.get_webview_window("main") else {
         return;
@@ -291,7 +317,6 @@ fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
         .try_state::<DesktopState>()
         .and_then(|state| state.preferences.lock().ok().map(|value| value.clone()))
         .unwrap_or_default();
-    #[cfg(target_os = "macos")]
     if preferences.dock_visibility == "window-open" {
         let _ = app.set_dock_visibility(true);
     }
@@ -300,11 +325,13 @@ fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     let _ = window.set_focus();
 }
 
+#[cfg(target_os = "macos")]
 fn emit_tray_action<R: Runtime>(app: &AppHandle<R>, action: &str) {
     show_main_window(app);
     let _ = app.emit(TRAY_ACTION_EVENT, action);
 }
 
+#[cfg(target_os = "macos")]
 fn refresh_tray(state: &DesktopState) -> Result<(), String> {
     let status = state
         .status
@@ -412,20 +439,27 @@ pub fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub fn handle_window_event(window: &Window, event: &WindowEvent) {
-    let WindowEvent::CloseRequested { api, .. } = event else {
-        return;
-    };
-    let Some(state) = window.app_handle().try_state::<DesktopState>() else {
-        return;
-    };
-    let preferences = state
-        .preferences
-        .lock()
-        .map(|value| value.clone())
-        .unwrap_or_default();
+    // Close-to-tray only exists on macOS; on other platforms the default close
+    // behaviour is what users expect, so this stays a no-op there.
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (window, event);
+    }
 
     #[cfg(target_os = "macos")]
     {
+        let WindowEvent::CloseRequested { api, .. } = event else {
+            return;
+        };
+        let Some(state) = window.app_handle().try_state::<DesktopState>() else {
+            return;
+        };
+        let preferences = state
+            .preferences
+            .lock()
+            .map(|value| value.clone())
+            .unwrap_or_default();
+
         api.prevent_close();
         if preferences.close_behavior == "quit" {
             let _ = window.app_handle().emit(TRAY_ACTION_EVENT, "quit");
@@ -481,7 +515,9 @@ pub fn update_desktop_status(
         .status
         .lock()
         .map_err(|_| "Desktop status is unavailable.".to_string())? = status;
-    refresh_tray(&state)
+    #[cfg(target_os = "macos")]
+    refresh_tray(&state)?;
+    Ok(())
 }
 
 #[tauri::command]

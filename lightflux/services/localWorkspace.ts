@@ -51,6 +51,58 @@ export const emptyLocalAutomation = (): LocalAutomation => ({
   comments: [],
 });
 
+// The journal is saved with every state write and is deep-cloned on every
+// mutation, so it must not grow without bound. Replays are the expensive half:
+// each one holds a full response body, and a created task's body carries its
+// rich text, which may include inline images. Only a recent window is kept —
+// an idempotency retry is a network-scale event, not a month-scale one.
+export const MAX_JOURNAL_MUTATIONS = 500;
+export const MAX_JOURNAL_REPLAYS = 200;
+// A count limit alone is not enough here: each replay duplicates content that
+// already lives in `todos`, and a single task may carry up to 16 MB of inline
+// images, so 200 replays could reach gigabytes. Keep the newest replays until
+// they fit this budget, and always keep the newest one so the request currently
+// in flight can still replay.
+export const MAX_JOURNAL_REPLAY_BYTES = 16 * 1024 * 1024;
+
+const pruneJournal = (automation: LocalAutomation) => {
+  if (automation.mutations.length > MAX_JOURNAL_MUTATIONS) {
+    automation.mutations = automation.mutations.slice(
+      -MAX_JOURNAL_MUTATIONS,
+    );
+  }
+  // Object keys keep insertion order for non-integer keys, and every
+  // idempotency key is a UUID or a UUID-prefixed string, so the tail of the
+  // key list is the newest set of replays.
+  let keys = Object.keys(automation.replays);
+  const overCount = keys.length > MAX_JOURNAL_REPLAYS;
+  if (overCount) keys = keys.slice(-MAX_JOURNAL_REPLAYS);
+
+  // Measuring the budget means serializing up to MAX_JOURNAL_REPLAY_BYTES of
+  // JSON, which would cost more than the mutation itself. Replays accumulate
+  // one per mutation, so checking on overflow and on an occasional revision is
+  // enough to keep the journal within a small multiple of the budget.
+  const shouldMeasureBytes = overCount || automation.revision % 64 === 0;
+  let start = 0;
+  if (shouldMeasureBytes) {
+    let bytes = 0;
+    for (const key of keys) {
+      bytes += JSON.stringify(automation.replays[key]).length;
+    }
+    // Always keep the newest replay: the request that just finished may be
+    // retried, and that is the only one where a replay matters right now.
+    while (bytes > MAX_JOURNAL_REPLAY_BYTES && keys.length - start > 1) {
+      bytes -= JSON.stringify(automation.replays[keys[start]]).length;
+      start += 1;
+    }
+  }
+  if (overCount || start > 0) {
+    automation.replays = Object.fromEntries(
+      keys.slice(start).map((key) => [key, automation.replays[key]]),
+    );
+  }
+};
+
 export const isLocalAutomation = (value: unknown): value is LocalAutomation => {
   if (!value || typeof value !== "object") return false;
   const journal = value as LocalAutomation;
@@ -249,7 +301,10 @@ export const executeLocalRequest = (
     return result({ ...replay.result, replayed: true });
   }
   const next = structuredClone(state);
-  const automation = structuredClone(journal);
+  // `next` is already a deep copy of `state`, so its journal is a deep copy of
+  // `journal`. Cloning it a second time doubled the cost of every mutation for
+  // no isolation benefit.
+  const automation = next.localAutomation ?? emptyLocalAutomation();
   const mutationId = crypto.randomUUID();
   let action: string;
   let response: Record<string, unknown>;
@@ -354,6 +409,7 @@ export const executeLocalRequest = (
     writable: true,
     configurable: true,
   });
+  pruneJournal(automation);
   next.localAutomation = automation;
   return { state: next, result: responseBody };
 };

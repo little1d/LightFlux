@@ -121,4 +121,4 @@ certbot renew --dry-run
 ```
 
 Back up PostgreSQL and the upload volume independently. See
-`docs/backend-postgresql.md` for database backup and migration rules.
+`docs/archive/backend-postgresql.md` for database backup and migration rules.

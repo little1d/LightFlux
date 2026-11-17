@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { ComponentProps, useMemo, useState } from 'react';
+import { memo, ComponentProps, useMemo, useState } from 'react';
 import type { ChatToolRecord } from '../agent/chat';
 import type { ToolPreview, ToolRow } from '../agent/chatTools';
 import { chatErrorText, chatToolContent } from '../content/chat';
@@ -14,11 +14,16 @@ const Icon = ({ name }: { name: ComponentProps<typeof Ionicons>['name'] }) =>
     <Ionicons name={name} size={16} color="currentColor" />
   </span>;
 
-export default function ChatToolCard({ tool, conversationId, messageId, language }: {
+function ChatToolCardImpl({ tool, conversationId, messageId, language }: {
   tool: ChatToolRecord; conversationId: string; messageId: string; language: Language;
 }) {
   const t = chatToolContent[language];
-  const store = useChatStore();
+  // Subscribe to the individual fields this card reads rather than to the whole
+  // store: a whole-store subscription re-rendered every card in the thread on
+  // any chat update, including streaming text.
+  const busyId = useChatStore((s) => s.busyId);
+  const resolveTool = useChatStore((s) => s.resolveTool);
+  const undoTool = useChatStore((s) => s.undoTool);
   const todos = useTodoStore((s) => s.allTodos);
   const projects = useTodoStore((s) => s.projects);
   const ready = useTodoStore((s) => s.persistenceReady);
@@ -71,7 +76,7 @@ export default function ChatToolCard({ tool, conversationId, messageId, language
       <strong>{row.title}</strong><small>{detail(row)}</small>
     </li>;
   });
-  const disabled = working || !!store.busyId;
+  const disabled = working || !!busyId;
   const destructive = action === 'task.delete';
   return <section className="lf-tool-card" aria-label={t.preview}>
     <div className="lf-tool-heading">
@@ -92,18 +97,21 @@ export default function ChatToolCard({ tool, conversationId, messageId, language
     <div className="lf-tool-actions" aria-live="polite">
       {pending && <>
         <button className={destructive ? 'lf-destructive' : 'lf-primary'} disabled={disabled || !preview} onClick={() => void run(() =>
-          store.resolveTool(conversationId, messageId, language, preview))}>
+          resolveTool(conversationId, messageId, language, preview))}>
           <Icon name={destructive ? 'trash-outline' : preview?.kind === 'read' ? 'eye-outline' : 'checkmark-outline'} />
           {working ? t.working : tool.status === 'confirmed' ? t.retry
             : destructive ? t.confirmDelete : preview?.kind === 'read' ? t.share : t.confirm}
         </button>
         <button className="lf-secondary" disabled={disabled} onClick={() => void run(() =>
-          store.resolveTool(conversationId, messageId, language))}><Icon name="close-outline" />{t.cancel}</button>
+          resolveTool(conversationId, messageId, language))}><Icon name="close-outline" />{t.cancel}</button>
       </>}
       {tool.status === 'done' && tool.mutationId && <button className="lf-secondary" disabled={disabled}
-        onClick={() => void run(() => store.undoTool(conversationId, messageId))}>
+        onClick={() => void run(() => undoTool(conversationId, messageId))}>
         <Icon name="arrow-undo-outline" />{working ? t.working : t.undo}
       </button>}
     </div>
   </section>;
 }
+
+const ChatToolCard = memo(ChatToolCardImpl);
+export default ChatToolCard;

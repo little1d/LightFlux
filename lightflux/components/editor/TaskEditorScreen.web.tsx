@@ -6,6 +6,7 @@ import StarterKit from '@tiptap/starter-kit';
 import {
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -206,9 +207,9 @@ const TaskEditorScreen = ({
         if (readOnly) {
           return;
         }
-        updateTodo(todoId, {
-          content: currentEditor.getJSON() as RichTextDocument,
-        });
+        pendingContent.current = currentEditor.getJSON() as RichTextDocument;
+        if (contentWriteTimer.current) clearTimeout(contentWriteTimer.current);
+        contentWriteTimer.current = setTimeout(flushPendingContent, 400);
       },
       editorProps: {
         attributes: {
@@ -293,6 +294,55 @@ const TaskEditorScreen = ({
     }
   }, [todo?.title]);
 
+  // Every keystroke used to call updateTodo, which re-ran the whole store
+  // update and its persistence path. Keep the input responsive locally and
+  // write the store once the user pauses; closeEditor and unmount flush the
+  // pending value so nothing is lost.
+  //
+  // The latest todo and updater live in refs so the flush callback itself stays
+  // stable: it is used as an effect cleanup, and an unstable identity would
+  // re-run that effect on every store change and defeat the debounce.
+  const titleWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTitle = useRef<string | null>(null);
+  const latestTodo = useRef(todo);
+  latestTodo.current = todo;
+  const latestUpdateTodo = useRef(updateTodo);
+  latestUpdateTodo.current = updateTodo;
+  const flushPendingTitle = useCallback(() => {
+    if (titleWriteTimer.current) {
+      clearTimeout(titleWriteTimer.current);
+      titleWriteTimer.current = null;
+    }
+    const pending = pendingTitle.current;
+    pendingTitle.current = null;
+    const current = latestTodo.current;
+    if (pending !== null && current && pending.trim()) {
+      latestUpdateTodo.current(current.id, { title: pending });
+    }
+  }, []);
+
+  useEffect(() => flushPendingTitle, [flushPendingTitle]);
+
+  // The body has the same problem for a worse reason: TipTap calls onUpdate for
+  // every transaction, so each keystroke wrote the whole rich-text document to
+  // the store. Buffer the latest document and write it after a pause.
+  const contentWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingContent = useRef<RichTextDocument | null>(null);
+  const flushPendingContent = useCallback(() => {
+    if (contentWriteTimer.current) {
+      clearTimeout(contentWriteTimer.current);
+      contentWriteTimer.current = null;
+    }
+    const pending = pendingContent.current;
+    pendingContent.current = null;
+    const current = latestTodo.current;
+    if (pending !== null && current) {
+      latestUpdateTodo.current(current.id, { content: pending });
+    }
+  }, []);
+
+  useEffect(() => flushPendingContent, [flushPendingContent]);
+
   useEffect(() => {
     if (!imageUploadStatus || imageUploadStatus === 'uploading') {
       return undefined;
@@ -314,10 +364,30 @@ const TaskEditorScreen = ({
 
     const normalizedTitle = title.trim();
     if (!normalizedTitle) {
+      // The editor stays open, so make sure the last 250 ms of typing still
+      // reaches the store instead of being dropped with the pending timer.
+      if (pendingTitle.current !== null) {
+        if (titleWriteTimer.current) clearTimeout(titleWriteTimer.current);
+        titleWriteTimer.current = setTimeout(flushPendingTitle, 250);
+      }
       setTitleError(labels.editor.emptyTitle);
       return;
     }
 
+    // closeEditor writes the title itself; cancel the debounce so it does not
+    // fire a second write after the editor is gone.
+    if (titleWriteTimer.current) {
+      clearTimeout(titleWriteTimer.current);
+      titleWriteTimer.current = null;
+    }
+    pendingTitle.current = null;
+    // Same for the body: this write already carries the current document, and a
+    // surviving timer would touch the store after the editor unmounts.
+    if (contentWriteTimer.current) {
+      clearTimeout(contentWriteTimer.current);
+      contentWriteTimer.current = null;
+    }
+    pendingContent.current = null;
     updateTodo(todo.id, {
       title: normalizedTitle,
       content: (editor?.getJSON() ?? todo.content) as RichTextDocument,
@@ -388,9 +458,13 @@ const TaskEditorScreen = ({
                   onChangeText={(value) => {
                     setTitle(value);
                     setTitleError('');
-                    if (value.trim()) {
-                      updateTodo(todo.id, { title: value });
-                    }
+                    pendingTitle.current = value;
+                    if (titleWriteTimer.current)
+                      clearTimeout(titleWriteTimer.current);
+                    titleWriteTimer.current = setTimeout(() => {
+                      titleWriteTimer.current = null;
+                      flushPendingTitle();
+                    }, 250);
                   }}
                   placeholder={labels.editor.titlePlaceholder}
                   placeholderTextColor="#A5A6B1"

@@ -1,3 +1,13 @@
+# 归档说明
+
+> **这份文档已归档，不再维护。** LightFlux 现在是本地优先的桌面应用，
+> 数据以版本化的 JSON 聚合保存在本机，没有云端同步。这里描述的
+> 服务端与云备份方案是早期方向的记录，代码已不再对应。
+>
+> 当前架构见 [docs/local-desktop.md](../local-desktop.md)。
+
+---
+
 # LightFlux Landing Page Research And Delivery Plan
 
 ## Goal

@@ -96,10 +96,19 @@ impl Default for DesktopState {
     }
 }
 
-fn updater_configured() -> bool {
-    option_env!("LIGHTFLUX_UPDATER_PUBLIC_KEY")
+fn updater_configured(app: &AppHandle) -> bool {
+    // `tauri.conf.json` is the only source of truth for update endpoints and
+    // the signing key. Reading it here keeps the settings toggle honest: the
+    // plugin is always registered now, so "configured" must mean the config
+    // actually carries a key, not that a build-time env var was passed.
+    app.config()
+        .plugins
+        .0
+        .get("updater")
+        .and_then(|updater| updater.get("pubkey"))
+        .and_then(|key| key.as_str())
         .map(str::trim)
-        .is_some_and(|value| !value.is_empty())
+        .is_some_and(|key| !key.is_empty())
 }
 
 fn tray_image(update_available: bool) -> tauri::Result<Image<'static>> {
@@ -435,7 +444,7 @@ pub fn desktop_environment(app: AppHandle) -> DesktopEnvironment {
         current_version: app.package_info().version.to_string(),
         is_desktop: true,
         is_macos: cfg!(target_os = "macos"),
-        updater_configured: updater_configured(),
+        updater_configured: updater_configured(&app),
     }
 }
 

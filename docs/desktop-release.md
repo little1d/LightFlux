@@ -37,8 +37,12 @@ when that section is missing or empty.
 
 ## Enable Signed Updates
 
-Desktop updates are disabled at build time until signing is configured. This
-keeps local and existing release builds working without embedding a fake key.
+The signing public key and update endpoint live in exactly one place:
+`lightflux/src-tauri/tauri.conf.json` under `plugins.updater`. The app always
+registers the updater plugin and reads that config at runtime; the Settings
+toggle lights up when `plugins.updater.pubkey` is non-empty. There is no
+compile-time env var and no Actions variable for the key, so the repository
+cannot disagree with the shipped binary.
 
 Generate the updater key pair on a trusted machine:
 
@@ -53,11 +57,13 @@ npx tauri signer generate \
 Configure the repository with:
 
 - Actions variable `LIGHTFLUX_UPDATER_ENABLED`: `true`
-- Actions variable `LIGHTFLUX_UPDATER_PUBLIC_KEY`: contents of
-  `.tauri-keys/lightflux.key.pub`
 - Actions secret `TAURI_SIGNING_PRIVATE_KEY`: contents of
   `.tauri-keys/lightflux.key`
 - Actions secret `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: the key password
+
+The public key is already committed in `tauri.conf.json`; do not also store it
+as an Actions variable. `LIGHTFLUX_UPDATER_ENABLED` only decides whether
+`latest.json` is uploaded, which is why it stays a repository setting.
 
 The workflow publishes with the built-in `GITHUB_TOKEN`; a cross-repository
 release token is not required.
@@ -143,13 +149,15 @@ the application data directory; the V12 task export does not include them.
 API keys are stored in the system credential vault. See the
 [AI chat release notes](releases/ai-chat.md) for configuration and data scope.
 
-To exercise updater checks in a local release build, expose the public key
-while compiling:
+To exercise updater checks in a local release build, just build as usual:
 
 ```bash
-LIGHTFLUX_UPDATER_PUBLIC_KEY="$(cat "../.tauri-keys/lightflux.key.pub")" \
-  npx tauri build
+cd lightflux && npx tauri build
 ```
+
+A local build reads the same committed `tauri.conf.json` key, so it checks the
+public release feed. It still cannot install anything the signing key did not
+sign.
 
 The updater does not run in the regular Expo web application.
 

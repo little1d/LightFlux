@@ -22,14 +22,9 @@ import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 import { useWebVisualViewport } from '../../hooks/useWebVisualViewport';
 import { useTodoStore } from '../../store/todoStore';
 import { INBOX_PROJECT_ID, TodoPriority } from '../../types/todo';
-import {
-  addMonths,
-  fromDateKey,
-  monthGrid,
-  toDateKey,
-  todayKey,
-} from '../../utils/date';
+import { fromDateKey, todayKey } from '../../utils/date';
 import ActionButton from '../ui/ActionButton';
+import DatePicker from '../ui/DatePicker';
 import IconButton from '../ui/IconButton';
 import { TASK_PRIORITY_THEME, TaskPriorityIcon } from './TaskPriorityIndicator';
 
@@ -65,7 +60,6 @@ const QuickAddTaskSheet = ({
   const [projectId, setProjectId] = useState(INBOX_PROJECT_ID);
   const [priority, setPriority] = useState<TodoPriority>('none');
   const [picker, setPicker] = useState<Picker>(null);
-  const [month, setMonth] = useState(() => fromDateKey(todayKey()));
   const orderedProjects = [...projects].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.createdAt - b.createdAt,
   );
@@ -75,9 +69,7 @@ const QuickAddTaskSheet = ({
       return;
     }
 
-    const nextDate = initialDate ?? todayKey();
-    setDate(nextDate);
-    setMonth(fromDateKey(nextDate));
+    setDate(initialDate ?? todayKey());
   }, [initialDate, visible]);
 
   if (!visible) {
@@ -212,69 +204,24 @@ const QuickAddTaskSheet = ({
               </View>
 
               {picker === 'date' ? (
-                <View style={styles.pickerPanel}>
-                  <View style={styles.calendarHeader}>
-                    <IconButton
-                      icon="chevron-back"
-                      label={labels.calendar.previousMonth}
-                      onPress={() => setMonth((current) => addMonths(current, -1))}
-                      size="compact"
-                      variant="transparent"
-                    />
-                    <Text style={styles.calendarTitle}>
-                      {labels.calendar.monthTitle(
-                        month.getFullYear(),
-                        month.getMonth() + 1,
-                      )}
-                    </Text>
-                    <IconButton
-                      icon="chevron-forward"
-                      label={labels.calendar.nextMonth}
-                      onPress={() => setMonth((current) => addMonths(current, 1))}
-                      size="compact"
-                      variant="transparent"
-                    />
-                  </View>
-                  <View style={styles.weekRow}>
-                    {labels.calendar.weekdays.map((weekday) => (
-                      <Text key={weekday} style={styles.weekday}>
-                        {weekday}
-                      </Text>
-                    ))}
-                  </View>
-                  <View style={styles.days}>
-                    {monthGrid(month).map((day) => {
-                      const key = toDateKey(day);
-                      const selected = key === date;
-                      return (
-                        <Pressable
-                          accessibilityLabel={key}
-                          accessibilityRole="button"
-                          key={key}
-                          onPress={() => {
-                            setDate(key);
-                            setPicker(null);
-                          }}
-                          style={[
-                            styles.day,
-                            selected && styles.daySelected,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.dayText,
-                              day.getMonth() !== month.getMonth() &&
-                                styles.dayTextMuted,
-                              selected && styles.dayTextSelected,
-                            ]}
-                          >
-                            {day.getDate()}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
+                // The sheet sits at the bottom of the screen, so the picker is
+                // capped and scrolls rather than pushing the sheet off-screen
+                // on a short viewport with the keyboard open.
+                <ScrollView
+                  contentContainerStyle={styles.pickerPanelContent}
+                  style={styles.pickerPanel}
+                >
+                  <DatePicker
+                    language={language}
+                    labels={labels}
+                    onSelect={(key) => {
+                      setDate(key);
+                      setPicker(null);
+                    }}
+                    shortcuts
+                    value={date}
+                  />
+                </ScrollView>
               ) : null}
 
               {picker === 'project' ? (
@@ -474,55 +421,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginTop: 10,
+    maxHeight: 320,
+  },
+  pickerPanelContent: {
     padding: 8,
-  },
-  calendarHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  calendarTitle: {
-    color: '#404154',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  weekRow: {
-    flexDirection: 'row',
-    marginTop: 6,
-  },
-  weekday: {
-    color: '#9A9BA8',
-    flex: 1,
-    fontSize: 9,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  days: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 4,
-  },
-  day: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 30,
-    justifyContent: 'center',
-    width: `${100 / 7}%`,
-  },
-  daySelected: {
-    backgroundColor: '#6759E8',
-  },
-  dayText: {
-    color: '#424356',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dayTextMuted: {
-    color: '#C2C3CC',
-  },
-  dayTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
   optionPanel: {
     backgroundColor: '#FFFFFF',

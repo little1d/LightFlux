@@ -23,14 +23,9 @@ import { translations } from '../../content';
 import { DESKTOP_LAYOUT_BREAKPOINT } from '../../config/layout';
 import { useTodoStore } from '../../store/todoStore';
 import { TodoPriority } from '../../types/todo';
-import {
-  addMonths,
-  fromDateKey,
-  monthGrid,
-  toDateKey,
-  todayKey,
-} from '../../utils/date';
+import { fromDateKey } from '../../utils/date';
 import ActionButton from '../ui/ActionButton';
+import DatePicker from '../ui/DatePicker';
 import IconButton from '../ui/IconButton';
 import MenuItem from '../ui/MenuItem';
 import MenuSurface from '../ui/MenuSurface';
@@ -122,9 +117,6 @@ const TaskActionMenu = ({
   const todo = todos.find((item) => item.id === todoId);
   const [mode, setMode] = useState<MenuMode>(null);
   const [draft, setDraft] = useState('');
-  const [calendarMonth, setCalendarMonth] = useState(() =>
-    fromDateKey(todayKey()),
-  );
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   const flyoutCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -179,9 +171,6 @@ const TaskActionMenu = ({
   const openMode = (nextMode: Exclude<MenuMode, null>) => {
     if (nextMode === 'rename' || nextMode === 'subtask') {
       setDraft(nextMode === 'rename' ? todo.title : '');
-    }
-    if (nextMode === 'date') {
-      setCalendarMonth(fromDateKey(todo.scheduledDate));
     }
     setMode(nextMode);
   };
@@ -289,107 +278,18 @@ const TaskActionMenu = ({
     </>
   );
 
-  const renderDatePicker = () => {
-    const today = todayKey();
-    return (
-      <>
-        {mobileSheet
-          ? renderSheetHeader(labels.editor.dateLabel, true)
-          : null}
-        <View style={styles.calendar}>
-          <View style={styles.calendarHeader}>
-            <IconButton
-              icon="chevron-back"
-              label={labels.calendar.previousMonth}
-              onPress={() =>
-                setCalendarMonth((current) => addMonths(current, -1))
-              }
-              size="compact"
-              variant="transparent"
-            />
-            <Text style={styles.calendarTitle}>
-              {labels.calendar.monthTitle(
-                calendarMonth.getFullYear(),
-                calendarMonth.getMonth() + 1,
-              )}
-            </Text>
-            <IconButton
-              icon="chevron-forward"
-              label={labels.calendar.nextMonth}
-              onPress={() =>
-                setCalendarMonth((current) => addMonths(current, 1))
-              }
-              size="compact"
-              variant="transparent"
-            />
-          </View>
-          <View style={styles.weekRow}>
-            {labels.calendar.weekdays.map((weekday, index) => (
-              <Text key={`${weekday}-${index}`} style={styles.weekday}>
-                {weekday}
-              </Text>
-            ))}
-          </View>
-          <View style={styles.days}>
-            {monthGrid(calendarMonth).map((day) => {
-              const dateKey = toDateKey(day);
-              const selected = dateKey === todo.scheduledDate;
-              const isToday = dateKey === today;
-              const inMonth = day.getMonth() === calendarMonth.getMonth();
-              return (
-                <Pressable
-                  accessibilityLabel={day.toLocaleDateString(
-                    language === 'zh' ? 'zh-CN' : 'en-US',
-                  )}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  key={dateKey}
-                  onPress={() => setScheduledDate(dateKey)}
-                  style={({ pressed }) => [
-                    styles.day,
-                    selected && styles.daySelected,
-                    pressed && !selected && styles.dayPressed,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.dayText,
-                      !inMonth && styles.dayTextMuted,
-                      isToday && !selected && styles.dayTextToday,
-                      selected && styles.dayTextSelected,
-                    ]}
-                  >
-                    {day.getDate()}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-        <View style={styles.sheetDivider} />
-        <MenuItem
-          icon={<Ionicons color="#6F7080" name="today-outline" size={17} />}
-          label={labels.editor.scheduleToday}
-          onPress={() => setScheduledDate(today)}
-        />
-        <MenuItem
-          icon={
-            <Ionicons
-              color="#6F7080"
-              name="arrow-forward-outline"
-              size={17}
-            />
-          }
-          label={labels.editor.scheduleTomorrow}
-          onPress={() => {
-            const tomorrow = fromDateKey(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            setScheduledDate(toDateKey(tomorrow));
-          }}
-        />
-      </>
-    );
-  };
+  const renderDatePicker = () => (
+    <>
+      {mobileSheet ? renderSheetHeader(labels.editor.dateLabel, true) : null}
+      <DatePicker
+        language={language}
+        labels={labels}
+        onSelect={setScheduledDate}
+        shortcuts
+        value={todo.scheduledDate}
+      />
+    </>
+  );
 
   const renderMobileContent = () => {
     if (mode === 'date') {
@@ -555,7 +455,7 @@ const TaskActionMenu = ({
         closeLabel={labels.cancel}
         estimatedHeight={
           mode === 'date'
-            ? 510
+            ? 540
             : mode === 'project'
               ? Math.min(520, 80 + orderedProjects.length * 44)
               : mode === 'time'
@@ -589,7 +489,7 @@ const TaskActionMenu = ({
       closeLabel={labels.cancel}
       estimatedHeight={
         mode === 'date'
-          ? 430
+          ? 460
           : mode === 'time'
             ? 350
             : mode === 'project'
@@ -886,64 +786,6 @@ const styles = StyleSheet.create({
     minHeight: 36,
     minWidth: 0,
     paddingHorizontal: 0,
-  },
-  calendar: {
-    paddingHorizontal: 2,
-  },
-  calendarHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  calendarTitle: {
-    color: '#3D3E51',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  weekRow: {
-    flexDirection: 'row',
-  },
-  weekday: {
-    color: '#9A9BA8',
-    flex: 1,
-    fontSize: 9,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  days: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 3,
-  },
-  day: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 34,
-    justifyContent: 'center',
-    width: `${100 / 7}%`,
-  },
-  daySelected: {
-    backgroundColor: '#6759E8',
-  },
-  dayPressed: {
-    backgroundColor: '#EEECFF',
-  },
-  dayText: {
-    color: '#424356',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dayTextMuted: {
-    color: '#C2C3CC',
-  },
-  dayTextToday: {
-    color: '#6759E8',
-    fontWeight: '600',
-  },
-  dayTextSelected: {
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
   priorityList: {
     paddingBottom: 4,

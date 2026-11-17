@@ -6,7 +6,7 @@ versioned API exclusively on `http://127.0.0.1:<port>`. Redirects are rejected.
 No environment token or saved cloud API URL can override this boundary.
 
 One desktop data directory owns one `local` Workspace and its Projects. Inbox
-is reserved. Project writes are currently performed in the desktop UI.
+is reserved and cannot be renamed, reordered or deleted.
 
 ```text
 CLI -> loopback HTTP + per-launch token -> Tauri -> desktop domain/store
@@ -18,16 +18,21 @@ The loopback API preserves the existing task and Milestone endpoint shapes:
 ```text
 GET /api/v1/workspaces
 GET /api/v1/workspaces/local/projects
-GET|POST /api/v1/workspaces/local/milestones
+POST /api/v1/workspaces/local/projects
+POST /api/v1/projects/:projectId/mutations
 GET|POST /api/v1/projects/:projectId/tasks
 GET /api/v1/tasks/:taskId
 POST /api/v1/tasks/:taskId/mutations
 POST /api/v1/tasks/:taskId/comments
 GET /api/v1/milestones/:milestoneId
+GET|POST /api/v1/workspaces/local/milestones
 POST /api/v1/milestones/:milestoneId/mutations
 GET /api/v1/workspaces/local/audit
 POST /api/v1/mutations/:mutationId/undo
 ```
+
+Project mutations use the same `POST /mutations` contract as tasks, including
+`expectedVersion`, `Idempotency-Key`, audit and latest-only undo.
 
 Existing entity writes require `expectedVersion`. Create/update/comment requests
 require `Idempotency-Key`. Audit, replay results and the latest undo snapshot live

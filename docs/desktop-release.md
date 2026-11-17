@@ -28,7 +28,7 @@ git tag desktop-v1.0.0
 git push origin desktop-v1.0.0
 ```
 
-The `Desktop release` workflow verifies the web export, builds all three
+The `Desktop release` workflow verifies the web export, builds all four
 desktop targets, creates a public GitHub Release, and uploads the installers.
 It can also be started manually from the repository's Actions page; manual
 runs use the version from `tauri.conf.json`. The workflow publishes the
@@ -156,8 +156,8 @@ The updater does not run in the regular Expo web application.
 ## macOS Menu Bar And Dock
 
 The macOS build creates a monochrome Template Icon in the menu bar. Left click
-shows and focuses the main window. Right click exposes quick task creation, AI
-capture, Today, Milestones, conditional update, Settings, and Quit actions.
+shows and focuses the main window. Right click exposes quick task creation, Today,
+Milestones, conditional update, Settings, and Quit actions.
 
 Device-only preferences are stored separately from task data:
 

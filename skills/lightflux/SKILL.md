@@ -25,8 +25,11 @@ credential files.
 
 1. Query the smallest useful Project, parent, or task scope.
 2. Preserve parent, Project, milestone, and rich-text relationships.
-3. Add concise progress comments only when they convey durable information.
-4. Complete work with evidence such as commit SHAs, pull-request URLs, checks
+3. Prefer trash over deletion. The CLI exposes trash and restore only;
+   permanent deletion belongs to the desktop Trash view, applies only to
+   trashed tasks and their trashed descendants, and must be confirmed.
+4. Add concise progress comments only when they convey durable information.
+5. Complete work with evidence such as commit SHAs, pull-request URLs, checks
    run, and remaining limitations.
 
 ## Work On Projects

@@ -27,6 +27,8 @@ Once published, the public installer installs CLI and Skill together:
 curl -fsSL https://raw.githubusercontent.com/little1d/LightFlux/main/cli/scripts/install.sh | bash
 ```
 
+The installer requires Node.js 22+ and does not need any configuration.
+
 ## Projects
 
 ```bash
@@ -82,6 +84,19 @@ lightflux milestone trash <id> --expected-version <n> --yes
 lightflux milestone restore <id> --expected-version <n>
 lightflux task update <task-id> --expected-version <n> --milestone <id>
 ```
+
+## Configuration
+
+The CLI needs no environment variables, accounts or secrets. Settings live in
+`config.json` under the platform config directory (`$XDG_CONFIG_HOME/LightFlux`,
+`%APPDATA%\LightFlux`, or `~/.config/LightFlux`). It stores only the selected
+Project and last-used loopback URL.
+
+| Variable | Effect |
+| --- | --- |
+| `LIGHTFLUX_NO_AUTOSTART=1` | Fail instead of launching the desktop app |
+| `LIGHTFLUX_DESKTOP_DATA_DIR` | Use an isolated desktop data directory (testing) |
+| `CI=true` | Same as `LIGHTFLUX_NO_AUTOSTART=1` |
 
 ## Safety
 

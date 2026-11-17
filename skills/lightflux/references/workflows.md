@@ -95,6 +95,21 @@ lightflux task update <task-id> \
 Milestone mutations require the current milestone `version`. Use
 `--no-milestone` to remove a task association.
 
+## Trash And Restore
+
+```bash
+lightflux task trash <task-id> --expected-version <version> --yes
+lightflux task restore <task-id> --expected-version <version>
+lightflux task list --trash --json
+```
+
+Trash is reversible and is the only destructive task action the CLI exposes;
+permanent deletion lives in the desktop Trash view, requires the task to be
+trashed first, removes only trashed descendants, and detaches surviving
+children. Restoring a task whose parent stayed in another Project detaches it,
+so cross-Project parent links never appear. Never recreate a deleted task by
+guessing its content.
+
 ## Read Before Write
 
 Use the returned task or milestone version for every mutation. If the desktop

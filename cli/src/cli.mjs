@@ -221,7 +221,7 @@ const showContext = async (json) => {
 const listProjects = async (args) => {
   const { client, config } = await authenticatedClient();
   if (!config.workspaceId) {
-    throw new Error('No Workspace selected. Run `lightflux login`.');
+    throw new Error('No Workspace selected. Run `lightflux` to select a Project.');
   }
   const projects = await client.listProjects(config.workspaceId);
   output(projects, args.includes('--json'), (items) =>
@@ -232,7 +232,7 @@ const listProjects = async (args) => {
 const showAudit = async (args) => {
   const { client, config } = await authenticatedClient();
   if (!config.workspaceId) {
-    throw new Error('No Workspace selected. Run `lightflux login`.');
+    throw new Error('No Workspace selected. Run `lightflux` to select a Project.');
   }
   const result = await client.listAudit(config.workspaceId);
   output(result, args.includes('--json'), (value) =>
@@ -275,7 +275,7 @@ const undoMutation = async (args) => {
 const requireProjectId = (args, config) => {
   const projectId = option(args, '--project') ?? config.projectId;
   if (!projectId) {
-    throw new Error('A Project is required. Pass --project or run login.');
+    throw new Error('A Project is required. Pass --project or run `lightflux`.');
   }
   return projectId;
 };
@@ -530,7 +530,7 @@ const runMilestone = async (args) => {
   const json = args.includes('--json');
   const { client, config } = await authenticatedClient();
   if (!config.workspaceId) {
-    throw new Error('No Workspace selected. Run `lightflux login`.');
+    throw new Error('No Workspace selected. Run `lightflux` to select a Project.');
   }
 
   if (action === 'list') {

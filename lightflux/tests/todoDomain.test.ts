@@ -75,6 +75,52 @@ describe('todo trash operations', () => {
       }),
     ]);
   });
+
+  it('detaches a child restored after its branch left the Project', () => {
+    const source = [
+      todo('parent', { projectId: 'work' }),
+      todo('child', {
+        parentId: 'parent',
+        projectId: 'inbox',
+        trashedAt: 10,
+      }),
+    ];
+
+    expect(
+      restoreTodoBranch(source, 'child', 20).find(
+        (item) => item.id === 'child',
+      ),
+    ).toMatchObject({ parentId: null, projectId: 'inbox', trashedAt: null });
+  });
+
+  it('keeps the parent link when the parent is in the same Project', () => {
+    const source = [
+      todo('parent', { projectId: 'work' }),
+      todo('child', {
+        parentId: 'parent',
+        projectId: 'work',
+        trashedAt: 10,
+      }),
+    ];
+
+    expect(
+      restoreTodoBranch(source, 'child', 20).find(
+        (item) => item.id === 'child',
+      ),
+    ).toMatchObject({ parentId: 'parent', trashedAt: null });
+  });
+
+  it('never deletes an active task through the trash branch', () => {
+    const source = [
+      todo('parent', { trashedAt: 10 }),
+      todo('child', { parentId: 'parent', completed: true }),
+    ];
+
+    expect(deleteTrashedTodoBranch(source, 'child', 20)).toBe(source);
+    expect(deleteTrashedTodoBranch(source, 'parent', 20)).toEqual([
+      expect.objectContaining({ id: 'child', parentId: null }),
+    ]);
+  });
 });
 
 describe('todo indexes', () => {

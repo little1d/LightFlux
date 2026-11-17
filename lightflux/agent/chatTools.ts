@@ -198,8 +198,7 @@ export function prepareChatTool(state: PersistedAppState, record: ChatToolRecord
       };
     } else {
       const task = resolve(state.todos.filter((t) =>
-        args.action === 'restore' ? t.trashedAt !== null
-          : args.action === 'delete' ? true : t.trashedAt === null), args.task, (t) => t.title);
+        args.action === 'restore' || args.action === 'delete' ? t.trashedAt !== null : t.trashedAt === null), args.task, (t) => t.title);
       if (projectId) changes.projectId = projectId;
       request = {
         method: 'POST', path: `/api/v1/tasks/${encodeURIComponent(task.id)}/mutations`,

@@ -109,6 +109,20 @@ describe('confirmed Xiaoguang task transactions', () => {
     }, createPreview);
     expect(mocks.state.todos).toHaveLength(1);
 
+    const trashPending: ChatToolRecord = {
+      call: {
+        id: 'call_trash',
+        name: 'change_task',
+        arguments: '{"task":"remove","action":"trash"}',
+      },
+      status: 'pending',
+    };
+    const trashPreview = prepareChatTool(mocks.state, trashPending);
+    await executeChatTool({
+      ...trashPending, status: 'confirmed', request: trashPreview.request,
+    }, trashPreview);
+    expect(mocks.state.todos[0].trashedAt).not.toBeNull();
+
     const deletePending: ChatToolRecord = {
       call: {
         id: 'call_delete',

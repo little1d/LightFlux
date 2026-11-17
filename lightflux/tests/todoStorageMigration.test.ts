@@ -9,12 +9,6 @@ vi.mock('react-native', () => ({
   Platform: { OS: 'web' },
 }));
 
-vi.mock('../services/authApi', () => ({
-  isRemoteAuthConfigured: false,
-  loadRemoteAppState: vi.fn(),
-  saveRemoteAppState: vi.fn(),
-}));
-
 vi.mock('../services/indexedDbStorage', () => ({
   deleteWebState: vi.fn(),
   loadWebState: vi.fn(),

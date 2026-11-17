@@ -4,7 +4,12 @@ vi.mock("expo-file-system", () => ({
   Paths: { document: "" },
 }));
 vi.mock("react-native", () => ({ Platform: { OS: "web" } }));
-import { executeLocalRequest, LocalRequest } from "../services/localWorkspace";
+import {
+  executeLocalRequest,
+  LocalRequest,
+  MAX_JOURNAL_MUTATIONS,
+  MAX_JOURNAL_REPLAYS,
+} from "../services/localWorkspace";
 import {
   parsePersistedAppState,
   createAppStateBackup,
@@ -425,5 +430,58 @@ describe("local desktop workspace transactions", () => {
     expect(() =>
       executeLocalRequest(initial(), request("data:image/svg+xml;base64,YWJj")),
     ).toThrow();
+  });
+
+  it("prunes old replays so the journal stays bounded", () => {
+    let state = initial();
+    const total = MAX_JOURNAL_REPLAYS + 25;
+    for (let index = 0; index < total; index += 1) {
+      state = executeLocalRequest(state, create(`Task ${index}`)).state;
+    }
+    expect(Object.keys(state.localAutomation!.replays)).toHaveLength(
+      MAX_JOURNAL_REPLAYS,
+    );
+
+    // The newest key still replays, while a pruned one is simply unknown and
+    // therefore executed again — which is the safe direction for idempotency.
+    expect(
+      executeLocalRequest(state, create(`Task ${total - 1}`)).result.replayed,
+    ).toBe(true);
+    expect(executeLocalRequest(state, create("Task 0")).result.replayed).toBe(
+      false,
+    );
+  });
+
+  it("prunes the oldest audit entries once the mutation cap is reached", () => {
+    const seeded = Array.from({ length: MAX_JOURNAL_MUTATIONS }, (_, index) => ({
+      id: `mutation-${index}`,
+      action: "task.update",
+      actorId: "local-cli",
+      createdAt: index,
+      undoneAt: null,
+    }));
+    const state = parsePersistedAppState(
+      JSON.stringify({
+        schemaVersion: 12,
+        todos: [],
+        projects: [],
+        milestones: [],
+        updatedAt: 1,
+        localAutomation: {
+          version: 1,
+          revision: MAX_JOURNAL_MUTATIONS,
+          mutations: seeded,
+          replays: {},
+          undo: null,
+          comments: [],
+        },
+      }),
+    )!;
+
+    const next = executeLocalRequest(state, create("after cap")).state;
+    const mutations = next.localAutomation!.mutations;
+    expect(mutations).toHaveLength(MAX_JOURNAL_MUTATIONS);
+    expect(mutations[0].id).toBe("mutation-1");
+    expect(mutations.at(-1)!.action).toBe("task.create");
   });
 });

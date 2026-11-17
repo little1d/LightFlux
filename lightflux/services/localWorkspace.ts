@@ -51,6 +51,33 @@ export const emptyLocalAutomation = (): LocalAutomation => ({
   comments: [],
 });
 
+// The journal is saved with every state write and is deep-cloned on every
+// mutation, so it must not grow without bound. Replays are the expensive half:
+// each one holds a full response body, and a created task's body carries its
+// rich text, which may include inline images. Only a recent window is kept —
+// an idempotency retry is a network-scale event, not a month-scale one.
+export const MAX_JOURNAL_MUTATIONS = 500;
+export const MAX_JOURNAL_REPLAYS = 200;
+
+const pruneJournal = (automation: LocalAutomation) => {
+  if (automation.mutations.length > MAX_JOURNAL_MUTATIONS) {
+    automation.mutations = automation.mutations.slice(
+      -MAX_JOURNAL_MUTATIONS,
+    );
+  }
+  // Object keys keep insertion order for non-integer keys, and every
+  // idempotency key is a UUID or a UUID-prefixed string, so the tail of the
+  // key list is the newest set of replays.
+  const keys = Object.keys(automation.replays);
+  if (keys.length > MAX_JOURNAL_REPLAYS) {
+    automation.replays = Object.fromEntries(
+      keys
+        .slice(-MAX_JOURNAL_REPLAYS)
+        .map((key) => [key, automation.replays[key]]),
+    );
+  }
+};
+
 export const isLocalAutomation = (value: unknown): value is LocalAutomation => {
   if (!value || typeof value !== "object") return false;
   const journal = value as LocalAutomation;
@@ -249,7 +276,10 @@ export const executeLocalRequest = (
     return result({ ...replay.result, replayed: true });
   }
   const next = structuredClone(state);
-  const automation = structuredClone(journal);
+  // `next` is already a deep copy of `state`, so its journal is a deep copy of
+  // `journal`. Cloning it a second time doubled the cost of every mutation for
+  // no isolation benefit.
+  const automation = next.localAutomation ?? emptyLocalAutomation();
   const mutationId = crypto.randomUUID();
   let action: string;
   let response: Record<string, unknown>;
@@ -354,6 +384,7 @@ export const executeLocalRequest = (
     writable: true,
     configurable: true,
   });
+  pruneJournal(automation);
   next.localAutomation = automation;
   return { state: next, result: responseBody };
 };
